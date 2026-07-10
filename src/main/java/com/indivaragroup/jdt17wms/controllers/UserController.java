@@ -1,10 +1,13 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.request.AdminUserAccessDTO;
 import com.indivaragroup.jdt17wms.services.UserManagementService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
-@RequestMapping("/api/v1/users")
 public class UserController {
 
     private final UserManagementService userManagementService;
@@ -13,11 +16,11 @@ public class UserController {
         this.userManagementService = userManagementService;
     }
 
-    @GetMapping
+    @GetMapping("/api/v1/users")
     public void getAllUsers() {
     }
 
-    @PutMapping
-    public void updateUser() {
+    @PutMapping("/api/v1/users/{id}")
+    public void updateUser(@PathVariable UUID id, @RequestBody AdminUserAccessDTO adminUserAccessDTO) {
     }
 }

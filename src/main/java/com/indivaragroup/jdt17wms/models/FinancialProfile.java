@@ -22,9 +22,8 @@ public class FinancialProfile {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     @Column(name = "monthly_income", precision = 18, scale = 4)
     private BigDecimal monthlyIncome;

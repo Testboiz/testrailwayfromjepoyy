@@ -23,9 +23,8 @@ public class Expense {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "financial_profile_id", nullable = false)
-    private FinancialProfile financialProfile;
+    @Column(name = "financial_profile_id", nullable = false)
+    private UUID financialProfileId;
 
     @Column(name = "housing", precision = 18, scale = 4)
     private BigDecimal housing;

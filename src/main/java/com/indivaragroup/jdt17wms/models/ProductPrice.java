@@ -28,9 +28,8 @@ public class ProductPrice {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @Column(name = "product_id", nullable = false)
+    private UUID productId;
 
     @Column(name = "price", nullable = false, precision = 18, scale = 4)
     private BigDecimal price;

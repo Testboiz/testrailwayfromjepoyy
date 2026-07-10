@@ -26,9 +26,8 @@ public class Recommendation {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     @Column(name = "priority")
     private String priority;
@@ -42,16 +41,14 @@ public class Recommendation {
     @Column(name = "reason", columnDefinition = "text")
     private String reason;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
+    @Column(name = "product_id")
+    private UUID productId;
 
     @Column(name = "suggested_amount", precision = 18, scale = 4)
     private BigDecimal suggestedAmount;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goal_id")
-    private Goal goal;
+    @Column(name = "goal_id")
+    private UUID goalId;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "recommended_allocation", columnDefinition = "jsonb")
@@ -72,7 +69,6 @@ public class Recommendation {
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resolved_by_asset_id")
-    private Asset resolvedByAsset;
+    @Column(name = "resolved_by_asset_id")
+    private UUID resolvedByAssetId;
 }

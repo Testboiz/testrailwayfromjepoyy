@@ -14,3 +14,51 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+questionnaire:
+  data:
+    - id: 1
+      question: "What is your primary investment goal?"
+      options:
+        - label: "Protect my capital — I cannot afford to lose money"
+          score: 0
+        - label: "Balance growth with moderate security"
+          score: 1
+        - label: "Maximize returns — I accept high risk for high reward"
+          score: 2
+    - id: 2
+      question: "How long do you plan to hold your investments?"
+      options:
+        - label: "Less than 1 year — I need liquidity soon"
+          score: 0
+        - label: "1 to 5 years — medium-term financial goals"
+          score: 1
+        - label: "More than 5 years — building long-term wealth"
+          score: 2
+    - id: 3
+      question: "If your portfolio dropped 20% in a month, you would:"
+      options:
+        - label: "Sell everything to stop further losses"
+          score: 0
+        - label: "Hold position and wait for recovery"
+          score: 1
+        - label: "Buy more — it is a buying opportunity"
+          score: 2
+    - id: 4
+      question: "What portion of monthly income are you willing to invest?"
+      options:
+        - label: "Less than 10% — only comfortable surplus"
+          score: 0
+        - label: "10% to 30% — disciplined regular investing"
+          score: 1
+        - label: "More than 30% — committed to aggressive wealth building"
+          score: 2
+    - id: 5
+      question: "How would you describe your investment experience?"
+      options:
+        - label: "No experience — this is my first time investing"
+          score: 0
+        - label: "Some experience with deposits or mutual funds"
+          score: 1
+        - label: "Experienced with stocks, bonds, and market cycles"
+          score: 2

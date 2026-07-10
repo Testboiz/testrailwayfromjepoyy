@@ -35,3 +35,6 @@ build/
 
 # Local Environment Variables
 .env
+
+GEMINI-INPUT.md
+API-DOCS.md

@@ -26,11 +26,11 @@ public class GoalController {
     public void createGoal() {
     }
 
-    @PutMapping({"/api/v1/me/goals/{id}", "/me/goals/{id}"})
+    @PutMapping({"/api/v1/me/goals/{id}"})
     public void updateGoal(@PathVariable UUID id) {
     }
 
-    @DeleteMapping({"/api/v1/me/goals/{id}", "/me/goals/{id}"})
+    @DeleteMapping({"/api/v1/me/goals/{id}"})
     public void deleteGoal(@PathVariable UUID id) {
     }
 
