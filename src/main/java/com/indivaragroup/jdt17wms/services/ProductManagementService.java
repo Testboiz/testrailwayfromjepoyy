@@ -1,6 +1,9 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,4 +14,9 @@ public class ProductManagementService {
     public ProductManagementService(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
+
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
+    }
 }
+

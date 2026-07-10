@@ -8,6 +8,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.UUID;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,7 +32,11 @@ class UserControllerTest {
 
     @Test
     void updateUser_shouldReturnOk() throws Exception {
-        mockMvc.perform(put("/api/v1/users"))
+        UUID id = UUID.randomUUID();
+        mockMvc.perform(put("/api/v1/users/" + id)
+                        .contentType("application/json")
+                        .content("{\"status\":\"active\"}"))
                 .andExpect(status().isOk());
     }
 }
+
