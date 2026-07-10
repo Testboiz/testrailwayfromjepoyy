@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.response.AdminDashboardDTO;
 import com.indivaragroup.jdt17wms.services.DashboardService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +15,8 @@ public class DashboardController {
     }
 
     @GetMapping("/api/v1/admin-dashboard")
-    public void getAdminDashboard() {
+    public AdminDashboardDTO getAdminDashboard() {
+      return dashboardService.getAdminDashboard();
     }
 
     @GetMapping("/api/v1/me/dashboard")
