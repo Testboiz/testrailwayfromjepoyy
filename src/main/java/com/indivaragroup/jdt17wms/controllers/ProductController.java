@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.request.AdminChangeVisibilityDTO;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
 import org.springframework.data.domain.Page;
@@ -24,8 +25,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public void updateProduct(@PathVariable UUID id) {
-
+    public Product updateProduct(@PathVariable UUID id, @RequestBody AdminChangeVisibilityDTO adminChangeVisibilityDTO) {
+        return productManagementService.updateProductVisibility(id, adminChangeVisibilityDTO.getVisibility());
     }
 }
-

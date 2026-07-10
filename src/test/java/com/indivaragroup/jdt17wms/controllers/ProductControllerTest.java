@@ -43,8 +43,29 @@ class ProductControllerTest {
     @Test
     void updateProduct_shouldReturnOk() throws Exception {
         UUID id = UUID.randomUUID();
-        mockMvc.perform(put("/api/v1/products/" + id))
+        Product product = new Product();
+        when(productManagementService.updateProductVisibility(any(UUID.class), any(Boolean.class)))
+                .thenReturn(product);
+
+        mockMvc.perform(put("/api/v1/products/" + id)
+                        .contentType("application/json")
+                        .content("{\"visibility\":true}"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void updateProduct_shouldReturnNotFound_whenProductDoesNotExist() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(productManagementService.updateProductVisibility(any(UUID.class), any(Boolean.class)))
+                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.NotFoundException("No valid item with the ID"));
+
+        mockMvc.perform(put("/api/v1/products/" + id)
+                        .contentType("application/json")
+                        .content("{\"visibility\":true}"))
+                .andExpect(status().isNotFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("No valid item with the ID"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(404));
+    }
 }
+
 

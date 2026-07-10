@@ -13,6 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.UUID;
+
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,5 +49,32 @@ class ProductManagementServiceTest {
         assertEquals(1, actualPage.getTotalElements());
         assertEquals(product, actualPage.getContent().get(0));
     }
+
+    @Test
+    void updateProductVisibility_shouldUpdateAndReturnProduct_whenProductExists() {
+        UUID id = UUID.randomUUID();
+        Product product = new Product();
+        product.setId(id);
+        product.setVisible(false);
+
+        when(productRepository.findById(id)).thenReturn(java.util.Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Product updatedProduct = productManagementService.updateProductVisibility(id, true);
+
+        assertNotNull(updatedProduct);
+        org.junit.jupiter.api.Assertions.assertTrue(updatedProduct.getVisible());
+    }
+
+    @Test
+    void updateProductVisibility_shouldThrowNotFoundException_whenProductDoesNotExist() {
+        UUID id = UUID.randomUUID();
+        when(productRepository.findById(id)).thenReturn(java.util.Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.indivaragroup.jdt17wms.exceptions.NotFoundException.class, () -> {
+            productManagementService.updateProductVisibility(id, true);
+        });
+    }
 }
+
 
