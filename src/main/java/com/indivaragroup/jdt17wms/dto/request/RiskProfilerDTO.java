@@ -27,13 +27,4 @@ public class RiskProfilerDTO {
         return answers;
     }
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class Answer {
-        private String answer;
-        private Integer score;
-    }
 }

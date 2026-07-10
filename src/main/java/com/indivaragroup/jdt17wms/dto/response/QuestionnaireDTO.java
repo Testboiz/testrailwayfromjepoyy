@@ -17,13 +17,4 @@ public class QuestionnaireDTO {
     private String question;
     private List<OptionDTO> options;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class OptionDTO {
-        private String label;
-        private Integer score;
-    }
 }

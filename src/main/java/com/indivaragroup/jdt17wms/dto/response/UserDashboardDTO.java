@@ -21,35 +21,4 @@ public class UserDashboardDTO {
 
     private List<PerformanceDTO> performance;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class PortfolioDTO {
-        private String value;
-        private String invested;
-        private Integer holdings;
-        private List<PortfolioItemDTO> items;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class PortfolioItemDTO {
-        private String name;
-        private BigDecimal value;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class PerformanceDTO {
-        private Integer month;
-        private BigDecimal value;
-    }
 }

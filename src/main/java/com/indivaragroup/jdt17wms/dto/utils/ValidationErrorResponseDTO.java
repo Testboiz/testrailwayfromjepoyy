@@ -19,13 +19,4 @@ public class ValidationErrorResponseDTO {
     private Integer code;
     private List<ValidationErrorDetailDTO> details;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class ValidationErrorDetailDTO {
-        private String field;
-        private String reason;
-    }
 }

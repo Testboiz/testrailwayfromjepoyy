@@ -20,24 +20,4 @@ import java.util.List;
 public class QuestionnaireDataDTO {
     private List<QuestionnaireItem> data;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class QuestionnaireItem {
-        private Integer id;
-        private String question;
-        private List<OptionDTO> options;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class OptionDTO {
-        private String label;
-        private Integer score;
-    }
 }

@@ -21,15 +21,4 @@ public class AuthSuccessDTO {
     private Integer expiresIn;
     private UserDTO user;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class UserDTO {
-        private UUID id;
-        private String email;
-        @JsonProperty("isAdmin")
-        private Boolean isAdmin;
-    }
 }

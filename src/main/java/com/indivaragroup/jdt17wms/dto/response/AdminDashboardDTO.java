@@ -33,28 +33,4 @@ public class AdminDashboardDTO {
     @JsonProperty("aum_trend")
     private List<AumTrendDTO> aumTrend;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class RiskProfilesDTO {
-        @JsonProperty("risk_averse")
-        private Integer riskAverse;
-
-        private Integer moderate;
-
-        @JsonProperty("risk_taker")
-        private Integer riskTaker;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class AumTrendDTO {
-        private Integer month;
-        private BigDecimal value;
-    }
 }
