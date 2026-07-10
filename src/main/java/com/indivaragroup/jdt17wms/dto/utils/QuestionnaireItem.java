@@ -1,0 +1,20 @@
+package com.indivaragroup.jdt17wms.dto.utils;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class QuestionnaireItem {
+    private Integer id;
+    private String question;
+    private List<OptionDTO> options;
+}
