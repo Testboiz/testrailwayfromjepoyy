@@ -1,11 +1,22 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.services.AssetsManagementService;
+import com.indivaragroup.jdt17wms.services.InvestmentProductTrackingService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 @RestController
 public class AssetController {
+
+    private final AssetsManagementService assetsManagementService;
+    private final InvestmentProductTrackingService investmentProductTrackingService;
+
+    public AssetController(AssetsManagementService assetsManagementService,
+                           InvestmentProductTrackingService investmentProductTrackingService) {
+        this.assetsManagementService = assetsManagementService;
+        this.investmentProductTrackingService = investmentProductTrackingService;
+    }
 
     @PostMapping("/api/v1/me/assets")
     public void createAsset() {
