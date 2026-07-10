@@ -24,7 +24,9 @@ public class UserController {
     }
 
     @PutMapping("/api/v1/users/{id}")
-    public void updateUser(@PathVariable UUID id, @RequestBody AdminUserAccessDTO adminUserAccessDTO) {
+    public User updateUser(@PathVariable UUID id, @RequestBody AdminUserAccessDTO adminUserAccessDTO) {
+        return userManagementService.updateUserStatus(id, adminUserAccessDTO.getStatus());
     }
 }
+
 

@@ -44,10 +44,44 @@ class UserControllerTest {
     @Test
     void updateUser_shouldReturnOk() throws Exception {
         UUID id = UUID.randomUUID();
+        User user = new User();
+        when(userManagementService.updateUserStatus(any(UUID.class), any(String.class)))
+                .thenReturn(user);
+
         mockMvc.perform(put("/api/v1/users/" + id)
                         .contentType("application/json")
                         .content("{\"status\":\"active\"}"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void updateUser_shouldReturnNotFound_whenUserDoesNotExist() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(userManagementService.updateUserStatus(any(UUID.class), any(String.class)))
+                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.NotFoundException("No valid item with the ID"));
+
+        mockMvc.perform(put("/api/v1/users/" + id)
+                        .contentType("application/json")
+                        .content("{\"status\":\"active\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("No valid item with the ID"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(404));
+    }
+
+    @Test
+    void updateUser_shouldReturnBadRequest_whenStatusIsInvalid() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(userManagementService.updateUserStatus(any(UUID.class), any(String.class)))
+                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.BadRequestException("Invalid status value"));
+
+        mockMvc.perform(put("/api/v1/users/" + id)
+                        .contentType("application/json")
+                        .content("{\"status\":\"invalid_status\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("Invalid JSON Body"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(400));
+    }
 }
+
+
 

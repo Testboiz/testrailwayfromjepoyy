@@ -13,6 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.UUID;
+
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,5 +49,41 @@ class UserManagementServiceTest {
         assertEquals(1, actualPage.getTotalElements());
         assertEquals(user, actualPage.getContent().get(0));
     }
+
+    @Test
+    void updateUserStatus_shouldUpdateAndReturnUser_whenUserExists() {
+        UUID id = UUID.randomUUID();
+        User user = new User();
+        user.setId(id);
+        user.setStatus("disabled");
+
+        when(userRepository.findById(id)).thenReturn(java.util.Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User updatedUser = userManagementService.updateUserStatus(id, "active");
+
+        assertNotNull(updatedUser);
+        assertEquals("active", updatedUser.getStatus());
+    }
+
+    @Test
+    void updateUserStatus_shouldThrowNotFoundException_whenUserDoesNotExist() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(java.util.Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.indivaragroup.jdt17wms.exceptions.NotFoundException.class, () -> {
+            userManagementService.updateUserStatus(id, "active");
+        });
+    }
+
+    @Test
+    void updateUserStatus_shouldThrowBadRequestException_whenStatusIsInvalid() {
+        UUID id = UUID.randomUUID();
+        org.junit.jupiter.api.Assertions.assertThrows(com.indivaragroup.jdt17wms.exceptions.BadRequestException.class, () -> {
+            userManagementService.updateUserStatus(id, "invalid_status");
+        });
+    }
 }
+
+
 
