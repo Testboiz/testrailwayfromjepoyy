@@ -4,9 +4,11 @@ import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Asset;
+import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
+import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -34,6 +37,9 @@ class AssetsManagementServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private TransactionHistoryRepository transactionHistoryRepository;
+
     @InjectMocks
     private AssetsManagementService assetsManagementService;
 
@@ -49,7 +55,7 @@ class AssetsManagementServiceTest {
                 .questionnaireCompleted(true)
                 .build();
 
-        Asset asset = Asset.builder().id(java.util.UUID.randomUUID()).userId(AppConstants.USER_ID).build();
+        Asset asset = Asset.builder().id(UUID.randomUUID()).userId(AppConstants.USER_ID).build();
 
         when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(asset));
@@ -81,6 +87,48 @@ class AssetsManagementServiceTest {
 
         assertThrows(NotFoundException.class, () -> {
             assetsManagementService.getAssetsForUser();
+        });
+    }
+
+    @Test
+    void getTransactionLogsForUser_shouldReturnLogsWhenQuestionnaireCompleted() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        TransactionHistory log = TransactionHistory.builder().id(UUID.randomUUID()).userId(AppConstants.USER_ID).build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(transactionHistoryRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(log));
+
+        List<TransactionHistory> result = assetsManagementService.getTransactionLogsForUser();
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(log, result.get(0));
+    }
+
+    @Test
+    void getTransactionLogsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> {
+            assetsManagementService.getTransactionLogsForUser();
+        });
+    }
+
+    @Test
+    void getTransactionLogsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            assetsManagementService.getTransactionLogsForUser();
         });
     }
 }

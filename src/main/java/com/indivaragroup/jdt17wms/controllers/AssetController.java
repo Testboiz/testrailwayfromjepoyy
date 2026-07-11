@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.models.Asset;
+import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
 import com.indivaragroup.jdt17wms.services.InvestmentProductTrackingService;
 import org.springframework.web.bind.annotation.*;
@@ -29,8 +30,9 @@ public class AssetController {
         return assetsManagementService.getAssetsForUser();
     }
 
-    @GetMapping("/api/v1/me/assets/transactions-logs")
-    public void getTransactionLogs() {
+    @GetMapping({"/api/v1/me/assets/transactions-logs", "/api/v1/me/assets/transaction-logs"})
+    public List<TransactionHistory> getTransactionLogs() {
+        return assetsManagementService.getTransactionLogsForUser();
     }
 
     @PutMapping({"/api/v1/me/assets/{id}", "/me/assets/{id}"})

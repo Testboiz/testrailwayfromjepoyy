@@ -59,8 +59,24 @@ class AssetControllerTest {
 
     @Test
     void getTransactionLogs_shouldReturnOk() throws Exception {
+        when(assetsManagementService.getTransactionLogsForUser()).thenReturn(List.of());
+
         mockMvc.perform(get("/api/v1/me/assets/transactions-logs"))
                 .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/me/assets/transaction-logs"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getTransactionLogs_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
+        when(assetsManagementService.getTransactionLogsForUser())
+                .thenThrow(new MissingRiskProfileException("Risk Profiler Assessment Required"));
+
+        mockMvc.perform(get("/api/v1/me/assets/transaction-logs"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(422));
     }
 
     @Test
