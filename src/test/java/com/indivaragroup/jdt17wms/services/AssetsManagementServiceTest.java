@@ -2,15 +2,18 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Asset;
+import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
+import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
@@ -50,6 +53,9 @@ class AssetsManagementServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private GoalRepository goalRepository;
 
     @InjectMocks
     private AssetsManagementService assetsManagementService;
@@ -242,6 +248,125 @@ class AssetsManagementServiceTest {
 
         assertThrows(NotFoundException.class, () -> {
             assetsManagementService.createAssetForUser(dto);
+        });
+    }
+
+    @Test
+    void updateAssetForUser_shouldUpdateAssetGoal_whenValid() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        UUID goalId = UUID.randomUUID();
+
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .build();
+
+        GoalSettingDTO dto = GoalSettingDTO.builder()
+                .goalId(goalId)
+                .build();
+
+        Goal goal = Goal.builder().id(goalId).build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Asset result = assetsManagementService.updateAssetForUser(assetId, dto);
+
+        assertNotNull(result);
+        assertEquals(goalId, result.getGoalId());
+        verify(assetRepository).save(any(Asset.class));
+    }
+
+    @Test
+    void updateAssetForUser_shouldThrowNotFoundException_whenGoalNotFound() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        UUID goalId = UUID.randomUUID();
+
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .build();
+
+        GoalSettingDTO dto = GoalSettingDTO.builder()
+                .goalId(goalId)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            assetsManagementService.updateAssetForUser(assetId, dto);
+        });
+    }
+
+    @Test
+    void updateAssetForUser_shouldThrowNotFoundException_whenAssetNotFound() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        GoalSettingDTO dto = GoalSettingDTO.builder().build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            assetsManagementService.updateAssetForUser(assetId, dto);
+        });
+    }
+
+    @Test
+    void updateAssetForUser_shouldThrowNotFoundException_whenAssetDoesNotBelongToUser() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        GoalSettingDTO dto = GoalSettingDTO.builder().build();
+
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(UUID.randomUUID()) // different user
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+
+        assertThrows(NotFoundException.class, () -> {
+            assetsManagementService.updateAssetForUser(assetId, dto);
+        });
+    }
+
+    @Test
+    void updateAssetForUser_shouldThrowMissingRiskProfileException_whenQuestionnaireNotCompleted() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(false)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        GoalSettingDTO dto = GoalSettingDTO.builder().build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> {
+            assetsManagementService.updateAssetForUser(assetId, dto);
         });
     }
 }

@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
@@ -28,7 +29,7 @@ public class AssetController {
         return assetsManagementService.createAssetForUser(assetRegistrationDTO);
     }
 
-    @GetMapping({"/api/v1/me/assets"})
+    @GetMapping({"/api/v1/me/assets", "/ap/v1/me/assets"})
     public List<Asset> getAssets() {
         return assetsManagementService.getAssetsForUser();
     }
@@ -38,8 +39,9 @@ public class AssetController {
         return assetsManagementService.getTransactionLogsForUser();
     }
 
-    @PutMapping({"/api/v1/me/assets/{id}"})
-    public void updateAsset(@PathVariable UUID id) {
+    @PutMapping({"/api/v1/me/assets/{id}", "/me/assets/{id}"})
+    public Asset updateAsset(@PathVariable UUID id, @RequestBody GoalSettingDTO goalSettingDTO) {
+        return assetsManagementService.updateAssetForUser(id, goalSettingDTO);
     }
 
     @DeleteMapping({"/api/v1/me/assets/{id}"})

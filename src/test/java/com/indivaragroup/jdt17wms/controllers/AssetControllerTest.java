@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
@@ -120,7 +121,13 @@ class AssetControllerTest {
     @Test
     void updateAsset_shouldReturnOk() throws Exception {
         UUID id = UUID.randomUUID();
-        mockMvc.perform(put("/api/v1/me/assets/" + id))
+        UUID goalId = UUID.randomUUID();
+        when(assetsManagementService.updateAssetForUser(any(UUID.class), any(GoalSettingDTO.class)))
+                .thenReturn(new Asset());
+
+        mockMvc.perform(put("/api/v1/me/assets/" + id)
+                        .contentType("application/json")
+                        .content("{\"goalId\":\"" + goalId + "\"}"))
                 .andExpect(status().isOk());
     }
 

@@ -1,5 +1,7 @@
 package com.indivaragroup.jdt17wms.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,5 +16,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class GoalSettingDTO {
+    @JsonProperty("goalId")
     private UUID goalId;
 }

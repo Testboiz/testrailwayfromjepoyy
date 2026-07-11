@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
@@ -12,6 +13,7 @@ import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.TransactionAction;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
+import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
@@ -23,6 +25,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class AssetsManagementService {
@@ -32,17 +35,20 @@ public class AssetsManagementService {
     private final UserRepository userRepository;
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final ProductRepository productRepository;
+    private final GoalRepository goalRepository;
 
     public AssetsManagementService(AssetRepository assetRepository,
                                    ExpenseRepository expenseRepository,
                                    UserRepository userRepository,
                                    TransactionHistoryRepository transactionHistoryRepository,
-                                   ProductRepository productRepository) {
+                                   ProductRepository productRepository,
+                                   GoalRepository goalRepository) {
         this.assetRepository = assetRepository;
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.productRepository = productRepository;
+        this.goalRepository = goalRepository;
     }
 
     public List<Asset> getAssetsForUser() {
@@ -118,5 +124,31 @@ public class AssetsManagementService {
         transactionHistoryRepository.save(history);
 
         return savedAsset;
+    }
+
+    @Transactional
+    public Asset updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
+        User user = userRepository.findById(AppConstants.USER_ID)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
+
+        Asset asset = assetRepository.findById(assetId)
+                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+
+        if (!asset.getUserId().equals(user.getId())) {
+            throw new NotFoundException("No valid item with the ID");
+        }
+
+        if (dto.getGoalId() != null) {
+            goalRepository.findById(dto.getGoalId())
+                    .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+            asset.setGoalId(dto.getGoalId());
+        } else {
+            asset.setGoalId(null);
+        }
+
+        return assetRepository.save(asset);
     }
 }
