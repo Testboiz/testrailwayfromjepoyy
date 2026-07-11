@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AdminChangeVisibilityDTO;
+import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
 import org.springframework.data.domain.Page;
@@ -20,8 +21,10 @@ public class ProductController {
     }
 
     @GetMapping
-    public Page<Product> getAllProducts(Pageable pageable) {
-        return productManagementService.getAllProducts(pageable);
+    public Page<Product> getAllProducts(
+            ProductQueryDTO queryDTO,
+            Pageable pageable) {
+        return productManagementService.getProductsForUser(queryDTO, pageable);
     }
 
     @PutMapping("/{id}")

@@ -1,7 +1,14 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
+import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
+import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Product;
+import com.indivaragroup.jdt17wms.models.User;
+import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
+import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,11 +20,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +33,9 @@ class ProductManagementServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ProductManagementService productManagementService;
@@ -57,24 +67,140 @@ class ProductManagementServiceTest {
         product.setId(id);
         product.setVisible(false);
 
-        when(productRepository.findById(id)).thenReturn(java.util.Optional.of(product));
+        when(productRepository.findById(id)).thenReturn(Optional.of(product));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Product updatedProduct = productManagementService.updateProductVisibility(id, true);
 
         assertNotNull(updatedProduct);
-        org.junit.jupiter.api.Assertions.assertTrue(updatedProduct.getVisible());
+        assertTrue(updatedProduct.getVisible());
     }
 
     @Test
     void updateProductVisibility_shouldThrowNotFoundException_whenProductDoesNotExist() {
         UUID id = UUID.randomUUID();
-        when(productRepository.findById(id)).thenReturn(java.util.Optional.empty());
+        when(productRepository.findById(id)).thenReturn(Optional.empty());
 
-        org.junit.jupiter.api.Assertions.assertThrows(com.indivaragroup.jdt17wms.exceptions.NotFoundException.class, () -> {
+        assertThrows(NotFoundException.class, () -> {
             productManagementService.updateProductVisibility(id, true);
         });
     }
+
+    @Test
+    void getProductsForUser_shouldThrowMissingRiskProfileException_whenUserQuestionnaireNotCompleted() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .role(UserRole.user)
+                .questionnaireCompleted(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> {
+            productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+        });
+    }
+
+    @Test
+    void getProductsForUser_shouldFilterByVisibilityAndRiskProfile_forStandardUser() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .role(UserRole.user)
+                .questionnaireCompleted(true)
+                .riskProfile("moderate") // moderate allows risk level <= 4
+                .build();
+
+        Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
+        Product highRiskVisible = Product.builder().riskLevel(5).visible(true).build(); // Excluded (5 > 4)
+        Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build(); // Excluded (hidden)
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible, lowRiskHidden));
+
+        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(lowRiskVisible, result.getContent().get(0));
+    }
+
+    @Test
+    void getProductsForUser_shouldRespectShowAll_forStandardUser() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .role(UserRole.user)
+                .questionnaireCompleted(true)
+                .riskProfile("moderate") // moderate allows risk level <= 4
+                .build();
+
+        Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
+        Product highRiskVisible = Product.builder().riskLevel(5).visible(true).build(); // Included due to showAll = true
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible));
+
+        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, true, false), PageRequest.of(0, 10));
+
+        assertEquals(2, result.getTotalElements());
+    }
+
+    @Test
+    void getProductsForUser_shouldFilterByTypeAndSearchQuery() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .role(UserRole.user)
+                .questionnaireCompleted(true)
+                .riskProfile("risk_taker")
+                .build();
+
+        Product matchTypeAndName = Product.builder().name("Danareksa Stock").issuer("Danareksa").type("stock").visible(true).build();
+        Product matchTypeOnly = Product.builder().name("BCA Stock").issuer("Bank BCA").type("stock").visible(true).build();
+        Product matchNameOnly = Product.builder().name("Danareksa Bond").issuer("Danareksa").type("bond").visible(true).build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(productRepository.findAll()).thenReturn(List.of(matchTypeAndName, matchTypeOnly, matchNameOnly));
+
+        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", "stock", false, false), PageRequest.of(0, 10));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(matchTypeAndName, result.getContent().get(0));
+    }
+
+    @Test
+    void getProductsForUser_shouldLimitToDashboardSummary() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .role(UserRole.user)
+                .questionnaireCompleted(true)
+                .riskProfile("risk_taker")
+                .build();
+
+        List<Product> tenProducts = java.util.stream.IntStream.range(0, 10)
+                .mapToObj(i -> Product.builder().visible(true).build())
+                .collect(Collectors.toList());
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(productRepository.findAll()).thenReturn(tenProducts);
+
+        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, false, true), PageRequest.of(0, 10));
+
+        assertEquals(5, result.getTotalElements());
+    }
+
+    @Test
+    void getProductsForUser_shouldNotFilterByVisibilityAndRiskLevel_forAdmin() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .role(UserRole.admin)
+                .build();
+
+        Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
+        Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
+
+        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+
+        assertEquals(2, result.getTotalElements());
+    }
 }
-
-

@@ -21,6 +21,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
+
 @WebMvcTest(ProductController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class ProductControllerTest {
@@ -34,7 +36,7 @@ class ProductControllerTest {
     @Test
     void getAllProducts_shouldReturnOk() throws Exception {
         Page<Product> expectedPage = new PageImpl<>(List.of());
-        when(productManagementService.getAllProducts(any(Pageable.class))).thenReturn(expectedPage);
+        when(productManagementService.getProductsForUser(any(ProductQueryDTO.class), any(Pageable.class))).thenReturn(expectedPage);
 
         mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk());
