@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,13 +21,20 @@ import java.util.UUID;
 @Builder
 public class AssetRegistrationDTO {
     @JsonProperty("product_id")
+    @NotNull(message = "Must not be null")
     private UUID productId;
 
+    @NotNull(message = "Must not be null")
+    @DecimalMin(value = "0.0", message = "Must not be negative")
     private BigDecimal units;
 
+    @NotNull(message = "Must not be null")
+    @DecimalMin(value = "0.0", message = "Must not be negative")
     private BigDecimal amount;
 
     @JsonProperty("current_value")
+    @NotNull(message = "Must not be null")
+    @DecimalMin(value = "0.0", message = "Must not be negative")
     private BigDecimal currentValue;
 
     @JsonProperty("purchase_date")

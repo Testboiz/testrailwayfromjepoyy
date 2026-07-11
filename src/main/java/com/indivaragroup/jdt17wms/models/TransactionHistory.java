@@ -4,6 +4,8 @@ import com.indivaragroup.jdt17wms.models.enums.TransactionAction;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -37,6 +39,7 @@ public class TransactionHistory {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "action", nullable = false, columnDefinition = "transaction_action")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private TransactionAction action;
 
     @Column(name = "price_per_unit", nullable = false, precision = 18, scale = 4)

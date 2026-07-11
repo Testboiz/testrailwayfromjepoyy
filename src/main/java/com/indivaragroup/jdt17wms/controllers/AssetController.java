@@ -1,9 +1,11 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
 import com.indivaragroup.jdt17wms.services.InvestmentProductTrackingService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,10 +24,11 @@ public class AssetController {
     }
 
     @PostMapping("/api/v1/me/assets")
-    public void createAsset() {
+    public Asset createAsset(@Valid @RequestBody AssetRegistrationDTO assetRegistrationDTO) {
+        return assetsManagementService.createAssetForUser(assetRegistrationDTO);
     }
 
-    @GetMapping({"/api/v1/me/assets", "/ap/v1/me/assets"})
+    @GetMapping({"/api/v1/me/assets"})
     public List<Asset> getAssets() {
         return assetsManagementService.getAssetsForUser();
     }
@@ -35,11 +38,11 @@ public class AssetController {
         return assetsManagementService.getTransactionLogsForUser();
     }
 
-    @PutMapping({"/api/v1/me/assets/{id}", "/me/assets/{id}"})
+    @PutMapping({"/api/v1/me/assets/{id}"})
     public void updateAsset(@PathVariable UUID id) {
     }
 
-    @DeleteMapping({"/api/v1/me/assets/{id}", "/me/assets/{id}"})
+    @DeleteMapping({"/api/v1/me/assets/{id}"})
     public void deleteAsset(@PathVariable UUID id) {
     }
 }
