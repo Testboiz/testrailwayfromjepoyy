@@ -16,4 +16,6 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     BigDecimal sumTotalAmount();
 
     List<Asset> findAllByPurchaseDateGreaterThanEqual(Instant purchaseDate);
+    List<Asset> findAllByUserId(UUID id);
+//    List<Asset> findAllByPurchaseDateLessThanEqual(Instant purchaseDate);
 }

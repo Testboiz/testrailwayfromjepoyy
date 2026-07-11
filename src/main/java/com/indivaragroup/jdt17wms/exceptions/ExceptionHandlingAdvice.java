@@ -26,5 +26,13 @@ public class ExceptionHandlingAdvice {
         errorResponse.put("code", HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(MissingRiskProfileException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingRiskProfileException(MissingRiskProfileException ex) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("error", ex.getMessage());
+        errorResponse.put("code", HttpStatus.UNPROCESSABLE_ENTITY.value());
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
 }
 
