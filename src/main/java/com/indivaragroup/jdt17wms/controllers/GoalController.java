@@ -15,6 +15,8 @@ import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
 
 import org.springframework.http.HttpStatus;
 
+import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
+
 @RestController
 public class GoalController {
 
@@ -49,6 +51,7 @@ public class GoalController {
     }
 
     @GetMapping("/api/v1/me/goals/projections")
-    public void getGoalProjections() {
+    public List<GoalProjectionDTO> getGoalProjections() {
+        return goalsProjectionService.getProjectionsForUser();
     }
 }

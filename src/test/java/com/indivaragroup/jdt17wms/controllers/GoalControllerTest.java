@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
+import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 
 @WebMvcTest(GoalController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -207,7 +208,39 @@ class GoalControllerTest {
 
     @Test
     void getGoalProjections_shouldReturnOk() throws Exception {
+        GoalProjectionDTO projection = GoalProjectionDTO.builder()
+                .id(UUID.randomUUID())
+                .name("Retirement Fund")
+                .targetAmount(new java.math.BigDecimal("500000.00"))
+                .projectedDate(java.time.LocalDate.of(2050, 10, 2))
+                .recommendedContribution(new java.math.BigDecimal("2000.00"))
+                .timeSeries(java.util.List.of(
+                        GoalProjectionDTO.TimeSeriesPointDTO.builder()
+                                .month(1)
+                                .value(new java.math.BigDecimal("1000.00"))
+                                .build()
+                ))
+                .build();
+
+        when(goalsProjectionService.getProjectionsForUser()).thenReturn(java.util.List.of(projection));
+
         mockMvc.perform(get("/api/v1/me/goals/projections"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Retirement Fund"))
+                .andExpect(jsonPath("$[0].projected-date").value("2050-10-02"))
+                .andExpect(jsonPath("$[0].recommended-contribution").value(2000.00))
+                .andExpect(jsonPath("$[0].time-series[0].month").value(1))
+                .andExpect(jsonPath("$[0].time-series[0].value").value(1000.00));
+    }
+
+    @Test
+    void getGoalProjections_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
+        when(goalsProjectionService.getProjectionsForUser())
+                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException("Risk Profiler Assessment Required"));
+
+        mockMvc.perform(get("/api/v1/me/goals/projections"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(422));
     }
 }
