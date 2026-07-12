@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.services.ActionRecommendationService;
 import com.indivaragroup.jdt17wms.services.ProductRecommendationService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +21,8 @@ public class RecommendationController {
     }
 
     @GetMapping("/health")
-    public void getHealth() {
+    public HealthDTO getHealth() {
+        return actionRecommendationService.getHealthScore();
     }
 
     @GetMapping("/recommendations")
