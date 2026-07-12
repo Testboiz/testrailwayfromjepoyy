@@ -53,6 +53,15 @@ public class ExceptionHandlingAdvice {
         return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
+    @ExceptionHandler(InsufficientIncomeException.class)
+    public ResponseEntity<Map<String, Object>> handleInsufficientIncomeException(InsufficientIncomeException ex) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("error", ex.getMessage());
+        errorResponse.put("type", "ERR-003");
+        errorResponse.put("code", HttpStatus.UNPROCESSABLE_ENTITY.value());
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
     @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(org.springframework.web.bind.MethodArgumentNotValidException ex) {
         Map<String, Object> errorResponse = new HashMap<>();

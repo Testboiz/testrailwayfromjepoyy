@@ -11,6 +11,10 @@ import java.util.UUID;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import jakarta.validation.Valid;
 
+import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
+
+import org.springframework.http.HttpStatus;
+
 @RestController
 public class GoalController {
 
@@ -34,11 +38,14 @@ public class GoalController {
     }
 
     @PutMapping({"/api/v1/me/goals/{id}"})
-    public void updateGoal(@PathVariable UUID id) {
+    public GoalDTO updateGoal(@PathVariable UUID id, @Valid @RequestBody GoalEditingDTO goalEditingDTO) {
+        return goalsManagementService.updateGoalForUser(id, goalEditingDTO);
     }
 
     @DeleteMapping({"/api/v1/me/goals/{id}"})
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteGoal(@PathVariable UUID id) {
+        goalsManagementService.deleteGoalForUser(id);
     }
 
     @GetMapping("/api/v1/me/goals/projections")

@@ -8,11 +8,18 @@ import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
+import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
+import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
+import com.indivaragroup.jdt17wms.repositories.AssetRepository;
+import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
+import com.indivaragroup.jdt17wms.exceptions.InsufficientIncomeException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,10 +27,14 @@ public class GoalsManagementService {
 
     private final GoalRepository goalRepository;
     private final UserRepository userRepository;
+    private final FinancialProfileRepository financialProfileRepository;
+    private final AssetRepository assetRepository;
 
-    public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository) {
+    public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository, FinancialProfileRepository financialProfileRepository, AssetRepository assetRepository) {
         this.goalRepository = goalRepository;
         this.userRepository = userRepository;
+        this.financialProfileRepository = financialProfileRepository;
+        this.assetRepository = assetRepository;
     }
 
     public List<GoalDTO> getGoalsForUser() {
@@ -99,5 +110,82 @@ public class GoalsManagementService {
                 .createdAt(goal.getCreatedAt())
                 .updatedAt(goal.getUpdatedAt())
                 .build();
+    }
+
+    public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) {
+        User user = userRepository.findById(AppConstants.USER_ID)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
+
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+
+        if (Boolean.TRUE.equals(dto.getIsPriority()) && !Boolean.TRUE.equals(goal.getIsPriority())) {
+            boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
+                    .anyMatch(g -> !g.getId().equals(goalId) && Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS);
+            if (hasPriorityGoal) {
+                throw new DuplicatePriorityGoalException("Can’t set more than 1 priority");
+            }
+        }
+
+        BigDecimal monthlyIncome = financialProfileRepository.findByUserId(user.getId())
+                .map(com.indivaragroup.jdt17wms.models.FinancialProfile::getMonthlyIncome)
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal totalContribution = goalRepository.findAllByUserId(user.getId()).stream()
+                .map(g -> g.getId().equals(goalId) ? dto.getMonthlyContribution() : g.getMonthlyContribution())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalContribution.compareTo(monthlyIncome) > 0) {
+            throw new InsufficientIncomeException("Can’t set more allocation than income");
+        }
+
+        goal.setName(dto.getName());
+        goal.setTargetAmount(dto.getTargetAmount());
+        goal.setMonthlyContribution(dto.getMonthlyContribution());
+        goal.setTargetDate(dto.getTargetDate());
+        goal.setIsPriority(dto.getIsPriority() != null ? dto.getIsPriority() : false);
+        goal.setNotes(dto.getNotes());
+
+        goal = goalRepository.save(goal);
+
+        return GoalDTO.builder()
+                .id(goal.getId())
+                .userId(goal.getUserId())
+                .name(goal.getName())
+                .type(goal.getType())
+                .targetAmount(goal.getTargetAmount())
+                .monthlyContribution(goal.getMonthlyContribution())
+                .targetDate(goal.getTargetDate())
+                .isPriority(goal.getIsPriority())
+                .notes(goal.getNotes())
+                .status(goal.getStatus())
+                .createdAt(goal.getCreatedAt())
+                .updatedAt(goal.getUpdatedAt())
+                .build();
+    }
+
+    @Transactional
+    public void deleteGoalForUser(UUID goalId) {
+        User user = userRepository.findById(AppConstants.USER_ID)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
+
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+
+        List<Asset> assets = assetRepository.findAllByGoalId(goalId);
+        for (Asset asset : assets) {
+            asset.setGoalId(null);
+            assetRepository.save(asset);
+        }
+
+        goalRepository.delete(goal);
     }
 }

@@ -10,12 +10,19 @@ import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException;
+import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
+import com.indivaragroup.jdt17wms.exceptions.InsufficientIncomeException;
+import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
+import com.indivaragroup.jdt17wms.models.FinancialProfile;
+import com.indivaragroup.jdt17wms.repositories.AssetRepository;
+import com.indivaragroup.jdt17wms.models.Asset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class GoalsManagementServiceTest {
@@ -34,6 +42,12 @@ class GoalsManagementServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private FinancialProfileRepository financialProfileRepository;
+
+    @Mock
+    private AssetRepository assetRepository;
 
     @InjectMocks
     private GoalsManagementService goalsManagementService;
@@ -153,5 +167,194 @@ class GoalsManagementServiceTest {
         when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
 
         assertThrows(DuplicatePriorityGoalException.class, () -> goalsManagementService.createGoalForUser(request));
+    }
+
+    @Test
+    void updateGoalForUser_shouldUpdateGoalSuccessfully() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .name("Retirement Fund")
+                .targetAmount(new BigDecimal("500000.00"))
+                .monthlyContribution(new BigDecimal("1000.00"))
+                .isPriority(false)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("New retirement")
+                .targetAmount(new BigDecimal("600000.00"))
+                .monthlyContribution(new BigDecimal("1200.00"))
+                .targetDate(java.time.LocalDate.of(2040, 1, 1))
+                .isPriority(true)
+                .notes("Updated notes")
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .monthlyIncome(new BigDecimal("5000.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.save(any(Goal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
+
+        assertNotNull(result);
+        assertEquals("New retirement", result.getName());
+        assertEquals(new BigDecimal("600000.00"), result.getTargetAmount());
+        assertEquals(new BigDecimal("1200.00"), result.getMonthlyContribution());
+        assertEquals(true, result.getIsPriority());
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(false)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder().build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder().build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowDuplicatePriorityGoalExceptionWhenPriorityGoalAlreadyExists() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .isPriority(false)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+        Goal otherGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .isPriority(true)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .isPriority(true)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal, otherGoal));
+
+        assertThrows(DuplicatePriorityGoalException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowInsufficientIncomeExceptionWhenContributionExceedsIncome() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .monthlyContribution(new BigDecimal("1000.00"))
+                .isPriority(false)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .monthlyContribution(new BigDecimal("6000.00")) // Exceeds income of 5000
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .monthlyIncome(new BigDecimal("5000.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+
+        assertThrows(InsufficientIncomeException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    @Test
+    void deleteGoalForUser_shouldDeleteGoalSuccessfully() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal goal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .build();
+        Asset asset = Asset.builder()
+                .id(UUID.randomUUID())
+                .goalId(goalId)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
+        when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
+
+        goalsManagementService.deleteGoalForUser(goalId);
+
+        verify(assetRepository).save(asset);
+        verify(goalRepository).delete(goal);
+    }
+
+    @Test
+    void deleteGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.deleteGoalForUser(goalId));
+    }
+
+    @Test
+    void deleteGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> goalsManagementService.deleteGoalForUser(goalId));
     }
 }

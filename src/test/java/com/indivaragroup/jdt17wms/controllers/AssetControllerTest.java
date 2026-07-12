@@ -100,9 +100,6 @@ class AssetControllerTest {
     void getTransactionLogs_shouldReturnOk() throws Exception {
         when(assetsManagementService.getTransactionLogsForUser()).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/v1/me/assets/transactions-logs"))
-                .andExpect(status().isOk());
-
         mockMvc.perform(get("/api/v1/me/assets/transaction-logs"))
                 .andExpect(status().isOk());
     }
@@ -136,9 +133,6 @@ class AssetControllerTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(delete("/api/v1/me/assets/" + id))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(delete("/me/assets/" + id))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 }

@@ -17,5 +17,6 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     List<Asset> findAllByPurchaseDateGreaterThanEqual(Instant purchaseDate);
     List<Asset> findAllByUserId(UUID id);
+    List<Asset> findAllByGoalId(UUID goalId);
 //    List<Asset> findAllByPurchaseDateLessThanEqual(Instant purchaseDate);
 }
