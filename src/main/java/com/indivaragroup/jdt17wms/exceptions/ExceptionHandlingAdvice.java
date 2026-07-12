@@ -44,6 +44,15 @@ public class ExceptionHandlingAdvice {
         return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
+    @ExceptionHandler(DuplicatePriorityGoalException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicatePriorityGoalException(DuplicatePriorityGoalException ex) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("error", ex.getMessage());
+        errorResponse.put("type", "ERR-002");
+        errorResponse.put("code", HttpStatus.UNPROCESSABLE_ENTITY.value());
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
     @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(org.springframework.web.bind.MethodArgumentNotValidException ex) {
         Map<String, Object> errorResponse = new HashMap<>();
@@ -54,7 +63,9 @@ public class ExceptionHandlingAdvice {
         java.util.List<Map<String, String>> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> {
                     Map<String, String> detail = new HashMap<>();
-                    detail.put("field", fieldError.getField());
+                    String fieldName = fieldError.getField();
+                    String snakeCaseField = fieldName.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
+                    detail.put("field", snakeCaseField);
                     detail.put("reason", fieldError.getDefaultMessage());
                     return detail;
                 })

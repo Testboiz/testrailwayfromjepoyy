@@ -8,6 +8,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -17,18 +20,25 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class GoalRegistrationDTO {
+    @NotBlank(message = "Must not be blank")
     private String name;
 
+    @NotBlank(message = "Must not be blank")
     private String type;
 
     @JsonProperty("target_amount")
+    @NotNull(message = "Must not be null")
+    @DecimalMin(value = "0.0", message = "Must not be negative")
     private BigDecimal targetAmount;
 
     @JsonProperty("monthly_contribution")
+    @NotNull(message = "Must not be null")
+    @DecimalMin(value = "0.0", message = "Must not be negative")
     private BigDecimal monthlyContribution;
 
     @JsonProperty("target_date")
     @JsonFormat(pattern = "yyyy-MM-dd")
+    @NotNull(message = "Must not be null")
     private LocalDate targetDate;
 
     @JsonProperty("is_priority")

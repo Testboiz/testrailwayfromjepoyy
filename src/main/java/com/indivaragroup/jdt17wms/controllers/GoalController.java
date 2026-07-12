@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
+import jakarta.validation.Valid;
+
 @RestController
 public class GoalController {
 
@@ -26,7 +29,8 @@ public class GoalController {
     }
 
     @PostMapping("/api/v1/me/goals")
-    public void createGoal() {
+    public GoalDTO createGoal(@Valid @RequestBody GoalRegistrationDTO goalRegistrationDTO) {
+        return goalsManagementService.createGoalForUser(goalRegistrationDTO);
     }
 
     @PutMapping({"/api/v1/me/goals/{id}"})

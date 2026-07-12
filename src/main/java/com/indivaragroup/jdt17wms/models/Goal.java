@@ -4,7 +4,10 @@ import com.indivaragroup.jdt17wms.models.enums.GoalStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -37,6 +40,9 @@ public class Goal {
     @Column(name = "target_amount", nullable = false, precision = 18, scale = 4)
     private BigDecimal targetAmount;
 
+    @Column(name = "current_amount", nullable = false, precision = 18, scale = 4)
+    private BigDecimal currentAmount;
+
     @Column(name = "monthly_contribution", precision = 18, scale = 4)
     private BigDecimal monthlyContribution;
 
@@ -49,7 +55,7 @@ public class Goal {
     @Column(name = "notes", columnDefinition = "text")
     private String notes;
 
-    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", columnDefinition = "goal_status")
     private GoalStatus status;
 

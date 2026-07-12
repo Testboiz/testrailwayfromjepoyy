@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.services.GoalsManagementService;
 import com.indivaragroup.jdt17wms.services.GoalsProjectionService;
@@ -12,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,8 +51,47 @@ class GoalControllerTest {
 
     @Test
     void createGoal_shouldReturnOk() throws Exception {
-        mockMvc.perform(post("/api/v1/me/goals"))
-                .andExpect(status().isOk());
+        GoalDTO goalDto = GoalDTO.builder()
+                .id(UUID.randomUUID())
+                .name("Retirement Fund")
+                .targetAmount(new java.math.BigDecimal("500000.00"))
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+        when(goalsManagementService.createGoalForUser(any(GoalRegistrationDTO.class))).thenReturn(goalDto);
+
+        mockMvc.perform(post("/api/v1/me/goals")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Retirement Fund\",\"type\":\"retirement\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Retirement Fund"))
+                .andExpect(jsonPath("$.target_amount").value(500000.00))
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+    }
+
+    @Test
+    void createGoal_shouldReturn400WhenFieldsAreInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/me/goals")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Retirement Fund\",\"type\":\"retirement\",\"target_amount\":-100.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid field values"))
+                .andExpect(jsonPath("$.type").value("ERR-001"))
+                .andExpect(jsonPath("$.details[0].field").value("target_amount"))
+                .andExpect(jsonPath("$.details[0].reason").value("Must not be negative"));
+    }
+
+    @Test
+    void createGoal_shouldReturn422WhenMultiplePriority() throws Exception {
+        when(goalsManagementService.createGoalForUser(any(GoalRegistrationDTO.class)))
+                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException("Can’t set more than 1 priority"));
+
+        mockMvc.perform(post("/api/v1/me/goals")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Retirement Fund\",\"type\":\"retirement\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("Can’t set more than 1 priority"))
+                .andExpect(jsonPath("$.type").value("ERR-002"))
+                .andExpect(jsonPath("$.code").value(422));
     }
 
     @Test

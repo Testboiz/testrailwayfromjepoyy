@@ -8,6 +8,8 @@ import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
+import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
+import com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -81,5 +84,74 @@ class GoalsManagementServiceTest {
         when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> goalsManagementService.getGoalsForUser());
+    }
+
+    @Test
+    void createGoalForUser_shouldCreateGoalSuccessfully() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .name("Retirement Fund")
+                .type("retirement")
+                .targetAmount(new java.math.BigDecimal("500000.00"))
+                .monthlyContribution(new java.math.BigDecimal("1000.00"))
+                .targetDate(java.time.LocalDate.of(2040, 1, 1))
+                .isPriority(true)
+                .build();
+
+        Goal goal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .name("Retirement Fund")
+                .type("retirement")
+                .targetAmount(new java.math.BigDecimal("500000.00"))
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of());
+        when(goalRepository.save(any(Goal.class))).thenReturn(goal);
+
+        GoalDTO result = goalsManagementService.createGoalForUser(request);
+
+        assertNotNull(result);
+        assertEquals("Retirement Fund", result.getName());
+        assertEquals(new java.math.BigDecimal("500000.00"), result.getTargetAmount());
+    }
+
+    @Test
+    void createGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(false)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder().build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.createGoalForUser(request));
+    }
+
+    @Test
+    void createGoalForUser_shouldThrowDuplicatePriorityGoalExceptionWhenPriorityGoalAlreadyExists() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .isPriority(true)
+                .build();
+
+        Goal existingGoal = Goal.builder()
+                .isPriority(true)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
+
+        assertThrows(DuplicatePriorityGoalException.class, () -> goalsManagementService.createGoalForUser(request));
     }
 }
