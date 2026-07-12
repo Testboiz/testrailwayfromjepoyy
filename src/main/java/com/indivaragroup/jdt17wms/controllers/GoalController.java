@@ -1,9 +1,11 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.services.GoalsManagementService;
 import com.indivaragroup.jdt17wms.services.GoalsProjectionService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -19,7 +21,8 @@ public class GoalController {
     }
 
     @GetMapping("/api/v1/me/goals")
-    public void getGoals() {
+    public List<GoalDTO> getGoals() {
+        return goalsManagementService.getGoalsForUser();
     }
 
     @PostMapping("/api/v1/me/goals")

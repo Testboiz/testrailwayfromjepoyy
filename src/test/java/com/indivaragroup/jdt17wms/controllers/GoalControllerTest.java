@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.services.GoalsManagementService;
 import com.indivaragroup.jdt17wms.services.GoalsProjectionService;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(GoalController.class)
@@ -29,8 +32,19 @@ class GoalControllerTest {
 
     @Test
     void getGoals_shouldReturnOk() throws Exception {
+        GoalDTO goalDto = GoalDTO.builder()
+                .id(UUID.randomUUID())
+                .name("Retirement Fund")
+                .targetAmount(new java.math.BigDecimal("500000.00"))
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .build();
+        when(goalsManagementService.getGoalsForUser()).thenReturn(java.util.List.of(goalDto));
+
         mockMvc.perform(get("/api/v1/me/goals"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Retirement Fund"))
+                .andExpect(jsonPath("$[0].target_amount").value(500000.00))
+                .andExpect(jsonPath("$[0].status").value("IN_PROGRESS"));
     }
 
     @Test
