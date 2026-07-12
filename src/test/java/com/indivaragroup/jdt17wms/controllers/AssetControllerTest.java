@@ -134,7 +134,11 @@ class AssetControllerTest {
     @Test
     void deleteAsset_shouldReturnOk() throws Exception {
         UUID id = UUID.randomUUID();
+
         mockMvc.perform(delete("/api/v1/me/assets/" + id))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/me/assets/" + id))
                 .andExpect(status().isOk());
     }
 }

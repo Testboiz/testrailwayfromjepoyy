@@ -8,6 +8,7 @@ import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
+import com.indivaragroup.jdt17wms.models.Recommendation;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.TransactionAction;
@@ -15,6 +16,7 @@ import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
+import com.indivaragroup.jdt17wms.repositories.RecommendationRepository;
 import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.springframework.stereotype.Service;
@@ -36,19 +38,22 @@ public class AssetsManagementService {
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final ProductRepository productRepository;
     private final GoalRepository goalRepository;
+    private final RecommendationRepository recommendationRepository;
 
     public AssetsManagementService(AssetRepository assetRepository,
                                    ExpenseRepository expenseRepository,
                                    UserRepository userRepository,
                                    TransactionHistoryRepository transactionHistoryRepository,
                                    ProductRepository productRepository,
-                                   GoalRepository goalRepository) {
+                                   GoalRepository goalRepository,
+                                   RecommendationRepository recommendationRepository) {
         this.assetRepository = assetRepository;
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.productRepository = productRepository;
         this.goalRepository = goalRepository;
+        this.recommendationRepository = recommendationRepository;
     }
 
     public List<Asset> getAssetsForUser() {
@@ -150,5 +155,50 @@ public class AssetsManagementService {
         }
 
         return assetRepository.save(asset);
+    }
+
+    @Transactional
+    public void deleteAssetForUser(UUID assetId) {
+        User user = userRepository.findById(AppConstants.USER_ID)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
+
+        Asset asset = assetRepository.findById(assetId)
+                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+
+        if (!asset.getUserId().equals(user.getId())) {
+            throw new NotFoundException("No valid item with the ID");
+        }
+
+        // Record SELL transaction log
+        BigDecimal pricePerUnit = BigDecimal.ZERO;
+        if (asset.getUnits() != null && asset.getUnits().compareTo(BigDecimal.ZERO) > 0) {
+            pricePerUnit = asset.getAmount().divide(asset.getUnits(), 4, RoundingMode.HALF_UP);
+        }
+
+        TransactionHistory sellHistory = TransactionHistory.builder()
+                .userId(user.getId())
+                .productId(asset.getProductId())
+                .assetId(asset.getId())
+                .action(TransactionAction.SELL)
+                .pricePerUnit(pricePerUnit)
+                .units(asset.getUnits())
+                .totalAmount(asset.getAmount())
+                .transactionDate(Instant.now())
+                .notes("Asset sold via deletion")
+                .build();
+
+        transactionHistoryRepository.save(sellHistory);
+
+        // Deallocate resolution references in recommendations to prevent constraint violations
+        List<Recommendation> recommendations = recommendationRepository.findAllByResolvedByAssetId(asset.getId());
+        for (Recommendation recommendation : recommendations) {
+            recommendation.setResolvedByAssetId(null);
+            recommendationRepository.save(recommendation);
+        }
+
+        assetRepository.delete(asset);
     }
 }

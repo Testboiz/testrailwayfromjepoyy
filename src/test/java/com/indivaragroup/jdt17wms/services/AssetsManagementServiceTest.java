@@ -9,12 +9,14 @@ import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.Product;
+import com.indivaragroup.jdt17wms.models.Recommendation;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
+import com.indivaragroup.jdt17wms.repositories.RecommendationRepository;
 import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,9 @@ class AssetsManagementServiceTest {
 
     @Mock
     private GoalRepository goalRepository;
+
+    @Mock
+    private RecommendationRepository recommendationRepository;
 
     @InjectMocks
     private AssetsManagementService assetsManagementService;
@@ -367,6 +372,92 @@ class AssetsManagementServiceTest {
 
         assertThrows(MissingRiskProfileException.class, () -> {
             assetsManagementService.updateAssetForUser(assetId, dto);
+        });
+    }
+
+    @Test
+    void deleteAssetForUser_shouldDeleteAssetAndDeallocateReferences_whenValid() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .units(new BigDecimal("10.0"))
+                .amount(new BigDecimal("100.0"))
+                .productId(UUID.randomUUID())
+                .build();
+
+        Recommendation recommendation = Recommendation.builder()
+                .id(UUID.randomUUID())
+                .resolvedByAssetId(assetId)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(recommendationRepository.findAllByResolvedByAssetId(assetId)).thenReturn(List.of(recommendation));
+
+        assetsManagementService.deleteAssetForUser(assetId);
+
+        verify(transactionHistoryRepository).save(any(TransactionHistory.class));
+        verify(recommendationRepository).save(recommendation);
+        verify(assetRepository).delete(asset);
+    }
+
+    @Test
+    void deleteAssetForUser_shouldThrowNotFoundException_whenAssetNotFound() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            assetsManagementService.deleteAssetForUser(assetId);
+        });
+    }
+
+    @Test
+    void deleteAssetForUser_shouldThrowNotFoundException_whenAssetDoesNotBelongToUser() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(UUID.randomUUID()) // different user
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+
+        assertThrows(NotFoundException.class, () -> {
+            assetsManagementService.deleteAssetForUser(assetId);
+        });
+    }
+
+    @Test
+    void deleteAssetForUser_shouldThrowMissingRiskProfileException_whenQuestionnaireNotCompleted() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(false)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        assertThrows(MissingRiskProfileException.class, () -> {
+            assetsManagementService.deleteAssetForUser(assetId);
         });
     }
 }

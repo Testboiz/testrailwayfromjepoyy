@@ -7,6 +7,7 @@ import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
 import com.indivaragroup.jdt17wms.services.InvestmentProductTrackingService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,22 +30,24 @@ public class AssetController {
         return assetsManagementService.createAssetForUser(assetRegistrationDTO);
     }
 
-    @GetMapping({"/api/v1/me/assets", "/ap/v1/me/assets"})
+    @GetMapping("/api/v1/me/assets")
     public List<Asset> getAssets() {
         return assetsManagementService.getAssetsForUser();
     }
 
-    @GetMapping({"/api/v1/me/assets/transactions-logs", "/api/v1/me/assets/transaction-logs"})
+    @GetMapping("/api/v1/me/assets/transaction-logs")
     public List<TransactionHistory> getTransactionLogs() {
         return assetsManagementService.getTransactionLogsForUser();
     }
 
-    @PutMapping({"/api/v1/me/assets/{id}", "/me/assets/{id}"})
+    @PutMapping("/api/v1/me/assets/{id}")
     public Asset updateAsset(@PathVariable UUID id, @RequestBody GoalSettingDTO goalSettingDTO) {
         return assetsManagementService.updateAssetForUser(id, goalSettingDTO);
     }
 
-    @DeleteMapping({"/api/v1/me/assets/{id}"})
+    @DeleteMapping("/api/v1/me/assets/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAsset(@PathVariable UUID id) {
+        assetsManagementService.deleteAssetForUser(id);
     }
 }
