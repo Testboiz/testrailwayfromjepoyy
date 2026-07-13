@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.*;
@@ -21,56 +21,6 @@ import java.util.stream.Collectors;
 @Service
 public class ActionRecommendationService {
 
-    // ── Liquid product types (used for emergency fund calculation) ──
-    private static final Set<String> LIQUID_PRODUCT_TYPES = Set.of("money_market", "deposit");
-
-    // ── All known product types (for diversification / concentration rules) ──
-    private static final List<String> ALL_PRODUCT_TYPES = List.of(
-            "money_market", "deposit", "bond", "sukuk", "mutual_fund", "balanced_fund", "stock"
-    );
-
-    // ── Goal type → suitable product types mapping ──
-    // Based on inherent risk:
-    //   Low risk products:    money_market, deposit, balanced_fund
-    //   Medium risk products: bond, sukuk (sharia equivalent of bond)
-    //   High risk products:   stock
-    private static final Map<String, List<String>> GOAL_PRODUCT_TYPES = Map.of(
-            "emergency_fund", List.of("money_market", "deposit", "balanced_fund"),
-            "vacation", List.of("money_market", "deposit", "balanced_fund"),
-            "vehicle_purchase", List.of("money_market", "deposit", "balanced_fund", "bond", "sukuk"),
-            "property", List.of("balanced_fund", "bond", "sukuk", "stock"),
-            "retirement", List.of("stock", "bond", "sukuk", "balanced_fund", "money_market", "deposit"),
-            "custom", List.of("stock", "money_market", "balanced_fund", "bond", "sukuk", "deposit")
-    );
-
-    // ── Risk profile → max allowed risk level ──
-    // Mirrors the logic in ProductManagementService
-    private static final Map<String, Integer> MAX_RISK_LEVELS = Map.of(
-            "risk_averse", 2,
-            "moderate", 4,
-            "risk_taker", 5
-    );
-
-    // ── Risk profile → target weighted average portfolio risk ──
-    private static final Map<String, Double> RISK_TARGETS = Map.of(
-            "risk_averse", 1.5,
-            "moderate", 2.5,
-            "risk_taker", 4.0
-    );
-
-    // ── Product type display labels ──
-    private static final Map<String, String> TYPE_LABELS = Map.of(
-            "money_market", "Money Market",
-            "deposit", "Deposit",
-            "balanced_fund", "Balanced Fund",
-            "mutual_fund", "Mutual Fund",
-            "bond", "Bond",
-            "sukuk", "Sukuk",
-            "stock", "Stock"
-    );
-
-    // ── Surplus threshold (in currency units) ──
-    private static final BigDecimal SURPLUS_THRESHOLD = BigDecimal.valueOf(100000);
 
     private final RecommendationRepository recommendationRepository;
     private final UserRepository userRepository;
@@ -117,22 +67,14 @@ public class ActionRecommendationService {
         List<Product> products = productRepository.findAll();
         List<Goal> goals = goalRepository.findAllByUserId(user.getId());
 
-        BigDecimal monthlyExpenses = BigDecimal.ZERO;
-        BigDecimal monthlyIncome = BigDecimal.ZERO;
+        BigDecimal monthlyIncome = financialProfileRepository.findByUserId(user.getId())
+                .map(FinancialProfile::getMonthlyIncome)
+                .orElse(BigDecimal.ZERO);
 
-        FinancialProfile finProfile = financialProfileRepository
-                .findByUserId(user.getId()).orElse(null);
-
-        if (finProfile != null) {
-            monthlyIncome = finProfile.getMonthlyIncome() != null
-                    ? finProfile.getMonthlyIncome() : BigDecimal.ZERO;
-
-            Expense expense = expenseRepository
-                    .findByFinancialProfileId(finProfile.getId()).orElse(null);
-            if (expense != null && expense.getTotalExpenses() != null) {
-                monthlyExpenses = expense.getTotalExpenses();
-            }
-        }
+        BigDecimal monthlyExpenses = financialProfileRepository.findByUserId(user.getId())
+                .flatMap(fp -> expenseRepository.findByFinancialProfileId(fp.getId()))
+                .map(Expense::getTotalExpenses)
+                .orElse(BigDecimal.ZERO);
 
         // ── Portfolio total value ──
         BigDecimal totalValue = assets.stream()
@@ -330,21 +272,14 @@ public class ActionRecommendationService {
         List<Product> products = productRepository.findAll();
         List<Goal> goals = goalRepository.findAllByUserId(userId);
 
-        BigDecimal monthlyExpenses = BigDecimal.ZERO;
-        BigDecimal monthlyIncome = BigDecimal.ZERO;
+        BigDecimal monthlyIncome = financialProfileRepository.findByUserId(userId)
+                .map(FinancialProfile::getMonthlyIncome)
+                .orElse(BigDecimal.ZERO);
 
-        FinancialProfile finProfile = financialProfileRepository
-                .findByUserId(userId).orElse(null);
-
-        if (finProfile != null) {
-            monthlyIncome = finProfile.getMonthlyIncome() != null
-                    ? finProfile.getMonthlyIncome() : BigDecimal.ZERO;
-            Expense expense = expenseRepository
-                    .findByFinancialProfileId(finProfile.getId()).orElse(null);
-            if (expense != null && expense.getTotalExpenses() != null) {
-                monthlyExpenses = expense.getTotalExpenses();
-            }
-        }
+        BigDecimal monthlyExpenses = financialProfileRepository.findByUserId(userId)
+                .flatMap(fp -> expenseRepository.findByFinancialProfileId(fp.getId()))
+                .map(Expense::getTotalExpenses)
+                .orElse(BigDecimal.ZERO);
 
         BigDecimal surplus = monthlyIncome.subtract(monthlyExpenses);
         BigDecimal totalValue = assets.stream()
@@ -373,7 +308,7 @@ public class ActionRecommendationService {
         BigDecimal emergencyThreshold = emergencyTarget.multiply(BigDecimal.valueOf(0.8));
 
         if (liquidValue.compareTo(emergencyThreshold) < 0) {
-            Product p = bestOf(products, List.of("money_market", "deposit"), 2, null);
+            Product p = bestOf(products, List.of(MONEY_MARKET, DEPOSIT), 2, null);
             BigDecimal suggested = null;
             if (p != null) {
                 BigDecimal gap = emergencyTarget.subtract(liquidValue);
@@ -418,7 +353,7 @@ public class ActionRecommendationService {
                     // Find complement: best product in a different type not yet owned
                     List<String> complementTypes = ALL_PRODUCT_TYPES.stream()
                             .filter(t -> !t.equalsIgnoreCase(topType))
-                            .collect(Collectors.toList());
+                            .toList();
                     Product complement = bestOf(products, complementTypes, maxRiskLv, ownedIds);
 
                     String topName = topProduct != null ? topProduct.getName() : "One position";
@@ -552,19 +487,16 @@ public class ActionRecommendationService {
                 .max(Comparator.comparing(p ->
                         p.getAnnualReturn() != null ? p.getAnnualReturn() : BigDecimal.ZERO));
 
-        if (topGrowth.isPresent()) {
-            Product tg = topGrowth.get();
-            freshRecs.add(buildRecommendation(userId, "low", "growth",
-                    String.format("Best unowned opportunity: %s", tg.getName()),
-                    String.format("At %s%% p.a., this is the highest-returning product within your %s profile "
-                                    + "that you don't yet hold. Min. investment: %s.",
-                            tg.getAnnualReturn() != null ? tg.getAnnualReturn().toPlainString() : "0",
-                            riskLabel(riskProfile),
-                            fmt(tg.getMinInvestment())),
-                    tg.getId(),
-                    tg.getMinInvestment() != null ? tg.getMinInvestment() : null,
-                    null));
-        }
+      topGrowth.ifPresent(tg -> freshRecs.add(buildRecommendation(userId, "low", "growth",
+        String.format("Best unowned opportunity: %s", tg.getName()),
+        String.format("At %s%% p.a., this is the highest-returning product within your %s profile "
+            + "that you don't yet hold. Min. investment: %s.",
+          tg.getAnnualReturn() != null ? tg.getAnnualReturn().toPlainString() : "0",
+          riskLabel(riskProfile),
+          fmt(tg.getMinInvestment())),
+        tg.getId(),
+        tg.getMinInvestment() != null ? tg.getMinInvestment() : null,
+        null)));
 
         // ─────────────────────────────────────────
         // Rule 7: Idle surplus
@@ -661,7 +593,7 @@ public class ActionRecommendationService {
         toReturn.sort(Comparator.comparingInt(r ->
                 priorityWeight.getOrDefault(r.getPriority(), 3)));
 
-        return toReturn.stream().map(this::toRecommendationDTO).collect(Collectors.toList());
+        return toReturn.stream().map(this::toRecommendationDTO).toList();
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -770,10 +702,10 @@ public class ActionRecommendationService {
     /** Human-readable label for a risk profile string. */
     private static String riskLabel(String riskProfile) {
         if (riskProfile == null) return "moderate";
-        switch (riskProfile.toLowerCase()) {
-            case "risk_averse": return "risk-averse";
-            case "risk_taker": return "risk-taker";
-            default: return riskProfile.toLowerCase();
-        }
+      return switch (riskProfile.toLowerCase()) {
+        case "risk_averse" -> "risk-averse";
+        case "risk_taker" -> "risk-taker";
+        default -> riskProfile.toLowerCase();
+      };
     }
 }
