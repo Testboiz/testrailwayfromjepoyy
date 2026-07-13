@@ -13,7 +13,6 @@ import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.TransactionAction;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
-import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.RecommendationRepository;
@@ -33,7 +32,6 @@ import java.util.UUID;
 public class AssetsManagementService {
 
     private final AssetRepository assetRepository;
-    private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final ProductRepository productRepository;
@@ -41,14 +39,12 @@ public class AssetsManagementService {
     private final RecommendationRepository recommendationRepository;
 
     public AssetsManagementService(AssetRepository assetRepository,
-                                   ExpenseRepository expenseRepository,
                                    UserRepository userRepository,
                                    TransactionHistoryRepository transactionHistoryRepository,
                                    ProductRepository productRepository,
                                    GoalRepository goalRepository,
                                    RecommendationRepository recommendationRepository) {
         this.assetRepository = assetRepository;
-        this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.productRepository = productRepository;
@@ -109,12 +105,13 @@ public class AssetsManagementService {
 
         Asset savedAsset = assetRepository.save(asset);
 
+        // Record BUY transaction log
         BigDecimal pricePerUnit = BigDecimal.ZERO;
         if (dto.getUnits() != null && dto.getUnits().compareTo(BigDecimal.ZERO) > 0) {
             pricePerUnit = dto.getAmount().divide(dto.getUnits(), 4, RoundingMode.HALF_UP);
         }
 
-        TransactionHistory history = TransactionHistory.builder()
+        TransactionHistory buyHistory = TransactionHistory.builder()
                 .userId(user.getId())
                 .productId(product.getId())
                 .assetId(savedAsset.getId())
@@ -126,7 +123,7 @@ public class AssetsManagementService {
                 .notes(dto.getNotes())
                 .build();
 
-        transactionHistoryRepository.save(history);
+        transactionHistoryRepository.save(buyHistory);
 
         return savedAsset;
     }
