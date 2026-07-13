@@ -108,7 +108,7 @@ class DashboardServiceTest {
         assertEquals("120.0000", result.getPortofolio().getValue()); // 10 units * 12.00 price = 120.0000
         assertEquals("100.00", result.getPortofolio().getInvested());
         assertEquals(1, result.getPortofolio().getHoldings());
-        assertEquals("Test Product", result.getPortofolio().getItems().get(0).getName());
+        assertEquals("Test Product", result.getPortofolio().getItems().getFirst().getName());
         assertNotNull(result.getPerformance());
     }
 

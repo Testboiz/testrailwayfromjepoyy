@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -86,7 +87,7 @@ class AssetsManagementServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(asset, result.get(0));
+        assertEquals(asset, result.getFirst());
     }
 
     @Test
@@ -128,7 +129,7 @@ class AssetsManagementServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(log, result.get(0));
+        assertEquals(log, result.getFirst());
     }
 
     @Test
@@ -171,7 +172,7 @@ class AssetsManagementServiceTest {
                 .units(new BigDecimal("10.0"))
                 .amount(new BigDecimal("100.0"))
                 .currentValue(new BigDecimal("110.0"))
-                .purchaseDate(LocalDateTime.of(2024, 5, 20, 10, 0, 0))
+                .purchaseDate(LocalDateTime.of(2024, Month.MAY, 20, 10, 0, 0))
                 .platform("Bibit")
                 .notes("New investment")
                 .build();

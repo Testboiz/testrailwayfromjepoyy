@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
+import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
@@ -51,7 +52,7 @@ class AssetControllerTest {
     void createAsset_shouldReturn400WhenFieldsAreInvalid() throws Exception {
         UUID productId = UUID.randomUUID();
 
-        // units is negative -> invalid
+        // units are negative -> invalid
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")
                         .content("{\"product_id\":\"" + productId + "\",\"units\":-10.5,\"amount\":100.0,\"current_value\":110.0}"))
@@ -66,7 +67,7 @@ class AssetControllerTest {
     void createAsset_shouldReturn422WhenProductIsDelisted() throws Exception {
         UUID productId = UUID.randomUUID();
         when(assetsManagementService.createAssetForUser(any(AssetRegistrationDTO.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.DelistedProductException("Can’t track delisted products"));
+                .thenThrow(new DelistedProductException("Can’t track delisted products"));
 
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")

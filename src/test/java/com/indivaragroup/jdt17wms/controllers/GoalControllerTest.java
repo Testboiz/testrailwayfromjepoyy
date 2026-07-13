@@ -4,6 +4,7 @@ import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.services.GoalsManagementService;
 import com.indivaragroup.jdt17wms.services.GoalsProjectionService;
+import java.time.Month;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -212,7 +213,7 @@ class GoalControllerTest {
                 .id(UUID.randomUUID())
                 .name("Retirement Fund")
                 .targetAmount(new java.math.BigDecimal("500000.00"))
-                .projectedDate(java.time.LocalDate.of(2050, 10, 2))
+                .projectedDate(java.time.LocalDate.of(2050, Month.OCTOBER, 2))
                 .recommendedContribution(new java.math.BigDecimal("2000.00"))
                 .timeSeries(java.util.List.of(
                         GoalProjectionDTO.TimeSeriesPointDTO.builder()

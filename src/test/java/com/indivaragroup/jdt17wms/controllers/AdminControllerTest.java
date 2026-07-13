@@ -1,6 +1,5 @@
 package com.indivaragroup.jdt17wms.controllers;
 
-import com.indivaragroup.jdt17wms.models.AuditLog;
 import com.indivaragroup.jdt17wms.services.AuditTrailManagementService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

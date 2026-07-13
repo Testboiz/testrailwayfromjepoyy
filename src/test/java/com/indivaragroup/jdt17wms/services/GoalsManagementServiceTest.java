@@ -6,6 +6,7 @@ import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
+import com.indivaragroup.jdt17wms.models.enums.GoalStatus;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
@@ -18,12 +19,15 @@ import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.models.Asset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,8 +54,13 @@ class GoalsManagementServiceTest {
     @Mock
     private AssetRepository assetRepository;
 
-    @InjectMocks
     private GoalsManagementService goalsManagementService;
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-13T10:00:00Z"), ZoneOffset.UTC);
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        goalsManagementService = new GoalsManagementService(goalRepository, userRepository, financialProfileRepository, assetRepository, clock);
+    }
 
     @Test
     void serviceShouldBeInitialized() {
@@ -78,8 +87,8 @@ class GoalsManagementServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals("Retirement Fund", result.get(0).getName());
-        assertEquals(new java.math.BigDecimal("500000.00"), result.get(0).getTargetAmount());
+        assertEquals("Retirement Fund", result.getFirst().getName());
+        assertEquals(new java.math.BigDecimal("500000.00"), result.getFirst().getTargetAmount());
     }
 
     @Test
@@ -112,7 +121,7 @@ class GoalsManagementServiceTest {
                 .type("retirement")
                 .targetAmount(new java.math.BigDecimal("500000.00"))
                 .monthlyContribution(new java.math.BigDecimal("1000.00"))
-                .targetDate(java.time.LocalDate.of(2040, 1, 1))
+                .targetDate(java.time.LocalDate.of(2040, Month.JANUARY, 1))
                 .isPriority(true)
                 .build();
 
@@ -157,7 +166,7 @@ class GoalsManagementServiceTest {
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
                 .type("savings")
-                .targetDate(LocalDate.now(java.time.ZoneOffset.UTC).plusMonths(1))
+                .targetDate(LocalDate.of(2026, Month.AUGUST, 13))
                 .isPriority(true)
                 .build();
 
@@ -187,14 +196,14 @@ class GoalsManagementServiceTest {
                 .targetAmount(new BigDecimal("500000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .isPriority(false)
-                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .status(GoalStatus.IN_PROGRESS)
                 .build();
 
         GoalEditingDTO request = GoalEditingDTO.builder()
                 .name("New retirement")
                 .targetAmount(new BigDecimal("600000.00"))
                 .monthlyContribution(new BigDecimal("1200.00"))
-                .targetDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusMonths(60))
+                .targetDate(LocalDate.of(2031, Month.JULY, 13))
                 .isPriority(true)
                 .notes("Updated notes")
                 .build();

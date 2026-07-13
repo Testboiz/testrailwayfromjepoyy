@@ -61,10 +61,10 @@ class RiskProfilerAssessmentServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals("Goal?", result.get(0).getQuestion());
-        assertEquals(1, result.get(0).getOptions().size());
-        assertEquals("Protect my capital", result.get(0).getOptions().get(0).getLabel());
-        assertEquals(0, result.get(0).getOptions().get(0).getScore());
+        assertEquals("Goal?", result.getFirst().getQuestion());
+        assertEquals(1, result.getFirst().getOptions().size());
+        assertEquals("Protect my capital", result.getFirst().getOptions().getFirst().getLabel());
+        assertEquals(0, result.getFirst().getOptions().getFirst().getScore());
     }
 
     @Test

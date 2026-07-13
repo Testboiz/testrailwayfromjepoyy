@@ -47,7 +47,7 @@ class UserManagementServiceTest {
 
         assertNotNull(actualPage);
         assertEquals(1, actualPage.getTotalElements());
-        assertEquals(user, actualPage.getContent().get(0));
+        assertEquals(user, actualPage.getContent().getFirst());
     }
 
     @Test

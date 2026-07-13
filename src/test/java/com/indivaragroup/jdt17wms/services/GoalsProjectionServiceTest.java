@@ -16,12 +16,15 @@ import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,8 +53,13 @@ class GoalsProjectionServiceTest {
     @Mock
     private ProductRepository productRepository;
 
-    @InjectMocks
     private GoalsProjectionService goalsProjectionService;
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-13T10:00:00Z"), ZoneOffset.UTC);
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        goalsProjectionService = new GoalsProjectionService(goalRepository, userRepository, financialProfileRepository, assetRepository, productRepository, clock);
+    }
 
     @Test
     void serviceShouldBeInitialized() {
@@ -71,7 +79,7 @@ class GoalsProjectionServiceTest {
                 .type("property")
                 .targetAmount(new BigDecimal("500000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
-                .targetDate(LocalDate.now().plusYears(10))
+                .targetDate(LocalDate.of(2036, Month.JULY, 13))
                 .currentAmount(BigDecimal.ZERO)
                 .build();
         FinancialProfile profile = FinancialProfile.builder()
@@ -87,11 +95,11 @@ class GoalsProjectionServiceTest {
 
         assertNotNull(results);
         assertEquals(1, results.size());
-        GoalProjectionDTO res = results.get(0);
+        GoalProjectionDTO res = results.getFirst();
         assertEquals("Retirement Fund", res.getName());
 
         // Under 0% savings growth, projectedDate should be plus 500 months (500000 target / 1000 contribution)
-        LocalDate expectedProjectedDate = LocalDate.now(java.time.ZoneOffset.UTC).plusMonths(500);
+        LocalDate expectedProjectedDate = LocalDate.of(2068, Month.MARCH, 13);
         assertEquals(expectedProjectedDate, res.getProjectedDate());
 
         // Under 0% savings growth, recommendedContribution should be target / months = 500000 / 120 = 4166.67
@@ -99,7 +107,7 @@ class GoalsProjectionServiceTest {
 
         assertNotNull(res.getTimeSeries());
         assertEquals(60, res.getTimeSeries().size());
-        assertEquals(new BigDecimal("1000.00"), res.getTimeSeries().get(0).getValue());
+        assertEquals(new BigDecimal("1000.00"), res.getTimeSeries().getFirst().getValue());
         assertEquals(new BigDecimal("60000.00"), res.getTimeSeries().get(59).getValue());
     }
 
@@ -117,7 +125,7 @@ class GoalsProjectionServiceTest {
                 .type("property")
                 .targetAmount(new BigDecimal("500000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
-                .targetDate(LocalDate.now().plusYears(10))
+                .targetDate(LocalDate.of(2036, Month.JULY, 13))
                 .currentAmount(BigDecimal.ZERO)
                 .build();
         FinancialProfile profile = FinancialProfile.builder()
@@ -145,7 +153,7 @@ class GoalsProjectionServiceTest {
 
         assertNotNull(results);
         assertEquals(1, results.size());
-        GoalProjectionDTO res = results.get(0);
+        GoalProjectionDTO res = results.getFirst();
         assertEquals("Retirement Fund", res.getName());
         assertNotNull(res.getProjectedDate());
         assertNotNull(res.getRecommendedContribution());
@@ -185,7 +193,7 @@ class GoalsProjectionServiceTest {
                 .type("property") // Max limit is 120 months
                 .targetAmount(new BigDecimal("300000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
-                .targetDate(LocalDate.now().plusMonths(60)) // 60 months < 120 max months
+                .targetDate(LocalDate.of(2031, Month.JULY, 13)) // 60 months < 120 max months
                 .currentAmount(BigDecimal.ZERO)
                 .build();
         FinancialProfile profile = FinancialProfile.builder()
@@ -201,7 +209,7 @@ class GoalsProjectionServiceTest {
 
         assertNotNull(results);
         assertEquals(1, results.size());
-        GoalProjectionDTO res = results.get(0);
+        GoalProjectionDTO res = results.getFirst();
         // Recommended contribution should be 300000 / 60 = 5000.00 instead of 300000 / 120 = 2500.00
         assertEquals(new BigDecimal("5000.00"), res.getRecommendedContribution());
     }

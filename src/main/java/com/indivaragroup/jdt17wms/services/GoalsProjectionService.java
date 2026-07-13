@@ -19,8 +19,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,17 +33,20 @@ public class GoalsProjectionService {
     private final FinancialProfileRepository financialProfileRepository;
     private final AssetRepository assetRepository;
     private final ProductRepository productRepository;
+    private final Clock clock;
 
     public GoalsProjectionService(GoalRepository goalRepository,
                                   UserRepository userRepository,
                                   FinancialProfileRepository financialProfileRepository,
                                   AssetRepository assetRepository,
-                                  ProductRepository productRepository) {
+                                  ProductRepository productRepository,
+                                  Clock clock) {
         this.goalRepository = goalRepository;
         this.userRepository = userRepository;
         this.financialProfileRepository = financialProfileRepository;
         this.assetRepository = assetRepository;
         this.productRepository = productRepository;
+        this.clock = clock;
     }
 
     public List<GoalProjectionDTO> getProjectionsForUser() {
@@ -90,7 +93,7 @@ public class GoalsProjectionService {
                         monthsToTarget = 12000;
                     }
                 }
-                projectedDate = LocalDate.now(ZoneOffset.UTC).plusMonths(monthsToTarget);
+                projectedDate = LocalDate.now(clock).plusMonths(monthsToTarget);
 
                 // 2. Calculate recommended contribution
                 double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(
@@ -98,7 +101,7 @@ public class GoalsProjectionService {
                 );
                 double monthsToUse = maxMonths;
                 if (goal.getTargetDate() != null) {
-                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(ZoneOffset.UTC), goal.getTargetDate());
+                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), goal.getTargetDate());
                     if (actualMonths > 0 && actualMonths < maxMonths) {
                         monthsToUse = actualMonths;
                     }
@@ -161,7 +164,7 @@ public class GoalsProjectionService {
                         monthsToTarget = 12000;
                     }
                 }
-                projectedDate = LocalDate.now(ZoneOffset.UTC).plusMonths(monthsToTarget);
+                projectedDate = LocalDate.now(clock).plusMonths(monthsToTarget);
 
                 // 2. Calculate recommended contribution
                 double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(
@@ -169,7 +172,7 @@ public class GoalsProjectionService {
                 );
                 double monthsToUse = maxMonths;
                 if (goal.getTargetDate() != null) {
-                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(ZoneOffset.UTC), goal.getTargetDate());
+                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), goal.getTargetDate());
                     if (actualMonths > 0 && actualMonths < maxMonths) {
                         monthsToUse = actualMonths;
                     }

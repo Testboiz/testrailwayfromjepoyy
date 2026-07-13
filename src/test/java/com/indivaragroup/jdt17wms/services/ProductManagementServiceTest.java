@@ -22,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,7 +56,7 @@ class ProductManagementServiceTest {
 
         assertNotNull(actualPage);
         assertEquals(1, actualPage.getTotalElements());
-        assertEquals(product, actualPage.getContent().get(0));
+        assertEquals(product, actualPage.getContent().getFirst());
     }
 
     @Test
@@ -96,8 +95,11 @@ class ProductManagementServiceTest {
 
         when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
 
+        ProductQueryDTO query = new ProductQueryDTO();
+        Pageable pageRequest = PageRequest.of(0, 10);
+
         assertThrows(MissingRiskProfileException.class, () -> {
-            productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+          productManagementService.getProductsForUser(query, pageRequest);
         });
     }
 
@@ -120,7 +122,7 @@ class ProductManagementServiceTest {
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(lowRiskVisible, result.getContent().get(0));
+        assertEquals(lowRiskVisible, result.getContent().getFirst());
     }
 
     @Test
@@ -162,7 +164,7 @@ class ProductManagementServiceTest {
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", "stock", false, false), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(matchTypeAndName, result.getContent().get(0));
+        assertEquals(matchTypeAndName, result.getContent().getFirst());
     }
 
     @Test

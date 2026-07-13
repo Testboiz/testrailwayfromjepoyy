@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindException;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -33,14 +33,14 @@ public class GoalsManagementService {
     private final UserRepository userRepository;
     private final FinancialProfileRepository financialProfileRepository;
     private final AssetRepository assetRepository;
+    private final Clock clock;
 
-
-
-    public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository, FinancialProfileRepository financialProfileRepository, AssetRepository assetRepository) {
+    public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository, FinancialProfileRepository financialProfileRepository, AssetRepository assetRepository, Clock clock) {
         this.goalRepository = goalRepository;
         this.userRepository = userRepository;
         this.financialProfileRepository = financialProfileRepository;
         this.assetRepository = assetRepository;
+        this.clock = clock;
     }
 
     public List<GoalDTO> getGoalsForUser() {
@@ -87,7 +87,7 @@ public class GoalsManagementService {
         }
 
         if (dto.getTargetDate() != null) {
-            LocalDate now = LocalDate.now(ZoneOffset.UTC);
+            LocalDate now = LocalDate.now(clock);
             if (dto.getTargetDate().isBefore(now)) {
                 bindException.rejectValue("targetDate", "invalid", "Target date must be in the future");
             } else if (AppConstants.GOAL_MAX_MONTHS.containsKey(normalizedType)) {
@@ -155,7 +155,7 @@ public class GoalsManagementService {
 
         BindException bindException = new BindException(dto, "goalEditingDTO");
         if (dto.getTargetDate() != null) {
-            LocalDate now = LocalDate.now(ZoneOffset.UTC);
+            LocalDate now = LocalDate.now(clock);
             if (dto.getTargetDate().isBefore(now)) {
                 bindException.rejectValue("targetDate", "invalid", "Target date must be in the future");
             } else {

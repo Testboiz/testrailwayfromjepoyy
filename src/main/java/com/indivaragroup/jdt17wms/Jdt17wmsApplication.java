@@ -10,4 +10,8 @@ public class Jdt17wmsApplication {
 		SpringApplication.run(Jdt17wmsApplication.class, args);
 	}
 
+	@org.springframework.context.annotation.Bean
+	public java.time.Clock clock() {
+		return java.time.Clock.systemUTC();
+	}
 }
