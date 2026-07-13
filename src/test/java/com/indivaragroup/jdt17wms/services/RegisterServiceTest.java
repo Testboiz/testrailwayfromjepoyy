@@ -51,7 +51,7 @@ class RegisterServiceTest {
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .passwordHash("encodedPassword")
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .status("ACTIVE")
                 .questionnaireCompleted(false)
                 .build();

@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(DashboardController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class DashboardControllerTest {
+class DashboardControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

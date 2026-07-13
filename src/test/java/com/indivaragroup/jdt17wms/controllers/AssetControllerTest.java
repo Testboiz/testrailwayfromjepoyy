@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AssetController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class AssetControllerTest {
+class AssetControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

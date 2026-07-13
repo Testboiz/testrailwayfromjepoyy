@@ -26,7 +26,7 @@ import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 
 @WebMvcTest(GoalController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class GoalControllerTest {
+class GoalControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

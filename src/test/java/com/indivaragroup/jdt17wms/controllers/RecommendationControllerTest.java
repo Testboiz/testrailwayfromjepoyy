@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(RecommendationController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class RecommendationControllerTest {
+class RecommendationControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

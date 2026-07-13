@@ -25,7 +25,7 @@ import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 
 @WebMvcTest(ProductController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class ProductControllerTest {
+class ProductControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

@@ -3,7 +3,6 @@ package com.indivaragroup.jdt17wms.exceptions;
 import com.indivaragroup.jdt17wms.dto.utils.BusinessErrorResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorResponseDTO;
-import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -99,6 +98,26 @@ public class ExceptionHandlingAdvice {
                 .build();
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleCustomValidationException(ValidationException ex) {
+        ValidationErrorResponseDTO errorResponse = ValidationErrorResponseDTO.builder()
+                .error(ex.getMessage())
+                .type("ERR-" + ex.getType())
+                .code(HttpStatus.BAD_REQUEST.value())
+                .details(ex.getDetails())
+                .build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<BusinessErrorResponseDTO> handleConflictException(ConflictException ex) {
+        BusinessErrorResponseDTO errorResponse = BusinessErrorResponseDTO.builder()
+                .error(ex.getMessage())
+                .code(HttpStatus.CONFLICT.value())
+                .build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 }
 

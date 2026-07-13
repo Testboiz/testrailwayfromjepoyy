@@ -88,7 +88,7 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .questionnaireCompleted(user.getQuestionnaireCompleted())
-                .isAdmin(user.getRole() == UserRole.admin)
+                .isAdmin(user.getRole() == UserRole.ADMIN)
                 .build();
 
         return AuthSuccessDTO.builder()
@@ -163,7 +163,7 @@ public class AuthService {
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .passwordHash(passwordEncoder.encode(dto.getPassword()))
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .status("ACTIVE")
                 .questionnaireCompleted(false)
                 .build();
@@ -189,7 +189,7 @@ public class AuthService {
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
                 .questionnaireCompleted(user.getQuestionnaireCompleted())
-                .isAdmin(savedUser.getRole() == UserRole.admin)
+                .isAdmin(savedUser.getRole() == UserRole.ADMIN)
                 .build();
 
         return AuthSuccessDTO.builder()

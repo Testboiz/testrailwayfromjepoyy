@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(RiskProfilerAssessmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class RiskProfilerAssessmentControllerTest {
+class RiskProfilerAssessmentControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

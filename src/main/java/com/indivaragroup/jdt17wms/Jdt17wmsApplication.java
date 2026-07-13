@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
 public class Jdt17wmsApplication {
@@ -10,7 +11,7 @@ public class Jdt17wmsApplication {
 		SpringApplication.run(Jdt17wmsApplication.class, args);
 	}
 
-	@org.springframework.context.annotation.Bean
+	@Bean
 	public java.time.Clock clock() {
 		return java.time.Clock.systemUTC();
 	}

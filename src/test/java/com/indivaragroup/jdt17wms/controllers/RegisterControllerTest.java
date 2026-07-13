@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class RegisterControllerTest {
+class RegisterControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -109,10 +109,11 @@ class RegisterControllerTest {
 
     // 📝 REGISTER — null request body
     @Test
-    void register_withNullBody_shouldReturnNull() throws Exception {
+    void register_withNullBody_shouldReturnBadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid JSON Body"))
+                .andExpect(jsonPath("$.code").value(400));
     }
 }
