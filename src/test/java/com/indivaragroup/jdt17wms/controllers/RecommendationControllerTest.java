@@ -10,6 +10,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(RecommendationController.class)
@@ -33,7 +34,7 @@ class RecommendationControllerTest {
 
     @Test
     void getRecommendations_shouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/me/recommendations"))
+        mockMvc.perform(post("/api/v1/me/recommendations"))
                 .andExpect(status().isOk());
     }
 }

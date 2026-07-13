@@ -3,12 +3,18 @@ package com.indivaragroup.jdt17wms.services;
 import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
+import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.*;
+import com.indivaragroup.jdt17wms.models.enums.RecommendationStatus;
 import com.indivaragroup.jdt17wms.repositories.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -17,6 +23,11 @@ public class ActionRecommendationService {
 
     // ── Liquid product types (used for emergency fund calculation) ──
     private static final Set<String> LIQUID_PRODUCT_TYPES = Set.of("money_market", "deposit");
+
+    // ── All known product types (for diversification / concentration rules) ──
+    private static final List<String> ALL_PRODUCT_TYPES = List.of(
+            "money_market", "deposit", "bond", "sukuk", "mutual_fund", "balanced_fund", "stock"
+    );
 
     // ── Goal type → suitable product types mapping ──
     // Based on inherent risk:
@@ -47,6 +58,20 @@ public class ActionRecommendationService {
             "risk_taker", 4.0
     );
 
+    // ── Product type display labels ──
+    private static final Map<String, String> TYPE_LABELS = Map.of(
+            "money_market", "Money Market",
+            "deposit", "Deposit",
+            "balanced_fund", "Balanced Fund",
+            "mutual_fund", "Mutual Fund",
+            "bond", "Bond",
+            "sukuk", "Sukuk",
+            "stock", "Stock"
+    );
+
+    // ── Surplus threshold (in currency units) ──
+    private static final BigDecimal SURPLUS_THRESHOLD = BigDecimal.valueOf(100000);
+
     private final RecommendationRepository recommendationRepository;
     private final UserRepository userRepository;
     private final AssetRepository assetRepository;
@@ -70,6 +95,10 @@ public class ActionRecommendationService {
         this.financialProfileRepository = financialProfileRepository;
         this.expenseRepository = expenseRepository;
     }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  GET /api/v1/me/health — Financial Health Score
+    // ══════════════════════════════════════════════════════════════════
 
     /**
      * Calculates the user's financial health score (0–100) composed of four
@@ -127,14 +156,7 @@ public class ActionRecommendationService {
         // ══════════════════════════════════════════════════════════════
         BigDecimal emergencyTarget = monthlyExpenses.multiply(BigDecimal.valueOf(6));
 
-        BigDecimal liquidValue = assets.stream()
-                .filter(a -> {
-                    Product p = productMap.get(a.getProductId());
-                    return p != null && p.getType() != null
-                            && LIQUID_PRODUCT_TYPES.contains(p.getType().toLowerCase());
-                })
-                .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal liquidValue = calcLiquidValue(assets, productMap);
 
         int emergency;
         if (emergencyTarget.compareTo(BigDecimal.ZERO) > 0) {
@@ -157,13 +179,7 @@ public class ActionRecommendationService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        Set<String> ownedTypes = assets.stream()
-                .map(a -> {
-                    Product p = productMap.get(a.getProductId());
-                    return p != null && p.getType() != null ? p.getType().toLowerCase() : null;
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<String> ownedTypes = calcOwnedTypes(assets, productMap);
 
         int diversification;
         if (!eligibleTypes.isEmpty()) {
@@ -283,5 +299,481 @@ public class ActionRecommendationService {
                 .availableSurplus(availableSurplus)
                 .components(components)
                 .build();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  POST /api/v1/me/recommendations — Generate Action Recommendations
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Evaluates 7 financial rules against the user's current state and
+     * persists actionable recommendations. Previously PENDING recommendations
+     * that are no longer triggered are marked APPLIED (condition met).
+     * <p>
+     * Rules evaluated:
+     * 1. Emergency fund shortfall
+     * 2. Portfolio concentration risk
+     * 3. Priority goal product alignment
+     * 4. Other goals product alignment
+     * 5. Diversification gaps
+     * 6. Highest-return opportunity
+     * 7. Idle surplus
+     */
+    @Transactional
+    public List<RecommendationDTO> generateRecommendations() {
+        // ── Fetch all required data ──
+        User user = userRepository.findById(AppConstants.USER_ID)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        UUID userId = user.getId();
+
+        List<Asset> assets = assetRepository.findAllByUserId(userId);
+        List<Product> products = productRepository.findAll();
+        List<Goal> goals = goalRepository.findAllByUserId(userId);
+
+        BigDecimal monthlyExpenses = BigDecimal.ZERO;
+        BigDecimal monthlyIncome = BigDecimal.ZERO;
+
+        FinancialProfile finProfile = financialProfileRepository
+                .findByUserId(userId).orElse(null);
+
+        if (finProfile != null) {
+            monthlyIncome = finProfile.getMonthlyIncome() != null
+                    ? finProfile.getMonthlyIncome() : BigDecimal.ZERO;
+            Expense expense = expenseRepository
+                    .findByFinancialProfileId(finProfile.getId()).orElse(null);
+            if (expense != null && expense.getTotalExpenses() != null) {
+                monthlyExpenses = expense.getTotalExpenses();
+            }
+        }
+
+        BigDecimal surplus = monthlyIncome.subtract(monthlyExpenses);
+        BigDecimal totalValue = assets.stream()
+                .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        String riskProfile = user.getRiskProfile();
+        int maxRiskLv = 5;
+        if (riskProfile != null) {
+            maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
+        }
+
+        Map<UUID, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+        Set<UUID> ownedIds = assets.stream().map(Asset::getProductId).collect(Collectors.toSet());
+        Set<String> ownedTypes = calcOwnedTypes(assets, productMap);
+
+        // ── Compute fresh recommendations from 7 rules ──
+        List<Recommendation> freshRecs = new ArrayList<>();
+
+        // ─────────────────────────────────────────
+        // Rule 1: Emergency fund shortfall
+        // ─────────────────────────────────────────
+        BigDecimal emergencyTarget = monthlyExpenses.multiply(BigDecimal.valueOf(6));
+        BigDecimal liquidValue = calcLiquidValue(assets, productMap);
+        BigDecimal emergencyThreshold = emergencyTarget.multiply(BigDecimal.valueOf(0.8));
+
+        if (liquidValue.compareTo(emergencyThreshold) < 0) {
+            Product p = bestOf(products, List.of("money_market", "deposit"), 2, null);
+            BigDecimal suggested = null;
+            if (p != null) {
+                BigDecimal gap = emergencyTarget.subtract(liquidValue);
+                suggested = gap.max(p.getMinInvestment() != null ? p.getMinInvestment() : BigDecimal.ZERO);
+            }
+
+            int pct = emergencyTarget.compareTo(BigDecimal.ZERO) > 0
+                    ? (int) Math.round(liquidValue.doubleValue() / emergencyTarget.doubleValue() * 100)
+                    : 0;
+
+            freshRecs.add(buildRecommendation(userId, "high", "emergency",
+                    "Build your emergency fund",
+                    String.format("You have %s in liquid assets — only %d%% of the recommended 6-month buffer (%s). "
+                                    + "Without this, a crisis could force you to liquidate long-term investments at a loss.",
+                            fmt(liquidValue), pct, fmt(emergencyTarget)),
+                    p != null ? p.getId() : null, suggested, null));
+        }
+
+        // ─────────────────────────────────────────
+        // Rule 2: Concentration risk (>65% in one product)
+        // ─────────────────────────────────────────
+        if (totalValue.compareTo(BigDecimal.ZERO) > 0 && !assets.isEmpty()) {
+            // Aggregate value per product
+            Map<UUID, BigDecimal> byProduct = new HashMap<>();
+            for (Asset a : assets) {
+                BigDecimal val = a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO;
+                byProduct.merge(a.getProductId(), val, BigDecimal::add);
+            }
+
+            // Find the most concentrated product
+            Map.Entry<UUID, BigDecimal> top = byProduct.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .orElse(null);
+
+            if (top != null) {
+                double concentration = top.getValue().doubleValue() / totalValue.doubleValue();
+                if (concentration > 0.65) {
+                    Product topProduct = productMap.get(top.getKey());
+                    String topType = topProduct != null && topProduct.getType() != null
+                            ? topProduct.getType().toLowerCase() : "";
+
+                    // Find complement: best product in a different type not yet owned
+                    List<String> complementTypes = ALL_PRODUCT_TYPES.stream()
+                            .filter(t -> !t.equalsIgnoreCase(topType))
+                            .collect(Collectors.toList());
+                    Product complement = bestOf(products, complementTypes, maxRiskLv, ownedIds);
+
+                    String topName = topProduct != null ? topProduct.getName() : "One position";
+                    int pct = (int) Math.round(concentration * 100);
+
+                    freshRecs.add(buildRecommendation(userId, "high", "rebalance",
+                            String.format("%s is %d%% of your portfolio", topName, pct),
+                            "Heavy concentration in a single product amplifies loss if it underperforms. "
+                                    + "Adding a second product type reduces correlated risk without lowering "
+                                    + "your expected return significantly.",
+                            complement != null ? complement.getId() : null,
+                            complement != null && complement.getMinInvestment() != null
+                                    ? complement.getMinInvestment() : null,
+                            null));
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // Rule 3: Priority goal alignment
+        // ─────────────────────────────────────────
+        Goal priorityGoal = goals.stream()
+                .filter(g -> g.getIsPriority() != null && g.getIsPriority())
+                .findFirst().orElse(null);
+
+        if (priorityGoal != null) {
+            String goalType = priorityGoal.getType() != null
+                    ? priorityGoal.getType().toLowerCase() : "custom";
+            List<String> types = GOAL_PRODUCT_TYPES
+                    .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get("custom"));
+
+            boolean hasMatchingType = types.stream().anyMatch(ownedTypes::contains);
+            if (!hasMatchingType) {
+                // Allow maxRiskLv + 1 for priority goals (slight risk uplift)
+                Product p = bestOf(products, types, maxRiskLv + 1, ownedIds);
+                if (p != null) {
+                    String typeNames = types.stream()
+                            .map(t -> TYPE_LABELS.getOrDefault(t, t))
+                            .collect(Collectors.joining(" or "));
+
+                    BigDecimal suggested = priorityGoal.getMonthlyContribution() != null
+                            ? priorityGoal.getMonthlyContribution()
+                                    .max(p.getMinInvestment() != null ? p.getMinInvestment() : BigDecimal.ZERO)
+                            : (p.getMinInvestment() != null ? p.getMinInvestment() : null);
+
+                    freshRecs.add(buildRecommendation(userId, "high", "goal",
+                            String.format("Start building toward \"%s\"", priorityGoal.getName()),
+                            String.format("Your priority goal needs %s%s. "
+                                            + "You don't yet hold any %s — the product categories best aligned with this goal type.",
+                                    fmt(priorityGoal.getTargetAmount()),
+                                    priorityGoal.getTargetDate() != null
+                                            ? " by " + priorityGoal.getTargetDate() : "",
+                                    typeNames),
+                            p.getId(), suggested, priorityGoal.getId()));
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // Rule 4: Other goal alignment
+        // ─────────────────────────────────────────
+        Set<UUID> usedProductIds = freshRecs.stream()
+                .map(Recommendation::getProductId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        for (Goal goal : goals) {
+            if (goal.getIsPriority() != null && goal.getIsPriority()) continue;
+
+            String goalType = goal.getType() != null ? goal.getType().toLowerCase() : "custom";
+            List<String> types = GOAL_PRODUCT_TYPES
+                    .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get("custom"));
+
+            boolean hasMatchingType = types.stream().anyMatch(ownedTypes::contains);
+            if (!hasMatchingType) {
+                Product p = bestOf(products, types, maxRiskLv + 1, ownedIds);
+                if (p != null && !usedProductIds.contains(p.getId())) {
+                    String typeNames = types.stream()
+                            .map(t -> TYPE_LABELS.getOrDefault(t, t))
+                            .collect(Collectors.joining(" or "));
+
+                    BigDecimal suggested = goal.getMonthlyContribution() != null
+                            ? goal.getMonthlyContribution()
+                                    .max(p.getMinInvestment() != null ? p.getMinInvestment() : BigDecimal.ZERO)
+                            : (p.getMinInvestment() != null ? p.getMinInvestment() : null);
+
+                    freshRecs.add(buildRecommendation(userId, "medium", "goal",
+                            String.format("No product aligned with \"%s\"", goal.getName()),
+                            String.format("This goal works best with %s. %s (%s%% p.a.) fits the profile.",
+                                    typeNames, p.getName(),
+                                    p.getAnnualReturn() != null ? p.getAnnualReturn().toPlainString() : "0"),
+                            p.getId(), suggested, goal.getId()));
+
+                    usedProductIds.add(p.getId());
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // Rule 5: Diversification gaps — missing eligible product types
+        // ─────────────────────────────────────────
+        for (String type : ALL_PRODUCT_TYPES) {
+            if (ownedTypes.contains(type)) continue;
+
+            Product p = bestOf(products, List.of(type), maxRiskLv, null);
+            if (p == null || usedProductIds.contains(p.getId())) continue;
+
+            freshRecs.add(buildRecommendation(userId, "medium", "diversification",
+                    String.format("Add %s exposure", TYPE_LABELS.getOrDefault(type, type)),
+                    String.format("You hold no %s products. %s returns %s%% p.a. and fits within your %s profile "
+                                    + "— adding it reduces single-category concentration.",
+                            TYPE_LABELS.getOrDefault(type, type), p.getName(),
+                            p.getAnnualReturn() != null ? p.getAnnualReturn().toPlainString() : "0",
+                            riskLabel(riskProfile)),
+                    p.getId(),
+                    p.getMinInvestment() != null ? p.getMinInvestment() : null,
+                    null));
+
+            usedProductIds.add(p.getId());
+        }
+
+        // ─────────────────────────────────────────
+        // Rule 6: Highest-return opportunity not yet owned
+        // ─────────────────────────────────────────
+        final int fMaxRisk = maxRiskLv;
+        Optional<Product> topGrowth = products.stream()
+                .filter(p -> p.getVisible() != null && p.getVisible()
+                        && !ownedIds.contains(p.getId())
+                        && p.getRiskLevel() != null && p.getRiskLevel() <= fMaxRisk
+                        && !usedProductIds.contains(p.getId()))
+                .max(Comparator.comparing(p ->
+                        p.getAnnualReturn() != null ? p.getAnnualReturn() : BigDecimal.ZERO));
+
+        if (topGrowth.isPresent()) {
+            Product tg = topGrowth.get();
+            freshRecs.add(buildRecommendation(userId, "low", "growth",
+                    String.format("Best unowned opportunity: %s", tg.getName()),
+                    String.format("At %s%% p.a., this is the highest-returning product within your %s profile "
+                                    + "that you don't yet hold. Min. investment: %s.",
+                            tg.getAnnualReturn() != null ? tg.getAnnualReturn().toPlainString() : "0",
+                            riskLabel(riskProfile),
+                            fmt(tg.getMinInvestment())),
+                    tg.getId(),
+                    tg.getMinInvestment() != null ? tg.getMinInvestment() : null,
+                    null));
+        }
+
+        // ─────────────────────────────────────────
+        // Rule 7: Idle surplus
+        // ─────────────────────────────────────────
+        if (surplus.compareTo(SURPLUS_THRESHOLD) > 0 && !freshRecs.isEmpty()) {
+            BigDecimal goalsTotal = goals.stream()
+                    .map(g -> g.getMonthlyContribution() != null ? g.getMonthlyContribution() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal undeployed = surplus.subtract(goalsTotal);
+
+            if (undeployed.compareTo(SURPLUS_THRESHOLD) > 0) {
+                // Rough 5-year simple projection: monthly × 12 × 5
+                BigDecimal fiveYearTotal = undeployed.multiply(BigDecimal.valueOf(60));
+
+                freshRecs.add(buildRecommendation(userId, "low", "surplus",
+                        String.format("%s/mo is not yet allocated", fmt(undeployed)),
+                        String.format("After expenses and goal contributions, you still have %s per month "
+                                        + "that could be working for you. Even at 5%% p.a., that compounds to %s over 5 years.",
+                                fmt(undeployed), fmt(fiveYearTotal)),
+                        null, null, null));
+            }
+        }
+
+        // ── Reconcile with DB: match existing PENDING, update or resolve ──
+        List<Recommendation> existingPending = recommendationRepository
+                .findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING);
+
+        // Build productId → assetId lookup for resolving recommendations
+        Map<UUID, UUID> productToAssetId = new HashMap<>();
+        for (Asset a : assets) {
+            if (a.getProductId() != null) {
+                productToAssetId.putIfAbsent(a.getProductId(), a.getId());
+            }
+        }
+
+        // Index fresh recs by rule key for O(1) matching
+        Map<String, Recommendation> freshByKey = new LinkedHashMap<>();
+        for (Recommendation r : freshRecs) {
+            freshByKey.put(ruleKey(r), r);
+        }
+
+        // Index existing PENDING by rule key
+        Map<String, Recommendation> existingByKey = new LinkedHashMap<>();
+        for (Recommendation r : existingPending) {
+            existingByKey.put(ruleKey(r), r);
+        }
+
+        Instant now = Instant.now();
+        Set<String> matchedKeys = new HashSet<>();
+        List<Recommendation> toReturn = new ArrayList<>();
+
+        // Pass 1: reconcile existing PENDING against fresh rules
+        for (Recommendation existing : existingPending) {
+            String key = ruleKey(existing);
+            Recommendation freshMatch = freshByKey.get(key);
+
+            if (freshMatch != null) {
+                // Rule still active → update text/amounts in place, keep same record
+                existing.setTitle(freshMatch.getTitle());
+                existing.setReason(freshMatch.getReason());
+                existing.setSuggestedAmount(freshMatch.getSuggestedAmount());
+                existing.setPriority(freshMatch.getPriority());
+                toReturn.add(existing);
+                matchedKeys.add(key);
+            } else {
+                // Rule no longer active → condition met, mark resolved
+                existing.setStatus(RecommendationStatus.APPLIED);
+                existing.setResolvedAt(now);
+                if (existing.getProductId() != null) {
+                    UUID resolverAssetId = productToAssetId.get(existing.getProductId());
+                    if (resolverAssetId != null) {
+                        existing.setResolvedByAssetId(resolverAssetId);
+                    }
+                }
+            }
+        }
+        // Flush so @UpdateTimestamp is populated on kept records
+        recommendationRepository.saveAllAndFlush(existingPending);
+
+        // Pass 2: create new PENDING for rules not already in DB
+        List<Recommendation> newRecs = new ArrayList<>();
+        for (Map.Entry<String, Recommendation> entry : freshByKey.entrySet()) {
+            if (!matchedKeys.contains(entry.getKey())) {
+                newRecs.add(entry.getValue());
+            }
+        }
+        if (!newRecs.isEmpty()) {
+            List<Recommendation> savedNew = recommendationRepository.saveAllAndFlush(newRecs);
+            toReturn.addAll(savedNew);
+        }
+
+        // ── Sort by priority weight (high → medium → low) and return as DTOs ──
+        Map<String, Integer> priorityWeight = Map.of("high", 0, "medium", 1, "low", 2);
+        toReturn.sort(Comparator.comparingInt(r ->
+                priorityWeight.getOrDefault(r.getPriority(), 3)));
+
+        return toReturn.stream().map(this::toRecommendationDTO).collect(Collectors.toList());
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  Private helpers
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Composite key for matching recommendations across evaluations.
+     * Uses category + productId + goalId to identify "the same rule".
+     */
+    private static String ruleKey(Recommendation r) {
+        return r.getCategory()
+                + ":" + (r.getProductId() != null ? r.getProductId() : "none")
+                + ":" + (r.getGoalId() != null ? r.getGoalId() : "none");
+    }
+
+    /**
+     * Finds the best (highest annual return) visible product matching the given
+     * types and risk level, optionally excluding already-owned product IDs.
+     */
+    private Product bestOf(List<Product> products, List<String> types,
+                           int maxRisk, Set<UUID> excludeIds) {
+        Set<String> lowerTypes = types.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+
+        return products.stream()
+                .filter(p -> p.getVisible() != null && p.getVisible()
+                        && p.getType() != null && lowerTypes.contains(p.getType().toLowerCase())
+                        && p.getRiskLevel() != null && p.getRiskLevel() <= maxRisk
+                        && (excludeIds == null || !excludeIds.contains(p.getId())))
+                .max(Comparator.comparing(p ->
+                        p.getAnnualReturn() != null ? p.getAnnualReturn() : BigDecimal.ZERO))
+                .orElse(null);
+    }
+
+    /** Sum of currentValue for assets in liquid product types (money_market, deposit). */
+    private BigDecimal calcLiquidValue(List<Asset> assets, Map<UUID, Product> productMap) {
+        return assets.stream()
+                .filter(a -> {
+                    Product p = productMap.get(a.getProductId());
+                    return p != null && p.getType() != null
+                            && LIQUID_PRODUCT_TYPES.contains(p.getType().toLowerCase());
+                })
+                .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Unique lowercase product types owned by the user. */
+    private Set<String> calcOwnedTypes(List<Asset> assets, Map<UUID, Product> productMap) {
+        return assets.stream()
+                .map(a -> {
+                    Product p = productMap.get(a.getProductId());
+                    return p != null && p.getType() != null ? p.getType().toLowerCase() : null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    /** Builds a Recommendation entity with PENDING status. */
+    private Recommendation buildRecommendation(UUID userId, String priority, String category,
+                                                String title, String reason,
+                                                UUID productId, BigDecimal suggestedAmount,
+                                                UUID goalId) {
+        return Recommendation.builder()
+                .userId(userId)
+                .priority(priority)
+                .category(category)
+                .title(title)
+                .reason(reason)
+                .productId(productId)
+                .suggestedAmount(suggestedAmount)
+                .goalId(goalId)
+                .status(RecommendationStatus.PENDING)
+                .build();
+    }
+
+    /** Maps Recommendation entity → RecommendationDTO. */
+    private RecommendationDTO toRecommendationDTO(Recommendation r) {
+        return RecommendationDTO.builder()
+                .id(r.getId())
+                .userId(r.getUserId())
+                .priority(r.getPriority())
+                .category(r.getCategory())
+                .title(r.getTitle())
+                .reason(r.getReason())
+                .productId(r.getProductId())
+                .suggestedAmount(r.getSuggestedAmount())
+                .goalId(r.getGoalId())
+                .status(r.getStatus())
+                .createdAt(r.getCreatedAt())
+                .updatedAt(r.getUpdatedAt())
+                .resolvedAt(r.getResolvedAt())
+                .resolvedByAssetId(r.getResolvedByAssetId())
+                .build();
+    }
+
+    /** Formats a BigDecimal as a readable currency string (e.g., "1,000,000"). */
+    private static String fmt(BigDecimal value) {
+        if (value == null) return "0";
+        NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
+        nf.setMaximumFractionDigits(0);
+        return nf.format(value);
+    }
+
+    /** Human-readable label for a risk profile string. */
+    private static String riskLabel(String riskProfile) {
+        if (riskProfile == null) return "moderate";
+        switch (riskProfile.toLowerCase()) {
+            case "risk_averse": return "risk-averse";
+            case "risk_taker": return "risk-taker";
+            default: return riskProfile.toLowerCase();
+        }
     }
 }

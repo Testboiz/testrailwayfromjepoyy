@@ -54,7 +54,7 @@ public class Recommendation {
     @Column(name = "recommended_allocation", columnDefinition = "jsonb")
     private String recommendedAllocation;
 
-    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", columnDefinition = "recommendation_status")
     private RecommendationStatus status;
 
