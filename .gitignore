@@ -39,3 +39,6 @@ build/
 GEMINI-INPUT.md
 API-DOCS.md
 DATABASE-SCHEMA.md
+API_TESTING_README.md
+postman_collection_assets_pnl.json
+.hermes/

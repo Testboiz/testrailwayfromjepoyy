@@ -2,9 +2,11 @@ package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
+import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
+import com.indivaragroup.jdt17wms.services.PnLCalculationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +18,12 @@ import java.util.UUID;
 public class AssetController {
 
     private final AssetsManagementService assetsManagementService;
+    private final PnLCalculationService pnLCalculationService;
 
-  public AssetController(AssetsManagementService assetsManagementService) {
+  public AssetController(AssetsManagementService assetsManagementService, 
+                         PnLCalculationService pnLCalculationService) {
         this.assetsManagementService = assetsManagementService;
+        this.pnLCalculationService = pnLCalculationService;
   }
 
     @PostMapping("/api/v1/me/assets")
@@ -29,6 +34,11 @@ public class AssetController {
     @GetMapping("/api/v1/me/assets")
     public List<Asset> getAssets() {
         return assetsManagementService.getAssetsForUser();
+    }
+
+    @GetMapping("/api/v1/me/assets/pnl")
+    public List<AssetsPnLResponseDTO> getAssetsPnL() {
+        return pnLCalculationService.computePnLForAllAssets();
     }
 
     @GetMapping("/api/v1/me/assets/transaction-logs")
