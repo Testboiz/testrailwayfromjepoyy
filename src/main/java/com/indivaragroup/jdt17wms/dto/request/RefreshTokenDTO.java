@@ -1,4 +1,4 @@
-package com.indivaragroup.jdt17wms.dto.utils;
+package com.indivaragroup.jdt17wms.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,8 +11,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ValidationErrorDetailDTO {
-    private String field;
-    private String reason;
-    private String type;
+public class RefreshTokenDTO {
+    private String refreshToken;
 }
