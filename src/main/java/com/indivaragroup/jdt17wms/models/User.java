@@ -47,7 +47,7 @@ public class User {
     @Column(name = "risk_profile")
     private String riskProfile;
 
-    @Column(name = "questionnaire_completed")
+    @Column(name = "questionnaire_completed",nullable = false)
     private Boolean questionnaireCompleted;
 
     @CreationTimestamp

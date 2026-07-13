@@ -3,6 +3,7 @@ package com.indivaragroup.jdt17wms.exceptions;
 import com.indivaragroup.jdt17wms.dto.utils.BusinessErrorResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorResponseDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -100,3 +101,4 @@ public class ExceptionHandlingAdvice {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 }
+

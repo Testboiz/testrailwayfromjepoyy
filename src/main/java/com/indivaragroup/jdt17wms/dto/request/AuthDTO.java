@@ -12,6 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class AuthDTO {
+    private String name;
     private String email;
     private String password;
 }

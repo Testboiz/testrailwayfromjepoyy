@@ -36,6 +36,10 @@ build/
 # Local Environment Variables
 .env
 
+application-local.yaml
 GEMINI-INPUT.md
 API-DOCS.md
 DATABASE-SCHEMA.md
+.claude/
+.hermes/
+
