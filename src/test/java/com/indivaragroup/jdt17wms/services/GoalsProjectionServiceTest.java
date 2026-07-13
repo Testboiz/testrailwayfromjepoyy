@@ -68,6 +68,7 @@ class GoalsProjectionServiceTest {
                 .id(UUID.randomUUID())
                 .userId(AppConstants.USER_ID)
                 .name("Retirement Fund")
+                .type("property")
                 .targetAmount(new BigDecimal("500000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .targetDate(LocalDate.now().plusYears(10))
@@ -113,6 +114,7 @@ class GoalsProjectionServiceTest {
                 .id(goalId)
                 .userId(AppConstants.USER_ID)
                 .name("Retirement Fund")
+                .type("property")
                 .targetAmount(new BigDecimal("500000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .targetDate(LocalDate.now().plusYears(10))
@@ -168,5 +170,39 @@ class GoalsProjectionServiceTest {
         when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> goalsProjectionService.getProjectionsForUser());
+    }
+
+    @Test
+    void getProjectionsForUser_shouldUseTargetDateWhenTimelineIsEarlierThanMaxMonths() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal goal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .name("Retirement Fund")
+                .type("property") // Max limit is 120 months
+                .targetAmount(new BigDecimal("300000.00"))
+                .monthlyContribution(new BigDecimal("1000.00"))
+                .targetDate(LocalDate.now().plusMonths(60)) // 60 months < 120 max months
+                .currentAmount(BigDecimal.ZERO)
+                .build();
+        FinancialProfile profile = FinancialProfile.builder()
+                .defaultReturn(new BigDecimal("7.50"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
+
+        List<GoalProjectionDTO> results = goalsProjectionService.getProjectionsForUser();
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        GoalProjectionDTO res = results.get(0);
+        // Recommended contribution should be 300000 / 60 = 5000.00 instead of 300000 / 120 = 2500.00
+        assertEquals(new BigDecimal("5000.00"), res.getRecommendedContribution());
     }
 }

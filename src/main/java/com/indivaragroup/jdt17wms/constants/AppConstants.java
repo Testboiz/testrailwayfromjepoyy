@@ -61,4 +61,13 @@ public final class AppConstants {
             STOCK, "Stock"
     );
     public static final BigDecimal SURPLUS_THRESHOLD = BigDecimal.valueOf(100000);
+
+    public static final Map<String, Integer> GOAL_MAX_MONTHS = Map.of(
+            "savings", 18,
+            "vacation", 12,
+            "vehicle", 48,
+            "property", 120,
+            "retirement", 420,
+            "custom", 60
+    );
 }

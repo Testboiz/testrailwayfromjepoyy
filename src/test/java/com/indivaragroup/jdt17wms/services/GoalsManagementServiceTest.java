@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -101,7 +102,7 @@ class GoalsManagementServiceTest {
     }
 
     @Test
-    void createGoalForUser_shouldCreateGoalSuccessfully() {
+    void createGoalForUser_shouldCreateGoalSuccessfully() throws Exception {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
                 .questionnaireCompleted(true)
@@ -155,6 +156,8 @@ class GoalsManagementServiceTest {
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .type("savings")
+                .targetDate(LocalDate.now(java.time.ZoneOffset.UTC).plusMonths(1))
                 .isPriority(true)
                 .build();
 
@@ -170,7 +173,7 @@ class GoalsManagementServiceTest {
     }
 
     @Test
-    void updateGoalForUser_shouldUpdateGoalSuccessfully() {
+    void updateGoalForUser_shouldUpdateGoalSuccessfully() throws Exception {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(AppConstants.USER_ID)
@@ -180,6 +183,7 @@ class GoalsManagementServiceTest {
                 .id(goalId)
                 .userId(AppConstants.USER_ID)
                 .name("Retirement Fund")
+                .type("retirement")
                 .targetAmount(new BigDecimal("500000.00"))
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .isPriority(false)
@@ -190,7 +194,7 @@ class GoalsManagementServiceTest {
                 .name("New retirement")
                 .targetAmount(new BigDecimal("600000.00"))
                 .monthlyContribution(new BigDecimal("1200.00"))
-                .targetDate(java.time.LocalDate.of(2040, 1, 1))
+                .targetDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusMonths(60))
                 .isPriority(true)
                 .notes("Updated notes")
                 .build();

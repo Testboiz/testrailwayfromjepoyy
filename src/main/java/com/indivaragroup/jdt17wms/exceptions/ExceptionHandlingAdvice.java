@@ -5,6 +5,8 @@ import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -71,9 +73,13 @@ public class ExceptionHandlingAdvice {
         return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationErrorResponseDTO> handleValidationException(MethodArgumentNotValidException ex) {
-        List<ValidationErrorDetailDTO> details = ex.getBindingResult().getFieldErrors().stream()
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    public ResponseEntity<ValidationErrorResponseDTO> handleValidationException(Exception ex) {
+      BindingResult bindingResult = (ex instanceof MethodArgumentNotValidException methodArgumentNotValidException)
+        ? methodArgumentNotValidException.getBindingResult()
+        : (BindingResult) ex;
+
+        List<ValidationErrorDetailDTO> details = bindingResult.getFieldErrors().stream()
                 .map(fieldError -> {
                     String fieldName = fieldError.getField();
                     String snakeCaseField = fieldName.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();

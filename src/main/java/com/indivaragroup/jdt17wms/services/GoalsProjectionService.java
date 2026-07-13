@@ -73,8 +73,6 @@ public class GoalsProjectionService {
             BigDecimal recommendedContribution;
             List<TimeSeriesPointDTO> timeSeries = new ArrayList<>();
 
-            long months = goal.getTargetDate() != null ? ChronoUnit.MONTHS.between(LocalDate.now(ZoneOffset.UTC), goal.getTargetDate()) : 0;
-
             if (assets.isEmpty()) {
                 // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
                 double balance = goal.getCurrentAmount() != null ? goal.getCurrentAmount().doubleValue() : 0.0;
@@ -95,15 +93,17 @@ public class GoalsProjectionService {
                 projectedDate = LocalDate.now(ZoneOffset.UTC).plusMonths(monthsToTarget);
 
                 // 2. Calculate recommended contribution
-              // TODO : implement based on being able to achieve based on set months
-                double recContributionVal = 0.0;
-                if (months <= 0) {
-                    if (balance < target) {
-                        recContributionVal = target - balance;
+                double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(
+                        goal.getType() != null ? goal.getType().toLowerCase() : "custom", 60
+                );
+                double monthsToUse = maxMonths;
+                if (goal.getTargetDate() != null) {
+                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(ZoneOffset.UTC), goal.getTargetDate());
+                    if (actualMonths > 0 && actualMonths < maxMonths) {
+                        monthsToUse = actualMonths;
                     }
-                } else {
-                  recContributionVal = (target - balance) / months;
                 }
+                double recContributionVal = (target - balance) / monthsToUse;
                 recommendedContribution = BigDecimal.valueOf(Math.max(0.0, recContributionVal))
                         .setScale(2, RoundingMode.HALF_UP);
 
@@ -164,29 +164,32 @@ public class GoalsProjectionService {
                 projectedDate = LocalDate.now(ZoneOffset.UTC).plusMonths(monthsToTarget);
 
                 // 2. Calculate recommended contribution
-                double recContributionVal = 0.0;
-                if (months <= 0) {
-                    if (initialSum < target) {
-                        recContributionVal = target - initialSum;
+                double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(
+                        goal.getType() != null ? goal.getType().toLowerCase() : "custom", 60
+                );
+                double monthsToUse = maxMonths;
+                if (goal.getTargetDate() != null) {
+                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(ZoneOffset.UTC), goal.getTargetDate());
+                    if (actualMonths > 0 && actualMonths < maxMonths) {
+                        monthsToUse = actualMonths;
                     }
-                } else {
-                    double num = target;
-                    double sumS = 0.0;
-                    for (int j = 0; j < kValue; j++) {
-                        double fValueFactor = Math.pow(1 + rates[j], months);
-                        num -= balances[j] * fValueFactor;
-
-                        double sFactor;
-                        if (rates[j] > 0) {
-                            sFactor = (fValueFactor - 1) / rates[j];
-                        } else {
-                            sFactor = months;
-                        }
-                        sumS += sFactor;
-                    }
-                    double denom = sumS / kValue;
-                    recContributionVal = denom > 0 ? num / denom : 0.0;
                 }
+                double num = target;
+                double sumS = 0.0;
+                for (int j = 0; j < kValue; j++) {
+                    double fValueFactor = Math.pow(1 + rates[j], monthsToUse);
+                    num -= balances[j] * fValueFactor;
+
+                    double sFactor;
+                    if (rates[j] > 0) {
+                        sFactor = (fValueFactor - 1) / rates[j];
+                    } else {
+                        sFactor = monthsToUse;
+                    }
+                    sumS += sFactor;
+                }
+                double denom = sumS / kValue;
+                double recContributionVal = denom > 0 ? num / denom : 0.0;
                 recommendedContribution = BigDecimal.valueOf(Math.max(0.0, recContributionVal))
                         .setScale(2, RoundingMode.HALF_UP);
 

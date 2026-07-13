@@ -3,6 +3,7 @@ package com.indivaragroup.jdt17wms.controllers;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.services.GoalsManagementService;
 import com.indivaragroup.jdt17wms.services.GoalsProjectionService;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,12 +36,12 @@ public class GoalController {
     }
 
     @PostMapping("/api/v1/me/goals")
-    public GoalDTO createGoal(@Valid @RequestBody GoalRegistrationDTO goalRegistrationDTO) {
+    public GoalDTO createGoal(@Valid @RequestBody GoalRegistrationDTO goalRegistrationDTO) throws BindException {
         return goalsManagementService.createGoalForUser(goalRegistrationDTO);
     }
 
     @PutMapping({"/api/v1/me/goals/{id}"})
-    public GoalDTO updateGoal(@PathVariable UUID id, @Valid @RequestBody GoalEditingDTO goalEditingDTO) {
+    public GoalDTO updateGoal(@PathVariable UUID id, @Valid @RequestBody GoalEditingDTO goalEditingDTO) throws BindException {
         return goalsManagementService.updateGoalForUser(id, goalEditingDTO);
     }
 

@@ -18,7 +18,11 @@ import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
 import com.indivaragroup.jdt17wms.exceptions.InsufficientIncomeException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.BindException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +33,8 @@ public class GoalsManagementService {
     private final UserRepository userRepository;
     private final FinancialProfileRepository financialProfileRepository;
     private final AssetRepository assetRepository;
+
+
 
     public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository, FinancialProfileRepository financialProfileRepository, AssetRepository assetRepository) {
         this.goalRepository = goalRepository;
@@ -65,12 +71,36 @@ public class GoalsManagementService {
                 .toList();
     }
 
-    public GoalDTO createGoalForUser(GoalRegistrationDTO dto) {
+    public GoalDTO createGoalForUser(GoalRegistrationDTO dto) throws BindException {
         User user = userRepository.findById(AppConstants.USER_ID)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
+
+        BindException bindException = new BindException(dto, "goalRegistrationDTO");
+        String rawType = dto.getType();
+        String normalizedType = rawType != null ? rawType.trim().toLowerCase() : "";
+        if (!AppConstants.GOAL_MAX_MONTHS.containsKey(normalizedType)) {
+            bindException.rejectValue("type", "invalid", "Invalid goal type");
+        }
+
+        if (dto.getTargetDate() != null) {
+            LocalDate now = LocalDate.now(ZoneOffset.UTC);
+            if (dto.getTargetDate().isBefore(now)) {
+                bindException.rejectValue("targetDate", "invalid", "Target date must be in the future");
+            } else if (AppConstants.GOAL_MAX_MONTHS.containsKey(normalizedType)) {
+                int maxMonths = AppConstants.GOAL_MAX_MONTHS.get(normalizedType);
+                long months = ChronoUnit.MONTHS.between(now, dto.getTargetDate());
+                if (months > maxMonths) {
+                    bindException.rejectValue("targetDate", "invalid", "Target date exceeds maximum limit of " + maxMonths + " months");
+                }
+            }
+        }
+
+        if (bindException.hasErrors()) {
+            throw bindException;
         }
 
         if (Boolean.TRUE.equals(dto.getIsPriority())) {
@@ -112,7 +142,7 @@ public class GoalsManagementService {
                 .build();
     }
 
-    public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) {
+    public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) throws BindException {
         User user = userRepository.findById(AppConstants.USER_ID)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
@@ -122,6 +152,25 @@ public class GoalsManagementService {
 
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+
+        BindException bindException = new BindException(dto, "goalEditingDTO");
+        if (dto.getTargetDate() != null) {
+            LocalDate now = LocalDate.now(ZoneOffset.UTC);
+            if (dto.getTargetDate().isBefore(now)) {
+                bindException.rejectValue("targetDate", "invalid", "Target date must be in the future");
+            } else {
+                String normalizedType = goal.getType() != null ? goal.getType().trim().toLowerCase() : "custom";
+                int maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(normalizedType, 60);
+                long months = ChronoUnit.MONTHS.between(now, dto.getTargetDate());
+                if (months > maxMonths) {
+                    bindException.rejectValue("targetDate", "invalid", "Target date exceeds maximum limit of " + maxMonths + " months");
+                }
+            }
+        }
+
+        if (bindException.hasErrors()) {
+            throw bindException;
+        }
 
         if (Boolean.TRUE.equals(dto.getIsPriority()) && !Boolean.TRUE.equals(goal.getIsPriority())) {
             boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
