@@ -18,5 +18,4 @@ public class ValidationErrorResponseDTO {
     private String type;
     private Integer code;
     private List<ValidationErrorDetailDTO> details;
-
 }

@@ -12,6 +12,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Answer {
-    private String answer;
+    private String questionnaireAnswer;
     private Integer score;
 }

@@ -90,7 +90,7 @@ class ProductManagementServiceTest {
     void getProductsForUser_shouldThrowMissingRiskProfileException_whenUserQuestionnaireNotCompleted() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .questionnaireCompleted(false)
                 .build();
 
@@ -105,7 +105,7 @@ class ProductManagementServiceTest {
     void getProductsForUser_shouldFilterByVisibilityAndRiskProfile_forStandardUser() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("moderate") // moderate allows risk level <= 4
                 .build();
@@ -127,7 +127,7 @@ class ProductManagementServiceTest {
     void getProductsForUser_shouldRespectShowAll_forStandardUser() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("moderate") // moderate allows risk level <= 4
                 .build();
@@ -147,7 +147,7 @@ class ProductManagementServiceTest {
     void getProductsForUser_shouldFilterByTypeAndSearchQuery() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
@@ -169,14 +169,14 @@ class ProductManagementServiceTest {
     void getProductsForUser_shouldLimitToDashboardSummary() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
-                .role(UserRole.user)
+                .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
 
         List<Product> tenProducts = java.util.stream.IntStream.range(0, 10)
                 .mapToObj(i -> Product.builder().visible(true).build())
-                .collect(Collectors.toList());
+                .toList();
 
         when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(tenProducts);
@@ -190,7 +190,7 @@ class ProductManagementServiceTest {
     void getProductsForUser_shouldNotFilterByVisibilityAndRiskLevel_forAdmin() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
-                .role(UserRole.admin)
+                .role(UserRole.ADMIN)
                 .build();
 
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();

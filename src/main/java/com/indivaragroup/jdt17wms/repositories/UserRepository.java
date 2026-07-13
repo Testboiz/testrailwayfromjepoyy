@@ -7,10 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.UUID;
 
-import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByRiskProfile(String riskProfile);
-  Optional<User> findByEmail(String email);
 }

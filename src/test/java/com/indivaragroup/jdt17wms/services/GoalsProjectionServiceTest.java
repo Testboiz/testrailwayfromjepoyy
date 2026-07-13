@@ -88,10 +88,18 @@ class GoalsProjectionServiceTest {
         assertEquals(1, results.size());
         GoalProjectionDTO res = results.get(0);
         assertEquals("Retirement Fund", res.getName());
-        assertNotNull(res.getProjectedDate());
-        assertNotNull(res.getRecommendedContribution());
+
+        // Under 0% savings growth, projectedDate should be plus 500 months (500000 target / 1000 contribution)
+        LocalDate expectedProjectedDate = LocalDate.now(java.time.ZoneOffset.UTC).plusMonths(500);
+        assertEquals(expectedProjectedDate, res.getProjectedDate());
+
+        // Under 0% savings growth, recommendedContribution should be target / months = 500000 / 120 = 4166.67
+        assertEquals(new BigDecimal("4166.67"), res.getRecommendedContribution());
+
         assertNotNull(res.getTimeSeries());
         assertEquals(60, res.getTimeSeries().size());
+        assertEquals(new BigDecimal("1000.00"), res.getTimeSeries().get(0).getValue());
+        assertEquals(new BigDecimal("60000.00"), res.getTimeSeries().get(59).getValue());
     }
 
     @Test

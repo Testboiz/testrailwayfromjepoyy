@@ -11,8 +11,6 @@ import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
-import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
-import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductPriceRepository;
 import org.springframework.stereotype.Service;
 
@@ -32,24 +30,18 @@ public class DashboardService {
     private final AssetRepository assetRepository;
     private final ProductRepository productRepository;
     private final AuditLogRepository auditLogRepository;
-    private final FinancialProfileRepository financialProfileRepository;
-    private final TransactionHistoryRepository transactionHistoryRepository;
-    private final ProductPriceRepository productPriceRepository;
+  private final ProductPriceRepository productPriceRepository;
 
     public DashboardService(UserRepository userRepository,
                             AssetRepository assetRepository,
                             ProductRepository productRepository,
                             AuditLogRepository auditLogRepository,
-                            FinancialProfileRepository financialProfileRepository,
-                            TransactionHistoryRepository transactionHistoryRepository,
                             ProductPriceRepository productPriceRepository) {
         this.userRepository = userRepository;
         this.assetRepository = assetRepository;
         this.productRepository = productRepository;
         this.auditLogRepository = auditLogRepository;
-        this.financialProfileRepository = financialProfileRepository;
-        this.transactionHistoryRepository = transactionHistoryRepository;
-        this.productPriceRepository = productPriceRepository;
+      this.productPriceRepository = productPriceRepository;
     }
 
     public AdminDashboardDTO getAdminDashboard() {
@@ -73,7 +65,7 @@ public class DashboardService {
         List<Asset> assets = assetRepository.findAllByPurchaseDateGreaterThanEqual(start);
 
         List<AumTrendDTO> trend = new ArrayList<>();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         int maxMonth = (today.getYear() == 2026) ? today.getMonthValue() : 12;
 
       for (int m = 1; m <= maxMonth; m++) {
@@ -153,11 +145,10 @@ public class DashboardService {
     }
 
     private List<PerformanceDTO> createUserPerformanceTrend(java.util.UUID userId) {
-        Instant start = Instant.parse("2026-01-01T00:00:00Z");
         List<Asset> assets = assetRepository.findAllByUserId(userId);
 
         List<PerformanceDTO> trend = new ArrayList<>();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         int maxMonth = (today.getYear() == 2026) ? today.getMonthValue() : 12;
 
         for (int m = 1; m <= maxMonth; m++) {

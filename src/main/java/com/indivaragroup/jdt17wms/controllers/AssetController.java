@@ -5,7 +5,6 @@ import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
-import com.indivaragroup.jdt17wms.services.InvestmentProductTrackingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -17,13 +16,10 @@ import java.util.UUID;
 public class AssetController {
 
     private final AssetsManagementService assetsManagementService;
-    private final InvestmentProductTrackingService investmentProductTrackingService;
 
-    public AssetController(AssetsManagementService assetsManagementService,
-                           InvestmentProductTrackingService investmentProductTrackingService) {
+  public AssetController(AssetsManagementService assetsManagementService) {
         this.assetsManagementService = assetsManagementService;
-        this.investmentProductTrackingService = investmentProductTrackingService;
-    }
+  }
 
     @PostMapping("/api/v1/me/assets")
     public Asset createAsset(@Valid @RequestBody AssetRegistrationDTO assetRegistrationDTO) {

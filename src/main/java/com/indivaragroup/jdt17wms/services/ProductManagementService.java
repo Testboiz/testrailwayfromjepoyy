@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class ProductManagementService {
@@ -46,31 +45,33 @@ public class ProductManagementService {
         User user = userRepository.findById(AppConstants.USER_ID).orElse(null);
 
         // Check user risk profile questionnaire
-        if (user != null && user.getRole() == UserRole.user) {
-            if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+        if (user != null &&
+            user.getRole() == UserRole.USER &&
+            (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted())
+        ) {
                 throw new MissingRiskProfileException("Risk Profiler Assessment Required");
             }
-        }
 
-        List<Product> products = productRepository.findAll();
+
+      List<Product> products = productRepository.findAll();
 
         // 1. Visibility filter
-        if (user != null && user.getRole() == UserRole.user) {
+        if (user != null && user.getRole() == UserRole.USER) {
             products = products.stream()
                     .filter(p -> p.getVisible() != null && p.getVisible())
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         // 2. Risk level filter
-        if (user != null && user.getRole() == UserRole.user) {
+        if (user != null && user.getRole() == UserRole.USER) {
             boolean shouldShowAll = showAll != null && showAll;
             String riskProfile = user.getRiskProfile();
-            boolean isRiskTaker = riskProfile != null && (riskProfile.equalsIgnoreCase("risk_taker") || riskProfile.equalsIgnoreCase("risk-taker"));
+            boolean isRiskTaker = riskProfile != null && (riskProfile.equalsIgnoreCase("risk_taker"));
 
             if (!shouldShowAll && !isRiskTaker) {
                 int maxRiskLevel = 5;
                 if (riskProfile != null) {
-                    if (riskProfile.equalsIgnoreCase("risk_averse") || riskProfile.equalsIgnoreCase("risk-averse")) {
+                    if (riskProfile.equalsIgnoreCase("risk_averse")) {
                         maxRiskLevel = 2;
                     } else if (riskProfile.equalsIgnoreCase("moderate")) {
                         maxRiskLevel = 4;
@@ -79,7 +80,7 @@ public class ProductManagementService {
                 final int limitRisk = maxRiskLevel;
                 products = products.stream()
                         .filter(p -> p.getRiskLevel() != null && p.getRiskLevel() <= limitRisk)
-                        .collect(Collectors.toList());
+                        .toList();
             }
         }
 
@@ -87,7 +88,7 @@ public class ProductManagementService {
         if (type != null && !type.trim().isEmpty()) {
             products = products.stream()
                     .filter(p -> p.getType() != null && p.getType().equalsIgnoreCase(type))
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         // 4. Search query filter
@@ -96,14 +97,14 @@ public class ProductManagementService {
             products = products.stream()
                     .filter(p -> (p.getName() != null && p.getName().toLowerCase().contains(query))
                             || (p.getIssuer() != null && p.getIssuer().toLowerCase().contains(query)))
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         // 5. Dashboard Summary limit
         if (dashboardSummary != null && dashboardSummary) {
             products = products.stream()
                     .limit(5)
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         // 6. Pagination

@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -16,11 +17,11 @@ public class SecurityConfig {
       // 1. Allow all requests without authentication
       .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
       // 2. Disable CSRF so you can test POST/PUT requests easily via Postman or frontend
-      .csrf(csrf -> csrf.disable())
+      .csrf(AbstractHttpConfigurer::disable)
       // 3. Disable the default login form UI
-      .formLogin(form -> form.disable())
+      .formLogin(AbstractHttpConfigurer::disable)
       // 4. Disable HTTP Basic auth popup
-      .httpBasic(basic -> basic.disable());
+      .httpBasic(AbstractHttpConfigurer::disable);
 
     return http.build();
   }

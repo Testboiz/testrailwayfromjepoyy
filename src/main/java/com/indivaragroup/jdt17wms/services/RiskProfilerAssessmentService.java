@@ -1,33 +1,31 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.request.Answer;
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
+import com.indivaragroup.jdt17wms.dto.response.OptionDTO;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
 import com.indivaragroup.jdt17wms.dto.response.RiskProfilerResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.QuestionnaireDataDTO;
 import com.indivaragroup.jdt17wms.exceptions.BadRequestException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.User;
-import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class RiskProfilerAssessmentService {
 
-    private final FinancialProfileRepository financialProfileRepository;
-    private final QuestionnaireDataDTO questionnaireDataDTO;
+  private final QuestionnaireDataDTO questionnaireDataDTO;
     private final UserRepository userRepository;
 
-    public RiskProfilerAssessmentService(FinancialProfileRepository financialProfileRepository,
+    public RiskProfilerAssessmentService(
                                          QuestionnaireDataDTO questionnaireDataDTO,
                                          UserRepository userRepository) {
-        this.financialProfileRepository = financialProfileRepository;
-        this.questionnaireDataDTO = questionnaireDataDTO;
+      this.questionnaireDataDTO = questionnaireDataDTO;
         this.userRepository = userRepository;
     }
 
@@ -37,21 +35,21 @@ public class RiskProfilerAssessmentService {
         }
         return questionnaireDataDTO.getData().stream()
                 .map(item -> {
-                    List<com.indivaragroup.jdt17wms.dto.response.OptionDTO> responseOptions = List.of();
+                    List<OptionDTO> responseOptions = List.of();
                     if (item.getOptions() != null) {
                         responseOptions = item.getOptions().stream()
-                                .map(opt -> com.indivaragroup.jdt17wms.dto.response.OptionDTO.builder()
+                                .map(opt -> OptionDTO.builder()
                                         .label(opt.getLabel())
                                         .score(opt.getScore())
                                         .build())
-                                .collect(Collectors.toList());
+                          .toList();
                     }
                     return QuestionnaireDTO.builder()
                             .question(item.getQuestion())
                             .options(responseOptions)
                             .build();
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public RiskProfilerResponseDTO updateProfilerAssessment(RiskProfilerDTO riskProfilerDTO) {
@@ -71,7 +69,7 @@ public class RiskProfilerAssessmentService {
         }
 
         int rawScore = riskProfilerDTO.getAnswers().stream()
-                .mapToInt(answer -> answer.getScore())
+                .mapToInt(Answer::getScore)
                 .sum();
 
         String riskProfile;

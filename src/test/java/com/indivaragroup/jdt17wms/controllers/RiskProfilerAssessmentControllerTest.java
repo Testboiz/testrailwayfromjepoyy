@@ -52,15 +52,15 @@ class RiskProfilerAssessmentControllerTest {
     @Test
     void updateProfilerAssessment_shouldReturnOk() throws Exception {
         com.indivaragroup.jdt17wms.dto.request.Answer answer1 = com.indivaragroup.jdt17wms.dto.request.Answer.builder()
-                .answer("A")
+                .questionnaireAnswer("A")
                 .score(2)
                 .build();
         com.indivaragroup.jdt17wms.dto.request.Answer answer2 = com.indivaragroup.jdt17wms.dto.request.Answer.builder()
-                .answer("B")
+                .questionnaireAnswer("B")
                 .score(2)
                 .build();
         com.indivaragroup.jdt17wms.dto.request.Answer answer3 = com.indivaragroup.jdt17wms.dto.request.Answer.builder()
-                .answer("C")
+                .questionnaireAnswer("C")
                 .score(3)
                 .build(); // sum = 7
         RiskProfilerDTO request = new RiskProfilerDTO(List.of(answer1, answer2, answer3));

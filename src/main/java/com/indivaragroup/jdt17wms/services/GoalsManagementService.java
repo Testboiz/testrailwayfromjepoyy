@@ -6,6 +6,7 @@ import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -20,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class GoalsManagementService {
@@ -62,7 +62,7 @@ public class GoalsManagementService {
                         .createdAt(goal.getCreatedAt())
                         .updatedAt(goal.getUpdatedAt())
                         .build())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public GoalDTO createGoalForUser(GoalRegistrationDTO dto) {
@@ -89,7 +89,7 @@ public class GoalsManagementService {
                 .currentAmount(BigDecimal.ZERO) // Set initial value as 0
                 .monthlyContribution(dto.getMonthlyContribution())
                 .targetDate(dto.getTargetDate())
-                .isPriority(dto.getIsPriority() != null ? dto.getIsPriority() : false)
+                .isPriority(dto.getIsPriority() != null && dto.getIsPriority())
                 .notes(dto.getNotes())
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
@@ -132,7 +132,7 @@ public class GoalsManagementService {
         }
 
         BigDecimal monthlyIncome = financialProfileRepository.findByUserId(user.getId())
-                .map(com.indivaragroup.jdt17wms.models.FinancialProfile::getMonthlyIncome)
+                .map(FinancialProfile::getMonthlyIncome)
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal totalContribution = goalRepository.findAllByUserId(user.getId()).stream()
@@ -147,7 +147,7 @@ public class GoalsManagementService {
         goal.setTargetAmount(dto.getTargetAmount());
         goal.setMonthlyContribution(dto.getMonthlyContribution());
         goal.setTargetDate(dto.getTargetDate());
-        goal.setIsPriority(dto.getIsPriority() != null ? dto.getIsPriority() : false);
+        goal.setIsPriority(dto.getIsPriority() != null && dto.getIsPriority());
         goal.setNotes(dto.getNotes());
 
         goal = goalRepository.save(goal);
