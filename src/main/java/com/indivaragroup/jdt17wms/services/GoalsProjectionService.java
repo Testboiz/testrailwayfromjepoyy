@@ -20,10 +20,10 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class GoalsProjectionService {
@@ -59,7 +59,7 @@ public class GoalsProjectionService {
                 .orElse(BigDecimal.valueOf(7.50));
 
         double annualRate = defaultReturn.doubleValue();
-        double defaultMonthlyRate = annualRate / 100.0 / 12.0;
+        double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
 
         List<Goal> goals = goalRepository.findAllByUserId(user.getId());
 
@@ -73,18 +73,17 @@ public class GoalsProjectionService {
             BigDecimal recommendedContribution;
             List<TimeSeriesPointDTO> timeSeries = new ArrayList<>();
 
-            long months = goal.getTargetDate() != null ? ChronoUnit.MONTHS.between(LocalDate.now(), goal.getTargetDate()) : 0;
+            long months = goal.getTargetDate() != null ? ChronoUnit.MONTHS.between(LocalDate.now(ZoneOffset.UTC), goal.getTargetDate()) : 0;
 
             if (assets.isEmpty()) {
-              System.out.println("empty assets");
-                // Scenario A: No assets tied to the goal. Savings grow at defaultReturn rate.
+                // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
                 double balance = goal.getCurrentAmount() != null ? goal.getCurrentAmount().doubleValue() : 0.0;
 
                 // 1. Calculate projected date
                 int monthsToTarget = 0;
                 double simBalance = balance;
                 if (simBalance < target) {
-                    if (totalContribution > 0 || (defaultMonthlyRate > 0 && simBalance > 0)) {
+                    if (totalContribution > 0) {
                         while (simBalance < target && monthsToTarget < 12000) {
                             simBalance = simBalance * (1 + defaultMonthlyRate) + totalContribution;
                             monthsToTarget++;
@@ -93,22 +92,17 @@ public class GoalsProjectionService {
                         monthsToTarget = 12000;
                     }
                 }
-                projectedDate = LocalDate.now().plusMonths(monthsToTarget);
+                projectedDate = LocalDate.now(ZoneOffset.UTC).plusMonths(monthsToTarget);
 
                 // 2. Calculate recommended contribution
+              // TODO : implement based on being able to achieve based on set months
                 double recContributionVal = 0.0;
                 if (months <= 0) {
                     if (balance < target) {
                         recContributionVal = target - balance;
                     }
                 } else {
-                    if (defaultMonthlyRate > 0) {
-                        double fValueFactor = Math.pow(1 + defaultMonthlyRate, months);
-                        double annuityFactor = (fValueFactor - 1) / defaultMonthlyRate;
-                        recContributionVal = (target - balance * fValueFactor) / annuityFactor;
-                    } else {
-                        recContributionVal = (target - balance) / months;
-                    }
+                  recContributionVal = (target - balance) / months;
                 }
                 recommendedContribution = BigDecimal.valueOf(Math.max(0.0, recContributionVal))
                         .setScale(2, RoundingMode.HALF_UP);
@@ -125,15 +119,13 @@ public class GoalsProjectionService {
 
             } else {
                 // Scenario B: Assets are tied. Savings are evenly distributed to all assets.
-              System.out.println("not empty assets");
-
-              int K = assets.size();
-                double[] balances = new double[K];
-                double[] rates = new double[K];
-                double contributionPerAsset = totalContribution / K;
+              int kValue = assets.size();
+                double[] balances = new double[kValue];
+                double[] rates = new double[kValue];
+                double contributionPerAsset = totalContribution / kValue;
 
                 double initialSum = 0.0;
-                for (int j = 0; j < K; j++) {
+                for (int j = 0; j < kValue; j++) {
                     Asset asset = assets.get(j);
                     balances[j] = asset.getCurrentValue() != null ? asset.getCurrentValue().doubleValue() : 0.0;
                     initialSum += balances[j];
@@ -150,16 +142,16 @@ public class GoalsProjectionService {
                 double sum = initialSum;
                 if (sum < target) {
                     boolean canGrow = contributionPerAsset > 0;
-                  System.out.println(canGrow);
-                    for (int j = 0; j < K; j++) {
-                        if (rates[j] > 0 && balances[j] > 0) {
-                            canGrow = true;
-                        }
+                    for (int j = 0; j < kValue; j++) {
+                      if (rates[j] > 0 && balances[j] > 0) {
+                        canGrow = true;
+                        break;
+                      }
                     }
                     if (canGrow) {
                         while (sum < target && monthsToTarget < 12000) {
                             sum = 0.0;
-                            for (int j = 0; j < K; j++) {
+                            for (int j = 0; j < kValue; j++) {
                                 simBalances[j] = simBalances[j] * (1 + rates[j]) + contributionPerAsset;
                                 sum += simBalances[j];
                             }
@@ -169,7 +161,7 @@ public class GoalsProjectionService {
                         monthsToTarget = 12000;
                     }
                 }
-                projectedDate = LocalDate.now().plusMonths(monthsToTarget);
+                projectedDate = LocalDate.now(ZoneOffset.UTC).plusMonths(monthsToTarget);
 
                 // 2. Calculate recommended contribution
                 double recContributionVal = 0.0;
@@ -180,7 +172,7 @@ public class GoalsProjectionService {
                 } else {
                     double num = target;
                     double sumS = 0.0;
-                    for (int j = 0; j < K; j++) {
+                    for (int j = 0; j < kValue; j++) {
                         double fValueFactor = Math.pow(1 + rates[j], months);
                         num -= balances[j] * fValueFactor;
 
@@ -192,7 +184,7 @@ public class GoalsProjectionService {
                         }
                         sumS += sFactor;
                     }
-                    double denom = sumS / K;
+                    double denom = sumS / kValue;
                     recContributionVal = denom > 0 ? num / denom : 0.0;
                 }
                 recommendedContribution = BigDecimal.valueOf(Math.max(0.0, recContributionVal))
@@ -202,7 +194,7 @@ public class GoalsProjectionService {
                 double[] runBalances = balances.clone();
                 for (int m = 1; m <= 60; m++) {
                     double stepSum = 0.0;
-                    for (int j = 0; j < K; j++) {
+                    for (int j = 0; j < kValue; j++) {
                         runBalances[j] = runBalances[j] * (1 + rates[j]) + contributionPerAsset;
                         stepSum += runBalances[j];
                     }
@@ -226,6 +218,6 @@ public class GoalsProjectionService {
                     .recommendedContribution(recommendedContribution)
                     .timeSeries(timeSeries)
                     .build();
-        }).collect(Collectors.toList());
+        }).toList();
     }
 }
