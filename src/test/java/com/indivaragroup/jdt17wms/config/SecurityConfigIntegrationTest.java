@@ -3,9 +3,11 @@ package com.indivaragroup.jdt17wms.config;
 import com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.*;
+import com.indivaragroup.jdt17wms.services.AuthService;
 import com.indivaragroup.jdt17wms.services.DashboardService;
 import com.indivaragroup.jdt17wms.services.JwtService;
 import org.junit.jupiter.api.Test;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -67,6 +69,9 @@ class SecurityConfigIntegrationTest {
 
     @MockBean
     private DashboardService dashboardService;
+
+    @MockBean
+    private AuthService authService;
 
     @Test
     void whenUnauthenticated_accessingAdminDashboard_shouldReturn401Unauthorized() throws Exception {
@@ -177,5 +182,49 @@ class SecurityConfigIntegrationTest {
         mockMvc.perform(get("/me/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void whenUnauthenticated_loggingOut_shouldReturn401Unauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void whenAuthenticatedAsUser_loggingOut_shouldReturn200Ok() throws Exception {
+        String token = "valid-user-token";
+        UUID mockUserId = UUID.randomUUID();
+        
+        when(jwtService.isAccessToken(token)).thenReturn(true);
+        when(jwtService.getEmailFromToken(token)).thenReturn("user@example.com");
+        when(jwtService.getRoleFromToken(token)).thenReturn("ROLE_USER");
+        
+        UserSecurityProjection projection = mock(UserSecurityProjection.class);
+        when(projection.getId()).thenReturn(mockUserId);
+        when(projection.getName()).thenReturn("Test User");
+        when(projection.getEmail()).thenReturn("user@example.com");
+        when(projection.getRole()).thenReturn(UserRole.USER);
+        when(projection.getPriorCount()).thenReturn(1L);
+        
+        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
+                .thenReturn(java.util.Optional.of(projection));
+
+        when(authService.extractEmailFromToken(token)).thenReturn("user@example.com");
+        when(authService.extractUserIdFromToken(token)).thenReturn(mockUserId);
+        
+        com.indivaragroup.jdt17wms.dto.response.LogoutSuccessDTO mockResponse =
+                com.indivaragroup.jdt17wms.dto.response.LogoutSuccessDTO.builder()
+                        .success(true)
+                        .message("Logout successful")
+                        .build();
+        when(authService.logout(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.any(String.class))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Logout successful"));
     }
 }

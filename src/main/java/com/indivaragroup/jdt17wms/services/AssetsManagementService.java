@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
@@ -53,7 +54,7 @@ public class AssetsManagementService {
     }
 
     public List<Asset> getAssetsForUser() {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
@@ -62,7 +63,7 @@ public class AssetsManagementService {
     }
 
     public List<TransactionHistory> getTransactionLogsForUser() {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
@@ -72,7 +73,7 @@ public class AssetsManagementService {
 
     @Transactional
     public Asset createAssetForUser(AssetRegistrationDTO dto) {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
@@ -130,7 +131,7 @@ public class AssetsManagementService {
 
     @Transactional
     public Asset updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
@@ -156,7 +157,7 @@ public class AssetsManagementService {
 
     @Transactional
     public void deleteAssetForUser(UUID assetId) {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");

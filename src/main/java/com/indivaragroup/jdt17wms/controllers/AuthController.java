@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AuthDTO;
+import java.util.UUID;
 import com.indivaragroup.jdt17wms.dto.request.RefreshTokenDTO;
 import com.indivaragroup.jdt17wms.dto.response.AuthSuccessDTO;
 import com.indivaragroup.jdt17wms.dto.response.LogoutSuccessDTO;
@@ -39,20 +40,26 @@ public class AuthController {
         return authService.register(dto);
     }
 
-    // 🚪 LOGOUT
     @PostMapping("/logout")
     public LogoutSuccessDTO logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-        String email = null;
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            try {
-                String token = authHeader.substring(7);
-                email = authService.extractEmailFromToken(token);
-            } catch (Exception ignored) {}
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new com.indivaragroup.jdt17wms.exceptions.UnauthorizedException("No token provided");
         }
-        return authService.logout(email);
+        String token = authHeader.substring(7);
+        String email;
+        UUID userId;
+        try {
+            email = authService.extractEmailFromToken(token);
+            userId = authService.extractUserIdFromToken(token);
+        } catch (Exception e) {
+            throw new com.indivaragroup.jdt17wms.exceptions.UnauthorizedException("Invalid token");
+        }
+        if (email == null || email.trim().isEmpty() || userId == null) {
+            throw new com.indivaragroup.jdt17wms.exceptions.UnauthorizedException("Invalid token claims");
+        }
+        return authService.logout(userId, email);
     }
 
-    // 🔄 REFRESH TOKEN
     @PostMapping("/refresh")
     public RefreshTokenSuccessDTO refresh(@RequestBody(required = false) RefreshTokenDTO dto) {
         if (dto == null || dto.getRefreshToken() == null || dto.getRefreshToken().trim().isEmpty()) {

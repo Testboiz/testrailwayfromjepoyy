@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -45,7 +46,12 @@ public class AuthService {
     }
 
     public String extractEmailFromToken(String token) {
-        return jwtService.getEmailFromToken(token);
+        return jwtService.getEmailClaimFromToken(token);
+    }
+
+    public UUID extractUserIdFromToken(String token) {
+        String userIdStr = jwtService.getUserIdClaimFromToken(token);
+        return userIdStr != null ? UUID.fromString(userIdStr) : null;
     }
 
     // Login
@@ -104,8 +110,9 @@ public class AuthService {
 
     //logout
     @Transactional
-    public LogoutSuccessDTO logout(String userEmail) {
+    public LogoutSuccessDTO logout(UUID userId, String userEmail) {
         AuditLog auditLog = AuditLog.builder()
+                .userId(userId)
                 .userName(userEmail != null ? userEmail : "anonymous")
                 .action("LOGOUT")
                 .details("User logged out")

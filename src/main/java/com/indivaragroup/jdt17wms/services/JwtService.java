@@ -69,6 +69,22 @@ public class JwtService {
         return getClaim(token, Claims::getSubject);
     }
 
+    public String getEmailClaimFromToken(String token) {
+        try {
+            return getClaim(token, claims -> claims.get("email", String.class));
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims().get("email", String.class);
+        }
+    }
+
+    public String getUserIdClaimFromToken(String token) {
+        try {
+            return getClaim(token, claims -> claims.get("userId", String.class));
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims().get("userId", String.class);
+        }
+    }
+
     public boolean isTokenValid(String token, User user) {
         final String email = getEmailFromToken(token);
         return (email.equals(user.getEmail())) && !isTokenExpired(token);

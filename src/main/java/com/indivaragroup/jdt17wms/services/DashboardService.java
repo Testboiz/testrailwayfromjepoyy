@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.*;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
@@ -103,7 +104,7 @@ public class DashboardService {
     }
 
     public UserDashboardDTO getUserDashboard() {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");

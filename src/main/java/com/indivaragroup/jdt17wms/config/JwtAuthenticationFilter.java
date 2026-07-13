@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.config;
 
+import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
@@ -35,6 +36,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
         String uri = request.getRequestURI();
+        if ((path != null && (path.endsWith("/logout") || path.endsWith("/logout/")))
+                || (uri != null && (uri.endsWith("/logout") || uri.endsWith("/logout/")))) {
+            return false;
+        }
         return (path != null && (path.startsWith("/api/v1/auth/") || path.startsWith("/auth/")))
                 || (uri != null && (uri.startsWith("/api/v1/auth/") || uri.startsWith("/auth/")));
     }
@@ -79,8 +84,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 roleToUse = "ROLE_USER";
             }
 
+            UserDTO principal = UserDTO.builder()
+                    .id(projection.getId())
+                    .name(projection.getName())
+                    .email(userEmail)
+                    .isAdmin("ROLE_ADMIN".equals(roleToUse))
+                    .questionnaireCompleted(false)
+                    .build();
+
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    userEmail,
+                    principal,
                     null,
                     List.of(new SimpleGrantedAuthority(roleToUse))
             );

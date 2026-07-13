@@ -18,6 +18,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   boolean existsByEmail(String email);
   Optional<User> findByEmail(String email);
 
-  @Query("SELECT u.email as email, u.role as role, (SELECT COUNT(o) FROM User o WHERE o.createdAt < u.createdAt) as priorCount FROM User u WHERE u.email = :email")
+  @Query("SELECT u.id as id, u.name as name, u.email as email, u.role as role, (SELECT COUNT(o) FROM User o WHERE o.createdAt < u.createdAt) as priorCount FROM User u WHERE u.email = :email")
   Optional<UserSecurityProjection> findUserSecurityProjectionByEmail(@Param("email") String email);
 }

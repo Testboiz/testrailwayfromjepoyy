@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import com.indivaragroup.jdt17wms.exceptions.UnauthorizedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -118,6 +119,15 @@ public class ExceptionHandlingAdvice {
                 .code(HttpStatus.CONFLICT.value())
                 .build();
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<BusinessErrorResponseDTO> handleUnauthorizedException(UnauthorizedException ex) {
+        BusinessErrorResponseDTO errorResponse = BusinessErrorResponseDTO.builder()
+                .error(ex.getMessage())
+                .code(HttpStatus.UNAUTHORIZED.value())
+                .build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 }
 

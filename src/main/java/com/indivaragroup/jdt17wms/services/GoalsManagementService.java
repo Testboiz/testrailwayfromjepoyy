@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException;
@@ -44,7 +45,7 @@ public class GoalsManagementService {
     }
 
     public List<GoalDTO> getGoalsForUser() {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
@@ -72,7 +73,7 @@ public class GoalsManagementService {
     }
 
     public GoalDTO createGoalForUser(GoalRegistrationDTO dto) throws BindException {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
@@ -143,7 +144,7 @@ public class GoalsManagementService {
     }
 
     public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) throws BindException {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
@@ -219,7 +220,7 @@ public class GoalsManagementService {
 
     @Transactional
     public void deleteGoalForUser(UUID goalId) {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {

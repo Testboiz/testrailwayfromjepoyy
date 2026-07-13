@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
@@ -50,7 +51,7 @@ public class GoalsProjectionService {
     }
 
     public List<GoalProjectionDTO> getProjectionsForUser() {
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {

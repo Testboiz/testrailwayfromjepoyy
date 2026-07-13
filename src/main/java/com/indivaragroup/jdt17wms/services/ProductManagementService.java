@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
@@ -42,7 +43,7 @@ public class ProductManagementService {
         Boolean showAll = queryDTO != null ? queryDTO.getShowAll() : null;
         Boolean dashboardSummary = queryDTO != null ? queryDTO.getDashboardSummary() : null;
 
-        User user = userRepository.findById(AppConstants.USER_ID).orElse(null);
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
 
         // Check user risk profile questionnaire
         if (user != null &&

@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.Answer;
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
 import com.indivaragroup.jdt17wms.dto.response.OptionDTO;
@@ -83,7 +84,7 @@ public class RiskProfilerAssessmentService {
 
         int outputScore = rawScore * AppConstants.RISK_SCALING_FACTOR;
 
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         user.setRiskProfile(riskProfile);

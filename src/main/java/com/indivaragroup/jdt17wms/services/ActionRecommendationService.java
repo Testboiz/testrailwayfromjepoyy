@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
@@ -60,7 +61,7 @@ public class ActionRecommendationService {
      */
     public HealthDTO getHealthScore() {
         // ── Fetch all required data ──
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         List<Asset> assets = assetRepository.findAllByUserId(user.getId());
@@ -264,7 +265,7 @@ public class ActionRecommendationService {
     @Transactional
     public List<RecommendationDTO> generateRecommendations() {
         // ── Fetch all required data ──
-        User user = userRepository.findById(AppConstants.USER_ID)
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
         UUID userId = user.getId();
 

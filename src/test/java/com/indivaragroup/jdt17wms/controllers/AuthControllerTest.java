@@ -71,13 +71,14 @@ class AuthControllerTest extends BaseControllerTest {
     @Test
     void logout_withValidToken_shouldReturnSuccess() throws Exception {
         when(authService.extractEmailFromToken(anyString())).thenReturn("test@example.com");
+        when(authService.extractUserIdFromToken(anyString())).thenReturn(UUID.randomUUID());
 
         LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
                 .success(true)
                 .message("Logout successful")
                 .build();
 
-        when(authService.logout("test@example.com")).thenReturn(mockResponse);
+        when(authService.logout(any(UUID.class), anyString())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.test"))
@@ -86,18 +87,11 @@ class AuthControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("Logout successful"));
     }
 
-    // ✅ LOGOUT — without token (email = null)
+    // ❌ LOGOUT — without token should fail
     @Test
-    void logout_withoutToken_shouldStillReturnSuccess() throws Exception {
-        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
-                .success(true)
-                .message("Logout successful")
-                .build();
-
-        when(authService.logout(null)).thenReturn(mockResponse);
-
+    void logout_withoutToken_shouldFailWithUnauthorized() throws Exception {
         mockMvc.perform(post("/api/v1/auth/logout"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("No token provided"));
     }
 }
