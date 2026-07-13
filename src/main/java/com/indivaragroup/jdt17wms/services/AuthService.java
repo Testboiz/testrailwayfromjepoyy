@@ -159,11 +159,13 @@ public class AuthService {
             throw new ConflictException("Email already in use");
         }
 
+        UserRole role = userRepository.count() == 0 ? UserRole.ADMIN : UserRole.USER;
+
         User user = User.builder()
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .passwordHash(passwordEncoder.encode(dto.getPassword()))
-                .role(UserRole.USER)
+                .role(role)
                 .status("ACTIVE")
                 .questionnaireCompleted(false)
                 .build();

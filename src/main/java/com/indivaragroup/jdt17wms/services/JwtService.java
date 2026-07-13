@@ -37,21 +37,32 @@ public class JwtService {
     }
 
     public String generateAccessToken(User user) {
-        return buildToken(user.getEmail(), accessTokenExpirationMs, ACCESS_TOKEN_TYPE);
+        return buildToken(user, accessTokenExpirationMs, ACCESS_TOKEN_TYPE);
     }
 
     public String generateRefreshToken(User user) {
-        return buildToken(user.getEmail(), refreshTokenExpirationMs, REFRESH_TOKEN_TYPE);
+        return buildToken(user, refreshTokenExpirationMs, REFRESH_TOKEN_TYPE);
     }
 
-    private String buildToken(String email, long expirationMs, String tokenType) {
+    private String buildToken(User user, long expirationMs, String tokenType) {
         return Jwts.builder()
-                .subject(email)
+                .subject(user.getEmail())
+                .claim("email", user.getEmail())
+                .claim("userId", user.getId().toString())
+                .claim("role", "ROLE_" + user.getRole().name())
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    public String getRoleFromToken(String token) {
+        return getClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    public String getUserIdFromToken(String token) {
+        return getClaim(token, claims -> claims.get("userId", String.class));
     }
 
     public String getEmailFromToken(String token) {

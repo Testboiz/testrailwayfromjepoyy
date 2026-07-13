@@ -58,6 +58,7 @@ class RegisterServiceTest {
 
         when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
         when(passwordEncoder.encode(dto.getPassword())).thenReturn("encodedPassword");
+        when(userRepository.count()).thenReturn(1L);
         when(userRepository.save(any(User.class))).thenReturn(mockSavedUser);
         when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
 
@@ -76,6 +77,48 @@ class RegisterServiceTest {
 
         verify(userRepository, times(1)).existsByEmail(dto.getEmail());
         verify(passwordEncoder, times(1)).encode(dto.getPassword());
+        verify(userRepository, times(1)).count();
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(jwtService, times(1)).generateAccessToken(any(User.class));
+        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+    }
+
+    // 📝 REGISTER — success (first user gets Admin role)
+    @Test
+    void register_firstUser_shouldRegisterAsAdmin() {
+        AuthDTO dto = new AuthDTO("Admin User", "admin@example.com", "Password123!");
+        User mockSavedAdmin = User.builder()
+                .id(UUID.randomUUID())
+                .name(dto.getName())
+                .email(dto.getEmail())
+                .passwordHash("encodedPassword")
+                .role(UserRole.ADMIN)
+                .status("ACTIVE")
+                .questionnaireCompleted(false)
+                .build();
+
+        when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
+        when(passwordEncoder.encode(dto.getPassword())).thenReturn("encodedPassword");
+        when(userRepository.count()).thenReturn(0L);
+        when(userRepository.save(any(User.class))).thenReturn(mockSavedAdmin);
+        when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
+
+        AuthSuccessDTO response = authService.register(dto);
+
+        assertNotNull(response);
+        assertTrue(response.getSuccess());
+        assertEquals("Registration successful", response.getMessage());
+        assertEquals("mockJwtToken", response.getAccessToken());
+        assertEquals(900, response.getExpiresIn());
+        assertNotNull(response.getUser());
+        assertEquals("admin@example.com", response.getUser().getEmail());
+        assertEquals("Admin User", response.getUser().getName());
+        assertFalse(response.getUser().getQuestionnaireCompleted());
+        assertTrue(response.getUser().getIsAdmin());
+
+        verify(userRepository, times(1)).existsByEmail(dto.getEmail());
+        verify(passwordEncoder, times(1)).encode(dto.getPassword());
+        verify(userRepository, times(1)).count();
         verify(userRepository, times(1)).save(any(User.class));
         verify(jwtService, times(1)).generateAccessToken(any(User.class));
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
