@@ -12,6 +12,8 @@ import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -215,55 +217,28 @@ class RegisterServiceTest {
         assertTrue(details.stream().anyMatch(d -> "password".equals(d.getField()) && "Must be at least 8 characters".equals(d.getReason())));
     }
 
-    // 📝 REGISTER — password missing lowercase letter (validation exception)
-    @Test
-    void register_withPasswordMissingLowercase_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", "johndoe@example.com", "PASSWORD123!");
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
-        List<ValidationErrorDetailDTO> details = exception.getDetails();
-
-        assertTrue(details.stream().anyMatch(d -> "password".equals(d.getField()) && "Must contain lowercase letter".equals(d.getReason())));
-    }
-
-    // 📝 REGISTER — password missing uppercase letter (validation exception)
-    @Test
-    void register_withPasswordMissingUppercase_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", "johndoe@example.com", "password123!");
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
-        List<ValidationErrorDetailDTO> details = exception.getDetails();
-
-        assertTrue(details.stream().anyMatch(d -> "password".equals(d.getField()) && "Must contain uppercase letter".equals(d.getReason())));
-    }
-
-    // 📝 REGISTER — password missing symbol (validation exception)
-    @Test
-    void register_withPasswordMissingSymbol_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", "johndoe@example.com", "Password123");
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
-        List<ValidationErrorDetailDTO> details = exception.getDetails();
-
-        assertTrue(details.stream().anyMatch(d -> "password".equals(d.getField()) && "Must contain symbol".equals(d.getReason())));
-    }
-
-    // 📝 REGISTER — missing name (validation exception)
-    @Test
-    void register_withMissingName_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("", "johndoe@example.com", "Password123!");
+    // 📝 REGISTER — parameterized validation tests
+    @ParameterizedTest
+    @CsvSource({
+        "John Doe, johndoe@example.com, PASSWORD123!, password, Must contain lowercase letter, ERR-003",
+        "John Doe, johndoe@example.com, password123!, password, Must contain uppercase letter, ERR-003",
+        "John Doe, johndoe@example.com, Password123, password, Must contain symbol, ERR-003",
+        "'', johndoe@example.com, Password123!, name, Name is required, ERR-001"
+    })
+    void register_withInvalidData_shouldThrowValidationException(
+            String name, String email, String password, String expectedField, String expectedReason, String expectedType) {
+        AuthDTO dto = new AuthDTO(name, email, password);
 
         ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
         List<ValidationErrorDetailDTO> details = exception.getDetails();
 
         assertFalse(details.isEmpty());
-        ValidationErrorDetailDTO nameError = details.stream()
-                .filter(d -> "name".equals(d.getField()))
+        ValidationErrorDetailDTO error = details.stream()
+                .filter(d -> expectedField.equals(d.getField()) && expectedReason.equals(d.getReason()))
                 .findFirst()
                 .orElse(null);
 
-        assertNotNull(nameError);
-        assertEquals("Name is required", nameError.getReason());
-        assertEquals("ERR-001", nameError.getType());
+        assertNotNull(error);
+        assertEquals(expectedType, error.getType());
     }
 }

@@ -2,10 +2,13 @@ package com.indivaragroup.jdt17wms.exceptions;
 
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
 import lombok.Getter;
+
+import java.io.Serial;
 import java.util.List;
 
 @Getter
 public class ValidationException extends RuntimeException {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private final transient List<ValidationErrorDetailDTO> details;
