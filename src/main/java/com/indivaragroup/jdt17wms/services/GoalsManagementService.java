@@ -30,6 +30,10 @@ import java.util.UUID;
 @Service
 public class GoalsManagementService {
 
+    private static final String FIELD_TYPE = "type";
+    private static final String FIELD_TARGET_DATE = "targetDate";
+    private static final String ERROR_CODE_INVALID = "invalid";
+
     private final GoalRepository goalRepository;
     private final UserRepository userRepository;
     private final FinancialProfileRepository financialProfileRepository;
@@ -84,18 +88,18 @@ public class GoalsManagementService {
         String rawType = dto.getType();
         String normalizedType = rawType != null ? rawType.trim().toLowerCase() : "";
         if (!AppConstants.GOAL_MAX_MONTHS.containsKey(normalizedType)) {
-            bindException.rejectValue("type", "invalid", "Invalid goal type");
+            bindException.rejectValue(FIELD_TYPE, ERROR_CODE_INVALID, "Invalid goal type");
         }
 
         if (dto.getTargetDate() != null) {
             LocalDate now = LocalDate.now(clock);
             if (dto.getTargetDate().isBefore(now)) {
-                bindException.rejectValue("targetDate", "invalid", "Target date must be in the future");
+                bindException.rejectValue(FIELD_TARGET_DATE, ERROR_CODE_INVALID, "Target date must be in the future");
             } else if (AppConstants.GOAL_MAX_MONTHS.containsKey(normalizedType)) {
                 int maxMonths = AppConstants.GOAL_MAX_MONTHS.get(normalizedType);
                 long months = ChronoUnit.MONTHS.between(now, dto.getTargetDate());
                 if (months > maxMonths) {
-                    bindException.rejectValue("targetDate", "invalid", "Target date exceeds maximum limit of " + maxMonths + " months");
+                    bindException.rejectValue(FIELD_TARGET_DATE, ERROR_CODE_INVALID, "Target date exceeds maximum limit of " + maxMonths + " months");
                 }
             }
         }
@@ -158,13 +162,13 @@ public class GoalsManagementService {
         if (dto.getTargetDate() != null) {
             LocalDate now = LocalDate.now(clock);
             if (dto.getTargetDate().isBefore(now)) {
-                bindException.rejectValue("targetDate", "invalid", "Target date must be in the future");
+                bindException.rejectValue(FIELD_TARGET_DATE, ERROR_CODE_INVALID, "Target date must be in the future");
             } else {
                 String normalizedType = goal.getType() != null ? goal.getType().trim().toLowerCase() : "custom";
                 int maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(normalizedType, 60);
                 long months = ChronoUnit.MONTHS.between(now, dto.getTargetDate());
                 if (months > maxMonths) {
-                    bindException.rejectValue("targetDate", "invalid", "Target date exceeds maximum limit of " + maxMonths + " months");
+                    bindException.rejectValue(FIELD_TARGET_DATE, ERROR_CODE_INVALID, "Target date exceeds maximum limit of " + maxMonths + " months");
                 }
             }
         }

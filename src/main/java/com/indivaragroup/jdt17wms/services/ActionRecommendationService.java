@@ -142,9 +142,9 @@ public class ActionRecommendationService {
             long coveredGoals = goals.stream()
                     .filter(g -> {
                         String goalType = g.getType() != null
-                                ? g.getType().toLowerCase() : "custom";
+                                ? g.getType().toLowerCase() : CUSTOM_GOAL;
                         List<String> suitableTypes = GOAL_PRODUCT_TYPES
-                                .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get("custom"));
+                                .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get(CUSTOM_GOAL));
                         return suitableTypes.stream()
                                 .anyMatch(t -> ownedTypes.contains(t.toLowerCase()));
                     })
@@ -319,7 +319,7 @@ public class ActionRecommendationService {
                     ? (int) Math.round(liquidValue.doubleValue() / emergencyTarget.doubleValue() * 100)
                     : 0;
 
-            freshRecs.add(buildRecommendation(userId, "high", "emergency",
+            freshRecs.add(buildRecommendation(HIGH_PRIORITY, "emergency",
                     "Build your emergency fund",
                     String.format("You have %s in liquid assets — only %d%% of the recommended 6-month buffer (%s). "
                                     + "Without this, a crisis could force you to liquidate long-term investments at a loss.",
@@ -359,7 +359,7 @@ public class ActionRecommendationService {
                     String topName = topProduct != null ? topProduct.getName() : "One position";
                     int pct = (int) Math.round(concentration * 100);
 
-                    freshRecs.add(buildRecommendation(userId, "high", "rebalance",
+                    freshRecs.add(buildRecommendation( HIGH_PRIORITY, "rebalance",
                             String.format("%s is %d%% of your portfolio", topName, pct),
                             "Heavy concentration in a single product amplifies loss if it underperforms. "
                                     + "Adding a second product type reduces correlated risk without lowering "
@@ -381,9 +381,9 @@ public class ActionRecommendationService {
 
         if (priorityGoal != null) {
             String goalType = priorityGoal.getType() != null
-                    ? priorityGoal.getType().toLowerCase() : "custom";
+                    ? priorityGoal.getType().toLowerCase() : CUSTOM_GOAL;
             List<String> types = GOAL_PRODUCT_TYPES
-                    .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get("custom"));
+                    .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get(CUSTOM_GOAL));
 
             boolean hasMatchingType = types.stream().anyMatch(ownedTypes::contains);
             if (!hasMatchingType) {
@@ -404,7 +404,7 @@ public class ActionRecommendationService {
                     suggested = (p.getMinInvestment() != null ? p.getMinInvestment() : null);
                   }
 
-                  freshRecs.add(buildRecommendation(userId, "high", "goal",
+                  freshRecs.add(buildRecommendation( HIGH_PRIORITY, "goal",
                             String.format("Start building toward \"%s\"", priorityGoal.getName()),
                             String.format("Your priority goal needs %s%s. "
                                             + "You don't yet hold any %s — the product categories best aligned with this goal type.",
@@ -428,9 +428,9 @@ public class ActionRecommendationService {
         for (Goal goal : goals) {
             if (goal.getIsPriority() != null && goal.getIsPriority()) continue;
 
-            String goalType = goal.getType() != null ? goal.getType().toLowerCase() : "custom";
+            String goalType = goal.getType() != null ? goal.getType().toLowerCase() : CUSTOM_GOAL;
             List<String> types = GOAL_PRODUCT_TYPES
-                    .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get("custom"));
+                    .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get(CUSTOM_GOAL));
 
             boolean hasMatchingType = types.stream().anyMatch(ownedTypes::contains);
             if (!hasMatchingType) {
@@ -450,7 +450,7 @@ public class ActionRecommendationService {
                     suggested = (p.getMinInvestment() != null ? p.getMinInvestment() : null);
                   }
 
-                  freshRecs.add(buildRecommendation(userId, "medium", "goal",
+                  freshRecs.add(buildRecommendation(MEDIUM_PRIORITY, "goal",
                             String.format("No product aligned with \"%s\"", goal.getName()),
                             String.format("This goal works best with %s. %s (%s%% p.a.) fits the profile.",
                                     typeNames, p.getName(),
@@ -466,23 +466,23 @@ public class ActionRecommendationService {
         // Rule 5: Diversification gaps — missing eligible product types
         // ─────────────────────────────────────────
         for (String type : ALL_PRODUCT_TYPES) {
-            if (ownedTypes.contains(type)) continue;
+            if (!ownedTypes.contains(type)) {
+                Product p = bestOf(products, List.of(type), maxRiskLv, null);
+                if (p != null && !usedProductIds.contains(p.getId())) {
+                    freshRecs.add(buildRecommendation(MEDIUM_PRIORITY, "diversification",
+                            String.format("Add %s exposure", TYPE_LABELS.getOrDefault(type, type)),
+                            String.format("You hold no %s products. %s returns %s%% p.a. and fits within your %s profile "
+                                            + "— adding it reduces single-category concentration.",
+                                    TYPE_LABELS.getOrDefault(type, type), p.getName(),
+                                    p.getAnnualReturn() != null ? p.getAnnualReturn().toPlainString() : "0",
+                                    riskLabel(riskProfile)),
+                            p.getId(),
+                            p.getMinInvestment() != null ? p.getMinInvestment() : null,
+                            null));
 
-            Product p = bestOf(products, List.of(type), maxRiskLv, null);
-            if (p == null || usedProductIds.contains(p.getId())) continue;
-
-            freshRecs.add(buildRecommendation(userId, "medium", "diversification",
-                    String.format("Add %s exposure", TYPE_LABELS.getOrDefault(type, type)),
-                    String.format("You hold no %s products. %s returns %s%% p.a. and fits within your %s profile "
-                                    + "— adding it reduces single-category concentration.",
-                            TYPE_LABELS.getOrDefault(type, type), p.getName(),
-                            p.getAnnualReturn() != null ? p.getAnnualReturn().toPlainString() : "0",
-                            riskLabel(riskProfile)),
-                    p.getId(),
-                    p.getMinInvestment() != null ? p.getMinInvestment() : null,
-                    null));
-
-            usedProductIds.add(p.getId());
+                    usedProductIds.add(p.getId());
+                }
+            }
         }
 
         // ─────────────────────────────────────────
@@ -497,7 +497,7 @@ public class ActionRecommendationService {
                 .max(Comparator.comparing(p ->
                         p.getAnnualReturn() != null ? p.getAnnualReturn() : BigDecimal.ZERO));
 
-      topGrowth.ifPresent(tg -> freshRecs.add(buildRecommendation(userId, "low", "growth",
+      topGrowth.ifPresent(tg -> freshRecs.add(buildRecommendation( LOW_PRIORITY, "growth",
         String.format("Best unowned opportunity: %s", tg.getName()),
         String.format("At %s%% p.a., this is the highest-returning product within your %s profile "
             + "that you don't yet hold. Min. investment: %s.",
@@ -521,7 +521,7 @@ public class ActionRecommendationService {
                 // Rough 5-year simple projection: monthly × 12 × 5
                 BigDecimal fiveYearTotal = undeployed.multiply(BigDecimal.valueOf(60));
 
-                freshRecs.add(buildRecommendation(userId, "low", "surplus",
+                freshRecs.add(buildRecommendation( LOW_PRIORITY, "surplus",
                         String.format("%s/mo is not yet allocated", fmt(undeployed)),
                         String.format("After expenses and goal contributions, you still have %s per month "
                                         + "that could be working for you. Even at 5%% p.a., that compounds to %s over 5 years.",
@@ -599,7 +599,7 @@ public class ActionRecommendationService {
         }
 
         // ── Sort by priority weight (high → medium → low) and return as DTOs ──
-        Map<String, Integer> priorityWeight = Map.of("high", 0, "medium", 1, "low", 2);
+        Map<String, Integer> priorityWeight = Map.of(HIGH_PRIORITY, 0, MEDIUM_PRIORITY, 1, LOW_PRIORITY, 2);
         toReturn.sort(Comparator.comparingInt(r ->
                 priorityWeight.getOrDefault(r.getPriority(), 3)));
 
@@ -664,12 +664,12 @@ public class ActionRecommendationService {
     }
 
     /** Builds a Recommendation entity with PENDING status. */
-    private Recommendation buildRecommendation(UUID userId, String priority, String category,
+    private Recommendation buildRecommendation(String priority, String category,
                                                 String title, String reason,
                                                 UUID productId, BigDecimal suggestedAmount,
                                                 UUID goalId) {
         return Recommendation.builder()
-                .userId(userId)
+                .userId(SecurityUtils.getCurrentUserId())
                 .priority(priority)
                 .category(category)
                 .title(title)

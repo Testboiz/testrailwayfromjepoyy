@@ -20,6 +20,13 @@ public class JwtService {
     private static final String ACCESS_TOKEN_TYPE = "access";
     private static final String REFRESH_TOKEN_TYPE = "refresh";
 
+    // Claim name constants
+    private static final String CLAIM_EMAIL = "email";
+    private static final String CLAIM_USER_ID = "userId";
+    private static final String CLAIM_ROLE = "role";
+    private static final String CLAIM_IAT = "iat";
+    private static final String CLAIM_EXP = "exp";
+
     // Minimum 256-bit key for HS256
     private static final String DEFAULT_SECRET = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
 
@@ -48,22 +55,22 @@ public class JwtService {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(user.getEmail())
-                .claim("email", user.getEmail())
-                .claim("userId", user.getId().toString())
-                .claim("role", "ROLE_" + user.getRole().name())
+                .claim(CLAIM_EMAIL, user.getEmail())
+                .claim(CLAIM_USER_ID, user.getId().toString())
+                .claim(CLAIM_ROLE, "ROLE_" + user.getRole().name())
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
-                .claim("iat", now.getEpochSecond())
-                .claim("exp", now.plusMillis(expirationMs).getEpochSecond())
+                .claim(CLAIM_IAT, now.getEpochSecond())
+                .claim(CLAIM_EXP, now.plusMillis(expirationMs).getEpochSecond())
                 .signWith(getSigningKey())
                 .compact();
     }
 
     public String getRoleFromToken(String token) {
-        return getClaim(token, claims -> claims.get("role", String.class));
+        return getClaim(token, claims -> claims.get(CLAIM_ROLE, String.class));
     }
 
     public String getUserIdFromToken(String token) {
-        return getClaim(token, claims -> claims.get("userId", String.class));
+        return getClaim(token, claims -> claims.get(CLAIM_USER_ID, String.class));
     }
 
     public String getEmailFromToken(String token) {
@@ -72,17 +79,17 @@ public class JwtService {
 
     public String getEmailClaimFromToken(String token) {
         try {
-            return getClaim(token, claims -> claims.get("email", String.class));
+            return getClaim(token, claims -> claims.get(CLAIM_EMAIL, String.class));
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            return e.getClaims().get("email", String.class);
+            return e.getClaims().get(CLAIM_EMAIL, String.class);
         }
     }
 
     public String getUserIdClaimFromToken(String token) {
         try {
-            return getClaim(token, claims -> claims.get("userId", String.class));
+            return getClaim(token, claims -> claims.get(CLAIM_USER_ID, String.class));
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            return e.getClaims().get("userId", String.class);
+            return e.getClaims().get(CLAIM_USER_ID, String.class);
         }
     }
 

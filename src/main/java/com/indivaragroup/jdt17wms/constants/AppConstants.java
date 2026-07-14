@@ -12,6 +12,11 @@ public final class AppConstants {
         // Prevent instantiation
     }
 
+  public static final String CUSTOM_GOAL = "custom";
+  public static final String MEDIUM_PRIORITY = "medium";
+  public static final String HIGH_PRIORITY = "high";
+  public static final String LOW_PRIORITY = "low";
+
     public static final UUID USER_ID = UUID.fromString("7957b44d-131c-4e84-8bb8-6b68ebde72d9");
     public static final int DEFAULT_QUESTIONNAIRE_SIZE = 5;
     public static final int RISK_AVERSE_THRESHOLD = 3;
@@ -40,7 +45,7 @@ public final class AppConstants {
             "vehicle_purchase", List.of(MONEY_MARKET, DEPOSIT, BALANCED_FUND, BOND, SUKUK),
             "property", List.of(BALANCED_FUND, BOND, SUKUK, STOCK),
             "retirement", List.of(STOCK, BOND, SUKUK, BALANCED_FUND, MONEY_MARKET, DEPOSIT),
-            "custom", List.of(STOCK, MONEY_MARKET, BALANCED_FUND, BOND, SUKUK, DEPOSIT)
+            CUSTOM_GOAL, List.of(STOCK, MONEY_MARKET, BALANCED_FUND, BOND, SUKUK, DEPOSIT)
     );
     public static final Map<String, Integer> MAX_RISK_LEVELS = Map.of(
             "risk_averse", 2,
@@ -69,7 +74,7 @@ public final class AppConstants {
             "vehicle", 48,
             "property", 120,
             "retirement", 420,
-            "custom", 60
+            CUSTOM_GOAL, 60
     );
 
     // Security/Role Constants

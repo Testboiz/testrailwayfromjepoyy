@@ -30,6 +30,9 @@ import java.util.regex.Pattern;
 @Service
 public class AuthService {
 
+    private static final String FIELD_EMAIL = "email";
+    private static final String FIELD_PASSWORD = "password";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -59,10 +62,10 @@ public class AuthService {
         List<ValidationErrorDetailDTO> errors = new ArrayList<>();
 
         if (dto.getEmail() == null || dto.getEmail().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
+            errors.add(new ValidationErrorDetailDTO(FIELD_EMAIL, "Email is required", "ERR-001"));
         }
         if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("password","Password is Required", "ERR-001"));
+            errors.add(new ValidationErrorDetailDTO(FIELD_PASSWORD, "Password is Required", "ERR-001"));
         }
 
         User user = userRepository.findByEmail(dto.getEmail())
@@ -136,25 +139,25 @@ public class AuthService {
     public AuthSuccessDTO register(AuthDTO dto) {
         List<ValidationErrorDetailDTO> errors = new ArrayList<>();
         if (dto.getEmail() == null || dto.getEmail().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
+            errors.add(new ValidationErrorDetailDTO(FIELD_EMAIL, "Email is required", "ERR-001"));
         } else if (!Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matcher(dto.getEmail()).matches()) {
-            errors.add(new ValidationErrorDetailDTO("email", "Invalid email format", "ERR-002"));
+            errors.add(new ValidationErrorDetailDTO(FIELD_EMAIL, "Invalid email format", "ERR-002"));
         }
 
         if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("password", "Password is required", "ERR-001"));
+            errors.add(new ValidationErrorDetailDTO(FIELD_PASSWORD, "Password is required", "ERR-001"));
         } else {
             if (dto.getPassword().length() < 8) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must be at least 8 characters", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO(FIELD_PASSWORD, "Must be at least 8 characters", "ERR-003"));
             }
             if (!Pattern.compile("[a-z]").matcher(dto.getPassword()).find()) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must contain lowercase letter", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO(FIELD_PASSWORD, "Must contain lowercase letter", "ERR-003"));
             }
             if (!Pattern.compile("[A-Z]").matcher(dto.getPassword()).find()) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must contain uppercase letter", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO(FIELD_PASSWORD, "Must contain uppercase letter", "ERR-003"));
             }
             if (!Pattern.compile("[^a-zA-Z0-9]").matcher(dto.getPassword()).find()) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must contain symbol", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO(FIELD_PASSWORD, "Must contain symbol", "ERR-003"));
             }
         }
 
