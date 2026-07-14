@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ public class ActionRecommendationService {
     private final GoalRepository goalRepository;
     private final FinancialProfileRepository financialProfileRepository;
     private final ExpenseRepository expenseRepository;
+    private final Clock clock;
 
     public ActionRecommendationService(RecommendationRepository recommendationRepository,
                                        UserRepository userRepository,
@@ -36,7 +38,8 @@ public class ActionRecommendationService {
                                        ProductRepository productRepository,
                                        GoalRepository goalRepository,
                                        FinancialProfileRepository financialProfileRepository,
-                                       ExpenseRepository expenseRepository) {
+                                       ExpenseRepository expenseRepository,
+                                       Clock clock) {
         this.recommendationRepository = recommendationRepository;
         this.userRepository = userRepository;
         this.assetRepository = assetRepository;
@@ -44,6 +47,7 @@ public class ActionRecommendationService {
         this.goalRepository = goalRepository;
         this.financialProfileRepository = financialProfileRepository;
         this.expenseRepository = expenseRepository;
+        this.clock = clock;
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -554,7 +558,7 @@ public class ActionRecommendationService {
             existingByKey.put(ruleKey(r), r);
         }
 
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         Set<String> matchedKeys = new HashSet<>();
         List<Recommendation> toReturn = new ArrayList<>();
 
