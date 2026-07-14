@@ -6,6 +6,7 @@ import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
+import com.indivaragroup.jdt17wms.services.PnLCalculationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +32,9 @@ class AssetControllerTest extends BaseControllerTest {
 
     @MockBean
     private AssetsManagementService assetsManagementService;
+
+    @MockBean
+    private PnLCalculationService pnLCalculationService;
 
     @Test
     void createAsset_shouldReturnOk() throws Exception {
