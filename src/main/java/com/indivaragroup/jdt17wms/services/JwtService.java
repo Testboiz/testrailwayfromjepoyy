@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
+import java.time.Instant;
 import java.util.function.Function;
 
 @Service
@@ -45,14 +45,15 @@ public class JwtService {
     }
 
     private String buildToken(User user, long expirationMs, String tokenType) {
+        Instant now = Instant.now();
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("email", user.getEmail())
                 .claim("userId", user.getId().toString())
                 .claim("role", "ROLE_" + user.getRole().name())
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .claim("iat", now.getEpochSecond())
+                .claim("exp", now.plusMillis(expirationMs).getEpochSecond())
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -86,16 +87,12 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, User user) {
-        final String email = getEmailFromToken(token);
-        return (email.equals(user.getEmail())) && !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token) {
-        return getExpiration(token).before(new Date());
-    }
-
-    private Date getExpiration(String token) {
-        return getClaim(token, Claims::getExpiration);
+        try {
+            final String email = getEmailFromToken(token);
+            return (email.equals(user.getEmail()));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public <T> T getClaim(String token, Function<Claims, T> claimsResolver) {
