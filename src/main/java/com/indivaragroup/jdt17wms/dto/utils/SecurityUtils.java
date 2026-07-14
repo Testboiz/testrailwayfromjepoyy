@@ -13,8 +13,8 @@ public final class SecurityUtils {
 
     public static UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UserDTO) {
-            return ((UserDTO) auth.getPrincipal()).getId();
+        if (auth != null && auth.getPrincipal() instanceof UserDTO authData) {
+            return authData.getId();
         }
         return AppConstants.USER_ID;
     }

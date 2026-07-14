@@ -1,6 +1,5 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
@@ -395,12 +394,17 @@ public class ActionRecommendationService {
                             .map(t -> TYPE_LABELS.getOrDefault(t, t))
                             .collect(Collectors.joining(" or "));
 
-                    BigDecimal suggested = priorityGoal.getMonthlyContribution() != null
-                            ? priorityGoal.getMonthlyContribution()
-                                    .max(p.getMinInvestment() != null ? p.getMinInvestment() : BigDecimal.ZERO)
-                            : (p.getMinInvestment() != null ? p.getMinInvestment() : null);
+                    BigDecimal suggested;
+                  if (priorityGoal.getMonthlyContribution() != null) {
+                    if (p.getMinInvestment() != null) suggested = priorityGoal.getMonthlyContribution()
+                      .max(p.getMinInvestment());
+                    else suggested = priorityGoal.getMonthlyContribution()
+                      .max(BigDecimal.ZERO);
+                  } else {
+                    suggested = (p.getMinInvestment() != null ? p.getMinInvestment() : null);
+                  }
 
-                    freshRecs.add(buildRecommendation(userId, "high", "goal",
+                  freshRecs.add(buildRecommendation(userId, "high", "goal",
                             String.format("Start building toward \"%s\"", priorityGoal.getName()),
                             String.format("Your priority goal needs %s%s. "
                                             + "You don't yet hold any %s — the product categories best aligned with this goal type.",
@@ -436,12 +440,17 @@ public class ActionRecommendationService {
                             .map(t -> TYPE_LABELS.getOrDefault(t, t))
                             .collect(Collectors.joining(" or "));
 
-                    BigDecimal suggested = goal.getMonthlyContribution() != null
-                            ? goal.getMonthlyContribution()
-                                    .max(p.getMinInvestment() != null ? p.getMinInvestment() : BigDecimal.ZERO)
-                            : (p.getMinInvestment() != null ? p.getMinInvestment() : null);
+                    BigDecimal suggested;
+                  if (goal.getMonthlyContribution() != null) {
+                    if (p.getMinInvestment() != null) suggested = goal.getMonthlyContribution()
+                      .max(p.getMinInvestment());
+                    else suggested = goal.getMonthlyContribution()
+                      .max(BigDecimal.ZERO);
+                  } else {
+                    suggested = (p.getMinInvestment() != null ? p.getMinInvestment() : null);
+                  }
 
-                    freshRecs.add(buildRecommendation(userId, "medium", "goal",
+                  freshRecs.add(buildRecommendation(userId, "medium", "goal",
                             String.format("No product aligned with \"%s\"", goal.getName()),
                             String.format("This goal works best with %s. %s (%s%% p.a.) fits the profile.",
                                     typeNames, p.getName(),

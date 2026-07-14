@@ -1,7 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.services.ActionRecommendationService;
-import com.indivaragroup.jdt17wms.services.ProductRecommendationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -22,9 +21,6 @@ class RecommendationControllerTest extends BaseControllerTest {
 
     @MockBean
     private ActionRecommendationService actionRecommendationService;
-
-    @MockBean
-    private ProductRecommendationService productRecommendationService;
 
     @Test
     void getHealth_shouldReturnOk() throws Exception {
