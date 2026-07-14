@@ -6,10 +6,12 @@ import java.util.List;
 
 @Getter
 public class ValidationException extends RuntimeException {
-    private final List<ValidationErrorDetailDTO> details;
+    private static final long serialVersionUID = 1L;
+
+    private final transient List<ValidationErrorDetailDTO> details;
     private final String type;
 
-    public ValidationException(List<ValidationErrorDetailDTO> details,String type) {
+    public ValidationException(List<ValidationErrorDetailDTO> details, String type) {
         super("Invalid field values");
         this.details = details;
         this.type = type;
