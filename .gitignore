@@ -36,10 +36,11 @@ build/
 # Local Environment Variables
 .env
 
-application-local.yaml
 GEMINI-INPUT.md
 API-DOCS.md
 DATABASE-SCHEMA.md
-.claude/
+API_TESTING_README.md
+postman_collection_assets_pnl.json
 .hermes/
+.claude/
 
