@@ -1,5 +1,7 @@
 package com.indivaragroup.jdt17wms.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.indivaragroup.jdt17wms.constants.AppConstants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,12 +20,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
-  private static final String ADMIN_ROLE = "ADMIN";
-  private static final String USER_ROLE = "USER";
+  private final ObjectMapper objectMapper;
 
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.objectMapper = objectMapper;
   }
 
   @Bean
@@ -39,24 +41,24 @@ public class SecurityConfig {
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh",
                          "/auth/login", "/auth/register", "/auth/refresh", "/error").permitAll()
-        .requestMatchers(HttpMethod.GET, "/api/v1/products").hasAnyRole(USER_ROLE, ADMIN_ROLE)
-        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole(ADMIN_ROLE)
-        .requestMatchers("/api/v1/admin-dashboard").hasRole(ADMIN_ROLE)
-        .requestMatchers("/api/v1/audit", "/api/v1/audit/**").hasRole(ADMIN_ROLE)
-        .requestMatchers("/api/v1/users", "/api/v1/users/**").hasRole(ADMIN_ROLE)
-        .requestMatchers("/api/v1/me/**", "/me/**").hasRole(USER_ROLE)
+        .requestMatchers(HttpMethod.GET, "/api/v1/products").hasAnyRole(AppConstants.USER_ROLE, AppConstants.ADMIN_ROLE)
+        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole(AppConstants.ADMIN_ROLE)
+        .requestMatchers("/api/v1/admin-dashboard").hasRole(AppConstants.ADMIN_ROLE)
+        .requestMatchers("/api/v1/audit", "/api/v1/audit/**").hasRole(AppConstants.ADMIN_ROLE)
+        .requestMatchers("/api/v1/users", "/api/v1/users/**").hasRole(AppConstants.ADMIN_ROLE)
+        .requestMatchers("/api/v1/me/**", "/me/**").hasRole(AppConstants.USER_ROLE)
         .anyRequest().authenticated()
       )
       .exceptionHandling(exceptions -> exceptions
         .authenticationEntryPoint((request, response, authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Unauthorized\",\"code\":401}");
+            response.getWriter().write(objectMapper.writeValueAsString(AppConstants.ERROR_UNAUTHORIZED));
         })
         .accessDeniedHandler((request, response, accessDeniedException) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Forbidden\",\"code\":403}");
+            response.getWriter().write(objectMapper.writeValueAsString(AppConstants.ERROR_FORBIDDEN));
         })
       )
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

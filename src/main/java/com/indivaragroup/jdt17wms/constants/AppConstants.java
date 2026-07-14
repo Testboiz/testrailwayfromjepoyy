@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.constants;
 
+import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -70,4 +71,21 @@ public final class AppConstants {
             "retirement", 420,
             "custom", 60
     );
+
+    // Security/Role Constants
+    public static final String ADMIN_ROLE = "ADMIN";
+    public static final String USER_ROLE = "USER";
+    public static final String ROLE_ADMIN = "ROLE_ADMIN";
+    public static final String ROLE_USER = "ROLE_USER";
+
+    // Pre-constructed ErrorResponseDTOs
+    public static final ErrorResponseDTO ERROR_UNAUTHORIZED = ErrorResponseDTO.builder()
+            .error("Unauthorized")
+            .code(401)
+            .build();
+
+    public static final ErrorResponseDTO ERROR_FORBIDDEN = ErrorResponseDTO.builder()
+            .error("Forbidden")
+            .code(403)
+            .build();
 }

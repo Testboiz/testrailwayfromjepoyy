@@ -89,12 +89,16 @@ public class AuthService {
                 .build();
         auditLogRepository.save(auditLog);
 
+        boolean isFirstEver = userRepository.findUserSecurityProjectionByEmail(user.getEmail())
+                .map(p -> p.getPriorCount() == 0)
+                .orElse(false);
+
         UserDTO userDto = UserDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .questionnaireCompleted(user.getQuestionnaireCompleted())
-                .isAdmin(user.getRole() == UserRole.ADMIN)
+                .isAdmin(isFirstEver || user.getRole() == UserRole.ADMIN)
                 .build();
 
         return AuthSuccessDTO.builder()
@@ -166,7 +170,7 @@ public class AuthService {
             throw new ConflictException("Email already in use");
         }
 
-        UserRole role = userRepository.count() == 0 ? UserRole.ADMIN : UserRole.USER;
+        UserRole role = UserRole.USER;
 
         User user = User.builder()
                 .name(dto.getName())
@@ -193,12 +197,16 @@ public class AuthService {
                 .build();
         auditLogRepository.save(auditLog);
 
+        boolean isFirstEver = userRepository.findUserSecurityProjectionByEmail(savedUser.getEmail())
+                .map(p -> p.getPriorCount() == 0)
+                .orElse(false);
+
         UserDTO userDto = UserDTO.builder()
                 .id(savedUser.getId())
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
                 .questionnaireCompleted(user.getQuestionnaireCompleted())
-                .isAdmin(savedUser.getRole() == UserRole.ADMIN)
+                .isAdmin(isFirstEver || savedUser.getRole() == UserRole.ADMIN)
                 .build();
 
         return AuthSuccessDTO.builder()

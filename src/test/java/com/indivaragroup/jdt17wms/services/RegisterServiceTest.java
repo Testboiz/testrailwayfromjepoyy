@@ -56,10 +56,13 @@ class RegisterServiceTest {
                 .questionnaireCompleted(false)
                 .build();
 
+        com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection mockProjection = mock(com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection.class);
+        when(mockProjection.getPriorCount()).thenReturn(1L);
+
         when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
         when(passwordEncoder.encode(dto.getPassword())).thenReturn("encodedPassword");
-        when(userRepository.count()).thenReturn(1L);
         when(userRepository.save(any(User.class))).thenReturn(mockSavedUser);
+        when(userRepository.findUserSecurityProjectionByEmail(dto.getEmail())).thenReturn(java.util.Optional.of(mockProjection));
         when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
 
         AuthSuccessDTO response = authService.register(dto);
@@ -77,8 +80,8 @@ class RegisterServiceTest {
 
         verify(userRepository, times(1)).existsByEmail(dto.getEmail());
         verify(passwordEncoder, times(1)).encode(dto.getPassword());
-        verify(userRepository, times(1)).count();
         verify(userRepository, times(1)).save(any(User.class));
+        verify(userRepository, times(1)).findUserSecurityProjectionByEmail(dto.getEmail());
         verify(jwtService, times(1)).generateAccessToken(any(User.class));
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
     }
@@ -92,15 +95,18 @@ class RegisterServiceTest {
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .passwordHash("encodedPassword")
-                .role(UserRole.ADMIN)
+                .role(UserRole.USER)
                 .status("ACTIVE")
                 .questionnaireCompleted(false)
                 .build();
 
+        com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection mockProjection = mock(com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection.class);
+        when(mockProjection.getPriorCount()).thenReturn(0L);
+
         when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
         when(passwordEncoder.encode(dto.getPassword())).thenReturn("encodedPassword");
-        when(userRepository.count()).thenReturn(0L);
         when(userRepository.save(any(User.class))).thenReturn(mockSavedAdmin);
+        when(userRepository.findUserSecurityProjectionByEmail(dto.getEmail())).thenReturn(java.util.Optional.of(mockProjection));
         when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
 
         AuthSuccessDTO response = authService.register(dto);
@@ -118,8 +124,8 @@ class RegisterServiceTest {
 
         verify(userRepository, times(1)).existsByEmail(dto.getEmail());
         verify(passwordEncoder, times(1)).encode(dto.getPassword());
-        verify(userRepository, times(1)).count();
         verify(userRepository, times(1)).save(any(User.class));
+        verify(userRepository, times(1)).findUserSecurityProjectionByEmail(dto.getEmail());
         verify(jwtService, times(1)).generateAccessToken(any(User.class));
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
     }

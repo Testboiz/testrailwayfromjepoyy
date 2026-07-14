@@ -1,6 +1,5 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
@@ -13,6 +12,9 @@ import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -28,6 +30,20 @@ public class ProductManagementService {
     public ProductManagementService(ProductRepository productRepository, UserRepository userRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+    }
+
+    private boolean isUserRole(User user) {
+        if (user == null) {
+            return false;
+        }
+        if (user.getRole() == UserRole.ADMIN) {
+            return false;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return auth == null
+        || !(auth.getPrincipal() instanceof UserDTO principal)
+        || !principal.getId().equals(user.getId())
+        || !Boolean.TRUE.equals(principal.getIsAdmin());
     }
 
     public Page<Product> getAllProducts(Pageable pageable) {
@@ -46,8 +62,7 @@ public class ProductManagementService {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
 
         // Check user risk profile questionnaire
-        if (user != null &&
-            user.getRole() == UserRole.USER &&
+        if (isUserRole(user) &&
             (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted())
         ) {
                 throw new MissingRiskProfileException("Risk Profiler Assessment Required");
@@ -57,14 +72,14 @@ public class ProductManagementService {
       List<Product> products = productRepository.findAll();
 
         // 1. Visibility filter
-        if (user != null && user.getRole() == UserRole.USER) {
+        if (isUserRole(user)) {
             products = products.stream()
                     .filter(p -> p.getVisible() != null && p.getVisible())
                     .toList();
         }
 
         // 2. Risk level filter
-        if (user != null && user.getRole() == UserRole.USER) {
+        if (isUserRole(user)) {
             boolean shouldShowAll = showAll != null && showAll;
             String riskProfile = user.getRiskProfile();
             boolean isRiskTaker = riskProfile != null && (riskProfile.equalsIgnoreCase("risk_taker"));

@@ -1,5 +1,8 @@
 package com.indivaragroup.jdt17wms.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
@@ -11,6 +14,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.lang.NonNullApi;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,10 +31,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository, ObjectMapper objectMapper) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -79,16 +86,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String roleToUse = (claimRole != null) ? claimRole : ("ROLE_" + userRole.name());
             if (isEarliest) {
-                roleToUse = "ROLE_ADMIN";
-            } else if ("ROLE_ADMIN".equals(roleToUse)) {
-                roleToUse = "ROLE_USER";
+                roleToUse = AppConstants.ROLE_ADMIN;
+            } else if (AppConstants.ROLE_ADMIN.equals(roleToUse)) {
+                roleToUse = AppConstants.ROLE_USER;
             }
 
             UserDTO principal = UserDTO.builder()
                     .id(projection.getId())
                     .name(projection.getName())
                     .email(userEmail)
-                    .isAdmin("ROLE_ADMIN".equals(roleToUse))
+                    .isAdmin(AppConstants.ROLE_ADMIN.equals(roleToUse))
                     .questionnaireCompleted(false)
                     .build();
 
@@ -118,6 +125,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void sendUnauthorizedError(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        response.getWriter().write("{\"error\":\"" + message + "\",\"code\":401}");
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .error(message)
+                .code(401)
+                .build();
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }
