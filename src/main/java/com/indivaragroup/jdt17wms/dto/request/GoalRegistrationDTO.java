@@ -2,16 +2,13 @@ package com.indivaragroup.jdt17wms.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -31,6 +28,7 @@ public class GoalRegistrationDTO {
     @JsonProperty("target_amount")
     @NotNull(message = "Must not be null")
     @DecimalMin(value = "0.0", message = "Must not be negative")
+    @DecimalMax(value = "100000000.00", message = "Target amount exceeds maximum allowed")
     private BigDecimal targetAmount;
 
     @JsonProperty("monthly_contribution")
@@ -41,10 +39,13 @@ public class GoalRegistrationDTO {
     @JsonProperty("target_date")
     @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Must not be null")
+    @Future(message = "Target date must be in the future")
     private LocalDate targetDate;
 
     @JsonProperty("is_priority")
+    @NotNull(message = "Must not be null")
     private Boolean isPriority;
 
+  @Size(max = 1000, message = "Notes must be 1000 characters or fewer")
     private String notes;
 }
