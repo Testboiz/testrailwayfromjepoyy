@@ -7,6 +7,8 @@ import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
 import com.indivaragroup.jdt17wms.services.PnLCalculationService;
+import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -44,7 +46,7 @@ class AssetControllerTest extends BaseControllerTest {
 
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")
-                        .content("{\"product_id\":\"" + productId + "\",\"units\":10.5,\"amount\":100.0,\"current_value\":110.0}"))
+                        .content("{\"product_id\":\"" + productId + "\",\"units\":10.5,\"amount\":100.0,\"current_value\":110.0,\"purchase_date\":\"2023-01-01 00:00:00\"}"))
                 .andExpect(status().isOk());
     }
 
@@ -55,12 +57,12 @@ class AssetControllerTest extends BaseControllerTest {
         // units are negative -> invalid
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")
-                        .content("{\"product_id\":\"" + productId + "\",\"units\":-10.5,\"amount\":100.0,\"current_value\":110.0}"))
+                        .content("{\"product_id\":\"" + productId + "\",\"units\":-10.5,\"amount\":100.0,\"current_value\":110.0,\"purchase_date\":\"2023-01-01 00:00:00\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Invalid field values"))
                 .andExpect(jsonPath("$.type").value("ERR-001"))
                 .andExpect(jsonPath("$.details[0].field").value("units"))
-                .andExpect(jsonPath("$.details[0].reason").value("Must not be negative"));
+                .andExpect(jsonPath("$.details[0].reason").value("Must be at least positive"));
     }
 
     @Test
@@ -71,7 +73,7 @@ class AssetControllerTest extends BaseControllerTest {
 
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")
-                        .content("{\"product_id\":\"" + productId + "\",\"units\":10.5,\"amount\":100.0,\"current_value\":110.0}"))
+                        .content("{\"product_id\":\"" + productId + "\",\"units\":10.5,\"amount\":100.0,\"current_value\":110.0,\"purchase_date\":\"2023-01-01 00:00:00\"}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error").value("Can’t track delisted products"))
                 .andExpect(jsonPath("$.type").value("ERR-004"))
@@ -135,5 +137,18 @@ class AssetControllerTest extends BaseControllerTest {
 
         mockMvc.perform(delete("/api/v1/me/assets/" + id))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void getAssetsPnL_shouldReturnOk() throws Exception {
+        AssetsPnLResponseDTO pnl = AssetsPnLResponseDTO.builder()
+                .assetId(UUID.randomUUID())
+                .currentValue(BigDecimal.TEN)
+                .build();
+        when(pnLCalculationService.computePnLForAllAssets()).thenReturn(List.of(pnl));
+
+        mockMvc.perform(get("/api/v1/me/assets/pnl"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].currentValue").value(10));
     }
 }

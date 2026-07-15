@@ -1,9 +1,12 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
+import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
+import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.TransactionAction;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
@@ -18,12 +21,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PnLCalculationServiceTest {
@@ -62,6 +66,59 @@ class PnLCalculationServiceTest {
                 .build();
     }
 
+    // --- computePnLForAllAssets Tests ---
+
+    @Test
+    void testComputePnLForAllAssets_success() {
+        User user = User.builder().id(AppConstants.USER_ID).build();
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(user.getId())).thenReturn(List.of(asset));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
+                .thenReturn(Collections.emptyList());
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
+                .thenReturn(Collections.emptyList());
+
+        List<AssetsPnLResponseDTO> results = pnLCalculationService.computePnLForAllAssets();
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals(productId, results.get(0).getProductId());
+    }
+
+    @Test
+    void testComputePnLForAllAssets_userNotFound_throwsNotFoundException() {
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+
+        NotFoundException ex = assertThrows(NotFoundException.class, () -> pnLCalculationService.computePnLForAllAssets());
+        assertEquals("User not Found", ex.getMessage());
+    }
+
+    // --- computePnLForAsset Tests ---
+
+    @Test
+    void testComputePnL_productNotFound_throwsNotFoundException() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        NotFoundException ex = assertThrows(NotFoundException.class, () -> pnLCalculationService.computePnLForAsset(asset));
+        assertEquals("Product not found", ex.getMessage());
+    }
+
+    @Test
+    void testComputePnL_productCurrentPriceNull_defaultsToZero() {
+        product.setCurrentPrice(null);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
+                .thenReturn(Collections.emptyList());
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
+                .thenReturn(Collections.emptyList());
+
+        AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
+
+        assertEquals(0, result.getCurrentValue().compareTo(BigDecimal.ZERO));
+        assertEquals(0, result.getPotentialPnL().compareTo(BigDecimal.ZERO));
+    }
+
     @Test
     void testComputePnL_SingleBuyOnly_PositivePnL() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -80,22 +137,11 @@ class PnLCalculationServiceTest {
 
         AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
 
-        // Avg Price: 5000
         assertEquals(BigDecimal.valueOf(5000).setScale(4, RoundingMode.HALF_UP), result.getAvgPrice());
-        
-        // Remaining units: 100
         assertEquals(BigDecimal.valueOf(100.0), result.getUnits());
-        
-        // Current value: 100 * 5500 = 550000
         assertEquals(BigDecimal.valueOf(550000).setScale(2, RoundingMode.HALF_UP), result.getCurrentValue());
-        
-        // Potential PnL: (5500 - 5000) * 100 = 50000
         assertEquals(BigDecimal.valueOf(50000).setScale(2, RoundingMode.HALF_UP), result.getPotentialPnL());
-        
-        // Potential PnL %: 500 / 5000 * 100 = 10%
         assertEquals(BigDecimal.valueOf(10.00).setScale(2, RoundingMode.HALF_UP), result.getPotentialPnLPercent());
-        
-        // Realized PnL: 0
         assertEquals(BigDecimal.ZERO, result.getRealizedPnL());
         assertEquals(BigDecimal.ZERO, result.getRealizedPnLPercent());
     }
@@ -103,16 +149,14 @@ class PnLCalculationServiceTest {
     @Test
     void testComputePnL_MultipleBuys_WeightedAverage() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        
-        // Buy 1: 100 units @ 5000
+
         TransactionHistory buy1 = TransactionHistory.builder()
                 .action(TransactionAction.BUY)
                 .units(BigDecimal.valueOf(100))
                 .pricePerUnit(BigDecimal.valueOf(5000))
                 .totalAmount(BigDecimal.valueOf(500000))
                 .build();
-                
-        // Buy 2: 50 units @ 5200
+
         TransactionHistory buy2 = TransactionHistory.builder()
                 .action(TransactionAction.BUY)
                 .units(BigDecimal.valueOf(50))
@@ -129,15 +173,13 @@ class PnLCalculationServiceTest {
 
         AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
 
-        // Avg Price: (500000 + 260000) / 150 = 5066.6667
         assertEquals(BigDecimal.valueOf(5066.6667).setScale(4, RoundingMode.HALF_UP), result.getAvgPrice());
     }
 
     @Test
     void testComputePnL_WithPartialSell_RealizedAndPotentialPnL() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        
-        // Buy 100 @ 5000
+
         TransactionHistory buy = TransactionHistory.builder()
                 .action(TransactionAction.BUY)
                 .units(BigDecimal.valueOf(100))
@@ -145,7 +187,6 @@ class PnLCalculationServiceTest {
                 .totalAmount(BigDecimal.valueOf(500000))
                 .build();
 
-        // Sell 40 @ 5300 (Realized gain: 40 * (5300 - 5000) = 12000)
         TransactionHistory sell = TransactionHistory.builder()
                 .action(TransactionAction.SELL)
                 .units(BigDecimal.valueOf(40))
@@ -160,36 +201,113 @@ class PnLCalculationServiceTest {
 
         AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
 
-        // Remaining units: 100 - 40 = 60
         assertEquals(BigDecimal.valueOf(60.0), result.getUnits());
-
-        // Potential PnL on remaining 60 units: 60 * (5500 - 5000) = 30000
         assertEquals(BigDecimal.valueOf(30000).setScale(2, RoundingMode.HALF_UP), result.getPotentialPnL());
-
-        // Realized PnL: 212000 - (40 * 5000) = 12000
         assertEquals(BigDecimal.valueOf(12000).setScale(2, RoundingMode.HALF_UP), result.getRealizedPnL());
-
-        // Realized PnL %: 12000 / 200000 * 100 = 6%
         assertEquals(BigDecimal.valueOf(6.00).setScale(2, RoundingMode.HALF_UP), result.getRealizedPnLPercent());
     }
 
     @Test
     void testComputePnL_NoBuyTransactions_FallbackToAssetAmount() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        
-        // No transactions exist (legacy data)
+
         when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
                 .thenReturn(List.of());
         when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
                 .thenReturn(List.of());
 
-        // Asset has 100 units worth 500000 cost basis -> avg price = 5000
         AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
 
-        // Should fall back to 500000 / 100 = 5000
         assertEquals(BigDecimal.valueOf(5000).setScale(4, RoundingMode.HALF_UP), result.getAvgPrice());
-        
-        // Potential PnL: 100 * (5500 - 5000) = 50000
         assertEquals(BigDecimal.valueOf(50000).setScale(2, RoundingMode.HALF_UP), result.getPotentialPnL());
+    }
+
+    @Test
+    void testComputePnL_NoBuyTransactions_ZeroUnitsFallback() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        asset.setUnits(BigDecimal.ZERO);
+
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
+                .thenReturn(List.of());
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
+                .thenReturn(List.of());
+
+        AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
+
+        assertEquals(0, result.getAvgPrice().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void testComputePnL_BuyTransactionsWithZeroTotalUnits() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        TransactionHistory buyZero = TransactionHistory.builder()
+                .action(TransactionAction.BUY)
+                .units(BigDecimal.ZERO)
+                .pricePerUnit(BigDecimal.valueOf(5000))
+                .build();
+
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
+                .thenReturn(List.of(buyZero));
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
+                .thenReturn(List.of());
+
+        AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
+
+        assertEquals(0, result.getAvgPrice().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void testComputePnL_FullySoldAsset_ZeroRemainingUnits() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        TransactionHistory buy = TransactionHistory.builder()
+                .action(TransactionAction.BUY)
+                .units(BigDecimal.valueOf(100))
+                .pricePerUnit(BigDecimal.valueOf(5000))
+                .build();
+        TransactionHistory sellAll = TransactionHistory.builder()
+                .action(TransactionAction.SELL)
+                .units(BigDecimal.valueOf(100))
+                .totalAmount(BigDecimal.valueOf(510000))
+                .build();
+
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
+                .thenReturn(List.of(buy));
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
+                .thenReturn(List.of(sellAll));
+
+        AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
+
+        assertEquals(0, result.getUnits().compareTo(BigDecimal.ZERO));
+        assertEquals(0, result.getPotentialPnL().compareTo(BigDecimal.ZERO));
+        assertEquals(0, result.getPotentialPnLPercent().compareTo(BigDecimal.ZERO));
+        assertEquals(BigDecimal.valueOf(10000).setScale(2, RoundingMode.HALF_UP), result.getRealizedPnL());
+    }
+
+    @Test
+    void testComputePnL_ZeroAveragePrice_BypassesDivisions() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        TransactionHistory buyFree = TransactionHistory.builder()
+                .action(TransactionAction.BUY)
+                .units(BigDecimal.valueOf(100))
+                .pricePerUnit(BigDecimal.ZERO)
+                .build();
+        TransactionHistory sell = TransactionHistory.builder()
+                .action(TransactionAction.SELL)
+                .units(BigDecimal.valueOf(40))
+                .totalAmount(BigDecimal.valueOf(10000))
+                .build();
+
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
+                .thenReturn(List.of(buyFree));
+        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
+                .thenReturn(List.of(sell));
+
+        AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
+
+        assertEquals(0, result.getAvgPrice().compareTo(BigDecimal.ZERO));
+        assertEquals(0, result.getPotentialPnL().compareTo(BigDecimal.ZERO));
+        assertEquals(0, result.getPotentialPnLPercent().compareTo(BigDecimal.ZERO));
+        assertEquals(BigDecimal.valueOf(10000).setScale(2, RoundingMode.HALF_UP), result.getRealizedPnL());
+        assertEquals(0, result.getRealizedPnLPercent().compareTo(BigDecimal.ZERO));
     }
 }

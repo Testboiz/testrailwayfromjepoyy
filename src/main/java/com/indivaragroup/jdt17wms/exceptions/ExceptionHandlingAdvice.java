@@ -5,7 +5,6 @@ import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -73,11 +72,20 @@ public class ExceptionHandlingAdvice {
         return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
-    public ResponseEntity<ValidationErrorResponseDTO> handleValidationException(Exception ex) {
-      BindingResult bindingResult = (ex instanceof MethodArgumentNotValidException methodArgumentNotValidException)
-        ? methodArgumentNotValidException.getBindingResult()
-        : (BindingResult) ex;
+    @ExceptionHandler(GoalValidationException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleGoalValidationException(GoalValidationException ex) {
+        ValidationErrorResponseDTO errorResponse = ValidationErrorResponseDTO.builder()
+                .error("Invalid field values")
+                .type("ERR-001")
+                .code(HttpStatus.BAD_REQUEST.value())
+                .details(ex.getErrors())
+                .build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleValidationException(MethodArgumentNotValidException ex) {
+        BindingResult bindingResult = ex.getBindingResult();
 
         List<ValidationErrorDetailDTO> details = bindingResult.getFieldErrors().stream()
                 .map(fieldError -> {

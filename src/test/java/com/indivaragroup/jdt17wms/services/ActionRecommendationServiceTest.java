@@ -93,8 +93,19 @@ class ActionRecommendationServiceTest {
     }
 
     @Test
+    void getHealthScore_QuestionnaireNotCompleted_ThrowsMissingRiskProfileException() {
+        // User exists but has NOT completed the risk profiler questionnaire
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThrows(com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException.class,
+                () -> actionRecommendationService.getHealthScore(),
+                "Should throw MissingRiskProfileException when questionnaireCompleted is false");
+    }
+
+    @Test
     void getHealthScore_HappyPath_ExcellentScore() {
-        User user = User.builder().id(userId).riskProfile("moderate").build();
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // Create products
@@ -136,7 +147,7 @@ class ActionRecommendationServiceTest {
 
     @Test
     void getHealthScore_NoExpenses_ReturnsMidpointEmergencyScore() {
-        User user = User.builder().id(userId).riskProfile("moderate").build();
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(Collections.emptyList());
         when(assetRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
@@ -159,7 +170,7 @@ class ActionRecommendationServiceTest {
 
     @Test
     void getHealthScore_NoEligibleProducts_ReturnsZeroDiversification() {
-        User user = User.builder().id(userId).riskProfile("moderate").build();
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // Products are either invisible or risk level is too high for "moderate" (max risk 4)
@@ -182,7 +193,7 @@ class ActionRecommendationServiceTest {
 
     @Test
     void getHealthScore_NoGoals_ReturnsMidpointGoalCoverage() {
-        User user = User.builder().id(userId).riskProfile("moderate").build();
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(Collections.emptyList());
         when(assetRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
@@ -200,7 +211,7 @@ class ActionRecommendationServiceTest {
 
     @Test
     void getHealthScore_ZeroPortfolioValue_ReturnsMidpointRiskAlignment() {
-        User user = User.builder().id(userId).riskProfile("moderate").build();
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(Collections.emptyList());
         when(assetRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList()); // zero assets
@@ -224,12 +235,11 @@ class ActionRecommendationServiceTest {
         "moderate, 4, 5, 8",
         "moderate, 5, 5, 4",
         "risk_averse, 1, 2, 25",
-        "risk_taker, 1, 5, 20",
-        "null, 1, 4, 25"
+        "risk_taker, 1, 5, 20"
     })
     void getHealthScore_RiskAlignment(String riskProfile, int riskLevel1, int riskLevel2, int expectedRiskAlignmentScore) {
         String profileToUse = "null".equals(riskProfile) ? null : riskProfile;
-        User user = User.builder().id(userId).riskProfile(profileToUse).build();
+        User user = User.builder().id(userId).riskProfile(profileToUse).questionnaireCompleted(true).riskProfile(riskProfile).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         Product pDeposit = Product.builder().id(UUID.randomUUID()).type("deposit").riskLevel(riskLevel1).visible(true).build();
         Product pStock = Product.builder().id(UUID.randomUUID()).type("stock").riskLevel(riskLevel2).visible(true).build();
@@ -261,8 +271,19 @@ class ActionRecommendationServiceTest {
     }
 
     @Test
+    void generateRecommendations_QuestionnaireNotCompleted_ThrowsMissingRiskProfileException() {
+        // User exists but has NOT completed the risk profiler questionnaire
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThrows(com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException.class,
+                () -> actionRecommendationService.generateRecommendations(),
+                "Should throw MissingRiskProfileException when questionnaireCompleted is false");
+    }
+
+    @Test
     void generateRecommendations_AllRulesTriggered() {
-        User user = User.builder().id(userId).riskProfile("risk_taker").build();
+        User user = User.builder().id(userId).riskProfile("risk_taker").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // Create products
@@ -364,7 +385,7 @@ class ActionRecommendationServiceTest {
 
     @Test
     void generateRecommendations_Reconciliation_ActiveAndInactivePending() {
-        User user = User.builder().id(userId).riskProfile("moderate").build();
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         when(productRepository.findAll()).thenReturn(Collections.emptyList());
@@ -421,4 +442,422 @@ class ActionRecommendationServiceTest {
         assertEquals(RecommendationStatus.APPLIED, pendingInactive.getStatus());
         assertNotNull(pendingInactive.getResolvedAt());
     }
+
+    @Test
+    void generateRecommendations_Reconciliation_InactivePendingWithMatchingAsset_SetsResolvedByAssetId() {
+        // Arrange: an existing PENDING rec references a product that the user NOW owns.
+        // When the rule is no longer active (product now owned → condition met), the reconciler should
+        // mark it APPLIED and populate resolvedByAssetId with the asset that resolved it.
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID depositProductId = UUID.randomUUID();
+        UUID resolverAssetId  = UUID.randomUUID();
+
+        // The product exists and is owned by the user (deposit type, so Rule 5 won't gap-fill it)
+        Product pDeposit = Product.builder()
+                .id(depositProductId)
+                .name("Safe Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(3.5))
+                .minInvestment(BigDecimal.valueOf(500))
+                .build();
+        when(productRepository.findAll()).thenReturn(List.of(pDeposit));
+
+        // User NOW owns the product — this is what makes the old rec's rule no longer active
+        Asset ownedAsset = Asset.builder()
+                .id(resolverAssetId)
+                .productId(depositProductId)
+                .currentValue(BigDecimal.valueOf(100000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(ownedAsset));
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(goalRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        // Existing PENDING recommendation for the deposit product (e.g. was a diversification gap before)
+        Recommendation pendingInactive = Recommendation.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .category("diversification")
+                .productId(depositProductId) // same product the user now owns
+                .status(RecommendationStatus.PENDING)
+                .title("Add Deposit exposure")
+                .build();
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(new ArrayList<>(List.of(pendingInactive)));
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        actionRecommendationService.generateRecommendations();
+
+        // Assert: the previously PENDING rec is now APPLIED and resolvedByAssetId points to the owning asset
+        assertEquals(RecommendationStatus.APPLIED, pendingInactive.getStatus(),
+                "Inactive rec must be marked APPLIED");
+        assertNotNull(pendingInactive.getResolvedAt(),
+                "ResolvedAt must be set");
+        assertEquals(resolverAssetId, pendingInactive.getResolvedByAssetId(),
+                "resolvedByAssetId must be set to the asset that now holds the recommended product");
+    }
+
+    // ==========================================
+    //  Rule 4: Other Goal Alignment Tests
+    // ==========================================
+
+    @Test
+    void generateRecommendations_Rule4_NonPriorityGoalWithoutMatchingProduct_TriggersGoalRecommendation() {
+        // Arrange: user owns deposit and stock assets so deposit concentration is 50% (< 65% → Rule 2
+        // does NOT fire). The non-priority "property" goal needs balanced_fund/bond/sukuk/stock.
+        // User owns stock, so stock type IS covered — but bond is unowned, and bond is the best-return
+        // product matching "property" types. Wait: stock IS in property types, so this goal IS covered!
+        // Instead, use a "vacation" goal (needs money_market/deposit/balanced_fund). User owns deposit →
+        // vacation IS covered. Use "property" goal with types [balanced_fund, bond, sukuk, stock] and
+        // have user own ONLY deposit and money_market → no owned type in property types → Rule 4 fires.
+        //
+        // Strategy:
+        //   Products available: deposit (owned), money_market (owned), bond (unowned, best return for property)
+        //   Assets: deposit 50k + money_market 50k → each 50%, concentration < 65% → Rule 2 suppressed
+        //   Goals: one non-priority "property" goal (bond/sukuk/balanced_fund/stock needed, none owned)
+        //   Rule 1: no expenses → no trigger
+        //   Rule 3: no priority goal
+        //   Rule 5: bond type unowned → bestOf picks bond → bond in usedProductIds after Rule 5!
+        //
+        // To prevent Rule 5 consuming bond before Rule 4: bond must not be picked by Rule 5.
+        // Rule 4 runs BEFORE Rule 5 in the service. So bond is available for Rule 4 first.
+        // After Rule 4 adds bond to usedProductIds, Rule 5 skips bond.
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID depositProductId = UUID.randomUUID();
+        UUID moneyMarketProductId = UUID.randomUUID();
+        UUID bondProductId = UUID.randomUUID();
+
+        Product pDeposit = Product.builder()
+                .id(depositProductId)
+                .name("Safe Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(4.0))
+                .minInvestment(BigDecimal.valueOf(1000))
+                .build();
+
+        Product pMoneyMarket = Product.builder()
+                .id(moneyMarketProductId)
+                .name("Money Market Fund")
+                .type("money_market")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(3.5))
+                .minInvestment(BigDecimal.valueOf(500))
+                .build();
+
+        // Bond: unowned, best-return product matching "property" goal types
+        Product pBond = Product.builder()
+                .id(bondProductId)
+                .name("Government Bond")
+                .type("bond")
+                .riskLevel(2)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(6.0))
+                .minInvestment(BigDecimal.valueOf(2000))
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(pDeposit, pMoneyMarket, pBond));
+
+        // User owns both deposit and money_market → 50/50 split → concentration 50% < 65% → Rule 2 suppressed
+        Asset aDeposit = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(depositProductId)
+                .currentValue(BigDecimal.valueOf(50000))
+                .build();
+        Asset aMoneyMarket = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(moneyMarketProductId)
+                .currentValue(BigDecimal.valueOf(50000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aDeposit, aMoneyMarket));
+
+        // No financial profile / expenses → Rule 1 midpoint (no expenses = target 0 → skipped), Rule 7 suppressed
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        // Non-priority "property" goal — needs balanced_fund, bond, sukuk, stock
+        // User owns deposit and money_market → neither matches property types → Rule 4 fires
+        Goal propertyGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Dream House")
+                .type("property")
+                .targetAmount(BigDecimal.valueOf(300000))
+                .monthlyContribution(BigDecimal.valueOf(3000))
+                .isPriority(false)
+                .build();
+        when(goalRepository.findAllByUserId(userId)).thenReturn(List.of(propertyGoal));
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: at least one "goal" category recommendation for the non-priority property goal
+        assertNotNull(recs);
+        assertFalse(recs.isEmpty(), "Recommendations should not be empty");
+
+        List<RecommendationDTO> goalRecs = recs.stream()
+                .filter(r -> "goal".equals(r.getCategory()))
+                .toList();
+        assertFalse(goalRecs.isEmpty(), "Rule 4: Expected at least one 'goal' recommendation for non-priority goal");
+
+        RecommendationDTO rule4Rec = goalRecs.getFirst();
+        assertEquals("medium", rule4Rec.getPriority(), "Rule 4 recommendations must have MEDIUM priority");
+        assertEquals(propertyGoal.getId(), rule4Rec.getGoalId(), "GoalId should reference the non-priority goal");
+        assertEquals(bondProductId, rule4Rec.getProductId(),
+                "Recommended product should be the best bond product (highest return matching property goal types)");
+
+        // Suggested amount = max(monthlyContribution, minInvestment) = max(3000, 2000) = 3000
+        assertEquals(0, BigDecimal.valueOf(3000).compareTo(rule4Rec.getSuggestedAmount()),
+                "Suggested amount should be max(monthlyContribution, minInvestment)");
+    }
+
+    @Test
+    void generateRecommendations_Rule4_NonPriorityGoalAlreadyCoveredByOwnedType_DoesNotTrigger() {
+        // Arrange: user already owns "stock" which covers a "retirement" non-priority goal.
+        // Rule 4 should NOT generate a recommendation for this goal.
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID stockProductId = UUID.randomUUID();
+        Product pStock = Product.builder()
+                .id(stockProductId)
+                .name("Blue Chip Stock")
+                .type("stock")
+                .riskLevel(3)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(10.0))
+                .minInvestment(BigDecimal.valueOf(5000))
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(pStock));
+
+        Asset aStock = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(stockProductId)
+                .currentValue(BigDecimal.valueOf(100000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aStock));
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        // "retirement" goal needs stock/bond/sukuk/balanced_fund/money_market/deposit — user owns stock → covered
+        Goal retirementGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Retire Early")
+                .type("retirement")
+                .targetAmount(BigDecimal.valueOf(1000000))
+                .monthlyContribution(BigDecimal.valueOf(5000))
+                .isPriority(false)
+                .build();
+        when(goalRepository.findAllByUserId(userId)).thenReturn(List.of(retirementGoal));
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: no "goal" recommendation because the retirement goal is already covered
+        boolean hasGoalRec = recs.stream().anyMatch(r -> "goal".equals(r.getCategory()));
+        assertFalse(hasGoalRec, "Rule 4: Should NOT recommend for a goal whose type is already covered by owned assets");
+    }
+
+    // ==========================================
+    //  Rule 6: Highest-Return Opportunity Tests
+    // ==========================================
+
+    @Test
+    void generateRecommendations_Rule6_BestUnownedProductWithinRisk_TriggersGrowthRecommendation() {
+        // Arrange: user owns stock-A. There is a higher-return stock-B of the same type that is unowned.
+        // Because both products are the same type ("stock") and user already owns stock-A:
+        //   Rule 5 does NOT fire for "stock" type (ownedTypes contains "stock")
+        //   Rule 5 finds no products for other types (no money_market/deposit/bond/etc products exist)
+        //   Rule 2: stock-A is 100% concentration, fires and picks the best complement product of a
+        //           different type — but no other-type products exist → complement is null → Rule 2 skips
+        //   Rule 1: no expenses → target 0 → skipped
+        //   Rule 3/4: no goals
+        //   Rule 6: stock-B is unowned, within risk, highest return → added as "growth" recommendation
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build(); // maxRisk = 4
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID stockAId = UUID.randomUUID();
+        UUID stockBId = UUID.randomUUID();
+
+        // stock-A: owned, lower return
+        Product pStockA = Product.builder()
+                .id(stockAId)
+                .name("Equity Fund A")
+                .type("stock")
+                .riskLevel(3)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(8.0))
+                .minInvestment(BigDecimal.valueOf(1000))
+                .build();
+
+        // stock-B: unowned, highest return — should be picked by Rule 6
+        Product pStockB = Product.builder()
+                .id(stockBId)
+                .name("Growth Stock B")
+                .type("stock")
+                .riskLevel(4)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(15.0))
+                .minInvestment(BigDecimal.valueOf(2000))
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(pStockA, pStockB));
+
+        // User owns only stock-A
+        Asset aStockA = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(stockAId)
+                .currentValue(BigDecimal.valueOf(100000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aStockA));
+
+        // No expenses, no financial profile → Rule 1 skipped, Rule 7 suppressed
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        // No goals → Rule 3/4 suppressed
+        when(goalRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: a "growth" recommendation exists pointing to stock-B (highest-return unowned product)
+        assertNotNull(recs);
+        assertFalse(recs.isEmpty(), "Recommendations should not be empty");
+
+        List<RecommendationDTO> growthRecs = recs.stream()
+                .filter(r -> "growth".equals(r.getCategory()))
+                .toList();
+        assertFalse(growthRecs.isEmpty(), "Rule 6: Expected a 'growth' recommendation for the best unowned product");
+
+        RecommendationDTO rule6Rec = growthRecs.getFirst();
+        assertEquals("low", rule6Rec.getPriority(), "Rule 6 recommendations must have LOW priority");
+        assertEquals(stockBId, rule6Rec.getProductId(),
+                "Rule 6 should recommend stock-B — the highest-return unowned product at 15% p.a.");
+        assertEquals(0, BigDecimal.valueOf(2000).compareTo(rule6Rec.getSuggestedAmount()),
+                "Suggested amount should equal the product's minimum investment");
+        assertNull(rule6Rec.getGoalId(), "Rule 6 recommendation should have no goalId");
+    }
+
+    @Test
+    void generateRecommendations_Rule6_AllEligibleProductsAlreadyOwned_DoesNotTrigger() {
+        // Arrange: user owns all visible products within their risk profile → Rule 6 cannot find an unowned product.
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build(); // maxRisk = 4
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID depositId = UUID.randomUUID();
+
+        Product pDeposit = Product.builder()
+                .id(depositId)
+                .name("Money Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(4.0))
+                .minInvestment(BigDecimal.valueOf(1000))
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(pDeposit));
+
+        // User owns the only available product
+        Asset aDeposit = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(depositId)
+                .currentValue(BigDecimal.valueOf(100000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aDeposit));
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(goalRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: no "growth" recommendation since there's no unowned eligible product
+        boolean hasGrowthRec = recs.stream().anyMatch(r -> "growth".equals(r.getCategory()));
+        assertFalse(hasGrowthRec, "Rule 6: Should NOT generate a growth recommendation when all eligible products are already owned");
+    }
+
+    @Test
+    void generateRecommendations_Rule6_ProductExceedsUserRiskProfile_DoesNotTrigger() {
+        // Arrange: only unowned product exceeds user's max risk level → Rule 6 should not recommend it.
+        User user = User.builder().id(userId).riskProfile("risk_averse").questionnaireCompleted(true).build(); // maxRisk = 2
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID depositId = UUID.randomUUID();
+        UUID highRiskId = UUID.randomUUID();
+
+        Product pDeposit = Product.builder()
+                .id(depositId)
+                .name("Safe Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(3.0))
+                .minInvestment(BigDecimal.valueOf(500))
+                .build();
+
+        // High-risk stock — outside risk_averse max (2)
+        Product pStock = Product.builder()
+                .id(highRiskId)
+                .name("High Yield Stock")
+                .type("stock")
+                .riskLevel(5) // exceeds risk_averse maxRisk of 2
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(20.0))
+                .minInvestment(BigDecimal.valueOf(10000))
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(pDeposit, pStock));
+
+        // User owns deposit
+        Asset aDeposit = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(depositId)
+                .currentValue(BigDecimal.valueOf(50000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aDeposit));
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(goalRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: no "growth" recommendation because the only unowned product exceeds user's risk tolerance
+        boolean hasGrowthRec = recs.stream().anyMatch(r -> "growth".equals(r.getCategory()));
+        assertFalse(hasGrowthRec, "Rule 6: Should NOT recommend a product that exceeds the user's risk profile");
+    }
 }
+

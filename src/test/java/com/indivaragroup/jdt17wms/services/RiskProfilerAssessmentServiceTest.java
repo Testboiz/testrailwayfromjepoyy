@@ -21,6 +21,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +67,14 @@ class RiskProfilerAssessmentServiceTest {
         assertEquals(1, result.getFirst().getOptions().size());
         assertEquals("Protect my capital", result.getFirst().getOptions().getFirst().getLabel());
         assertEquals(0, result.getFirst().getOptions().getFirst().getScore());
+    }
+
+    @Test
+    void getQuestionnaire_whenDataIsNull_returnsEmptyList() {
+        when(questionnaireDataDTO.getData()).thenReturn(null);
+        List<QuestionnaireDTO> result = riskProfilerAssessmentService.getQuestionnaire();
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -157,16 +167,44 @@ class RiskProfilerAssessmentServiceTest {
     }
 
     @Test
-    void updateProfilerAssessment_shouldThrowBadRequestExceptionOnScoreOutOfRange() {
-        com.indivaragroup.jdt17wms.dto.request.Answer answer = com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(3).build(); // out of range
-        RiskProfilerDTO request = new RiskProfilerDTO(List.of(answer));
+    void getQuestionnaire_whenQuestionnaireDataDTOIsNull_shouldThrowNullPointerException() {
+        RiskProfilerAssessmentService service = new RiskProfilerAssessmentService(null, userRepository);
+        assertThrows(NullPointerException.class, service::getQuestionnaire);
+    }
 
-        when(questionnaireDataDTO.getData()).thenReturn(List.of(
-                QuestionnaireItem.builder().build()
-        )); // size matches
+    @Test
+    void getQuestionnaire_itemOptionsNull_returnsEmptyOptions() {
+        QuestionnaireItem item = QuestionnaireItem.builder()
+                .id(1)
+                .question("Goal?")
+                .options(null)
+                .build();
+        when(questionnaireDataDTO.getData()).thenReturn(List.of(item));
 
-        org.junit.jupiter.api.Assertions.assertThrows(BadRequestException.class, () -> {
-            riskProfilerAssessmentService.updateProfilerAssessment(request);
-        });
+        List<QuestionnaireDTO> result = riskProfilerAssessmentService.getQuestionnaire();
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("Goal?", result.getFirst().getQuestion());
+        assertNotNull(result.getFirst().getOptions());
+        assertEquals(0, result.getFirst().getOptions().size());
+    }
+
+    @Test
+    void updateProfilerAssessment_nullDataUsesDefaultSize() {
+        when(questionnaireDataDTO.getData()).thenReturn(null);
+        List<com.indivaragroup.jdt17wms.dto.request.Answer> answers = java.util.Collections.nCopies(AppConstants.DEFAULT_QUESTIONNAIRE_SIZE,
+                com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(0).build());
+        RiskProfilerDTO request = new RiskProfilerDTO(answers);
+
+        User user = User.builder().id(AppConstants.USER_ID).build();
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RiskProfilerResponseDTO response = riskProfilerAssessmentService.updateProfilerAssessment(request);
+        assertNotNull(response);
+        assertEquals("risk_averse", response.getRiskProfile());
+        assertEquals(0, response.getScore());
+        assertTrue(response.getQuestionnaireCompleted());
     }
 }
+

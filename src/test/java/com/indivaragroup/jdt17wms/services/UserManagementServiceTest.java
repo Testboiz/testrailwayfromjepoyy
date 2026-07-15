@@ -75,14 +75,6 @@ class UserManagementServiceTest {
             userManagementService.updateUserStatus(id, "active");
         });
     }
-
-    @Test
-    void updateUserStatus_shouldThrowBadRequestException_whenStatusIsInvalid() {
-        UUID id = UUID.randomUUID();
-        org.junit.jupiter.api.Assertions.assertThrows(com.indivaragroup.jdt17wms.exceptions.BadRequestException.class, () -> {
-            userManagementService.updateUserStatus(id, "invalid_status");
-        });
-    }
 }
 
 

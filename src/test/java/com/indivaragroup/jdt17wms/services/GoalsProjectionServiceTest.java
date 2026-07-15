@@ -213,4 +213,40 @@ class GoalsProjectionServiceTest {
         // Recommended contribution should be 300000 / 60 = 5000.00 instead of 300000 / 120 = 2500.00
         assertEquals(new BigDecimal("5000.00"), res.getRecommendedContribution());
     }
+    @Test
+    void getProjectionsForUser_whenCannotGrow_returnsMaxSimulationMonths() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal goal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .name("Stagnant Goal")
+                .type("property")
+                .targetAmount(new BigDecimal("10000.00"))
+                .monthlyContribution(BigDecimal.ZERO) // no contribution
+                .targetDate(LocalDate.of(2030, Month.JANUARY, 1))
+                .currentAmount(BigDecimal.ZERO)
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .defaultReturn(new BigDecimal("7.50"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        // No assets tied to the goal
+        when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
+
+        List<GoalProjectionDTO> results = goalsProjectionService.getProjectionsForUser();
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        GoalProjectionDTO res = results.getFirst();
+
+        // Expected projected date is now plus MAX_SIMULATION_MONTHS (12000) months because growth is impossible
+        LocalDate expectedDate = LocalDate.now(clock).plusMonths(12000);
+        assertEquals(expectedDate, res.getProjectedDate());
+    }
 }

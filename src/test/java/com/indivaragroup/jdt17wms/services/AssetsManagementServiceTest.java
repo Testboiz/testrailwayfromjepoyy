@@ -21,6 +21,7 @@ import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -291,6 +293,35 @@ class AssetsManagementServiceTest {
     }
 
     @Test
+    void updateAssetForUser_shouldClearGoalId_whenGoalIdIsNull() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        UUID existingGoalId = UUID.randomUUID();
+
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .goalId(existingGoalId)
+                .build();
+
+        GoalSettingDTO dto = GoalSettingDTO.builder().build(); // goalId null
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Asset result = assetsManagementService.updateAssetForUser(assetId, dto);
+
+        assertNotNull(result);
+        assertNull(result.getGoalId());
+        verify(assetRepository).save(any(Asset.class));
+    }
+
+    @Test
     void updateAssetForUser_shouldThrowNotFoundException_whenGoalNotFound() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
@@ -423,6 +454,65 @@ class AssetsManagementServiceTest {
         assertThrows(NotFoundException.class, () -> {
             assetsManagementService.deleteAssetForUser(assetId);
         });
+    }
+
+    @Test
+    void deleteAssetForUser_shouldDeleteAssetAndCalculatePricePerUnit_whenUnitsPositive() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        BigDecimal units = new BigDecimal("5");
+        BigDecimal amount = new BigDecimal("250");
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .units(units)
+                .amount(amount)
+                .productId(UUID.randomUUID())
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(recommendationRepository.findAllByResolvedByAssetId(assetId)).thenReturn(List.of());
+
+        assetsManagementService.deleteAssetForUser(assetId);
+
+        // Capture the TransactionHistory saved and verify pricePerUnit = amount / units
+        ArgumentCaptor<TransactionHistory> captor = ArgumentCaptor.forClass(TransactionHistory.class);
+        verify(transactionHistoryRepository).save(captor.capture());
+        TransactionHistory saved = captor.getValue();
+        assertEquals(new BigDecimal("50.0000"), saved.getPricePerUnit()); // 250 / 5 = 50 with scale 4
+    }
+
+    @Test
+    void deleteAssetForUser_shouldDeleteAssetAndSetZeroPricePerUnit_whenUnitsZero() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .units(BigDecimal.ZERO)
+                .amount(new BigDecimal("100"))
+                .productId(UUID.randomUUID())
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(recommendationRepository.findAllByResolvedByAssetId(assetId)).thenReturn(List.of());
+
+        assetsManagementService.deleteAssetForUser(assetId);
+
+        ArgumentCaptor<TransactionHistory> captor = ArgumentCaptor.forClass(TransactionHistory.class);
+        verify(transactionHistoryRepository).save(captor.capture());
+        TransactionHistory saved = captor.getValue();
+        assertEquals(BigDecimal.ZERO, saved.getPricePerUnit());
     }
 
     @Test
