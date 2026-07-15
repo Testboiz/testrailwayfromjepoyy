@@ -26,6 +26,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -55,7 +56,7 @@ public class AssetsManagementService {
     public List<Asset> getAssetsForUser() {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
         }
         return assetRepository.findAllByUserId(user.getId());
@@ -64,8 +65,8 @@ public class AssetsManagementService {
     public List<TransactionHistory> getTransactionLogsForUser() {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
-            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+         throw new MissingRiskProfileException("Risk Profiler Assessment Required");
         }
         return transactionHistoryRepository.findAllByUserId(user.getId());
     }
@@ -74,23 +75,18 @@ public class AssetsManagementService {
     public Asset createAssetForUser(AssetRegistrationDTO dto) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
         }
 
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
 
-        if (product.getVisible() == null || !product.getVisible()) {
+        if (!Boolean.TRUE.equals(product.getVisible())) {
             throw new DelistedProductException("Can’t track delisted products");
         }
 
-        Instant purchaseInstant;
-        if (dto.getPurchaseDate() != null) {
-            purchaseInstant = dto.getPurchaseDate().atZone(ZoneId.systemDefault()).toInstant();
-        } else {
-            purchaseInstant = Instant.now();
-        }
+        Instant purchaseInstant = dto.getPurchaseDate().atZone(ZoneId.systemDefault()).toInstant();
 
         Asset asset = Asset.builder()
                 .userId(user.getId())
@@ -106,10 +102,7 @@ public class AssetsManagementService {
         Asset savedAsset = assetRepository.save(asset);
 
         // Record BUY transaction log
-        BigDecimal pricePerUnit = BigDecimal.ZERO;
-        if (dto.getUnits() != null && dto.getUnits().compareTo(BigDecimal.ZERO) > 0) {
-            pricePerUnit = dto.getAmount().divide(dto.getUnits(), 4, RoundingMode.HALF_UP);
-        }
+        BigDecimal pricePerUnit = dto.getAmount().divide(dto.getUnits(), 4, RoundingMode.HALF_UP);
 
         TransactionHistory buyHistory = TransactionHistory.builder()
                 .userId(user.getId())
@@ -132,8 +125,8 @@ public class AssetsManagementService {
     public Asset updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
-            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+          throw new MissingRiskProfileException("Risk Profiler Assessment Required");
         }
 
         Asset asset = assetRepository.findById(assetId)
@@ -143,7 +136,7 @@ public class AssetsManagementService {
             throw new NotFoundException("No valid item with the ID");
         }
 
-        if (dto.getGoalId() != null) {
+        if (dto.getGoalId() != null) { // cover me!
             goalRepository.findById(dto.getGoalId())
                     .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
             asset.setGoalId(dto.getGoalId());
@@ -158,7 +151,7 @@ public class AssetsManagementService {
     public void deleteAssetForUser(UUID assetId) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
+        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
             throw new MissingRiskProfileException("Risk Profiler Assessment Required");
         }
 
@@ -171,7 +164,7 @@ public class AssetsManagementService {
 
         // Record SELL transaction log
         BigDecimal pricePerUnit = BigDecimal.ZERO;
-        if (asset.getUnits() != null && asset.getUnits().compareTo(BigDecimal.ZERO) > 0) {
+        if (Objects.requireNonNullElse(asset.getUnits(), BigDecimal.ZERO).compareTo(BigDecimal.ZERO) > 0) {
             pricePerUnit = asset.getAmount().divide(asset.getUnits(), 4, RoundingMode.HALF_UP);
         }
 

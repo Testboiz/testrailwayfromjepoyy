@@ -54,44 +54,40 @@ public class ProductManagementService {
             ProductQueryDTO queryDTO,
             Pageable pageable) {
 
-        String searchQuery = queryDTO != null ? queryDTO.getSearchQuery() : null;
-        String type = queryDTO != null ? queryDTO.getType() : null;
-        Boolean showAll = queryDTO != null ? queryDTO.getShowAll() : null;
-        Boolean dashboardSummary = queryDTO != null ? queryDTO.getDashboardSummary() : null;
+        ProductQueryDTO dto = queryDTO != null ? queryDTO : new ProductQueryDTO();
+        String searchQuery = dto.getSearchQuery();
+        String type = dto.getType();
+        Boolean showAll = dto.getShowAll();
+        Boolean dashboardSummary = dto.getDashboardSummary();
 
         User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
 
         // Check user risk profile questionnaire
-        if (isUserRole(user) &&
-            (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted())
-        ) {
-                throw new MissingRiskProfileException("Risk Profiler Assessment Required");
-            }
+        if (isUserRole(user) && !Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
 
-
-      List<Product> products = productRepository.findAll();
+        List<Product> products = productRepository.findAll();
 
         // 1. Visibility filter
         if (isUserRole(user)) {
             products = products.stream()
-                    .filter(p -> p.getVisible() != null && p.getVisible())
+                    .filter(p -> Boolean.TRUE.equals(p.getVisible()))
                     .toList();
         }
 
         // 2. Risk level filter
         if (isUserRole(user)) {
-            boolean shouldShowAll = showAll != null && showAll;
+            boolean shouldShowAll = Boolean.TRUE.equals(showAll);
             String riskProfile = user.getRiskProfile();
-            boolean isRiskTaker = riskProfile != null && (riskProfile.equalsIgnoreCase("risk_taker"));
+            boolean isRiskTaker = "risk_taker".equalsIgnoreCase(riskProfile);
 
             if (!shouldShowAll && !isRiskTaker) {
                 int maxRiskLevel = 5;
-                if (riskProfile != null) {
-                    if (riskProfile.equalsIgnoreCase("risk_averse")) {
-                        maxRiskLevel = 2;
-                    } else if (riskProfile.equalsIgnoreCase("moderate")) {
-                        maxRiskLevel = 4;
-                    }
+                if ("risk_averse".equalsIgnoreCase(riskProfile)) {
+                    maxRiskLevel = 2;
+                } else if ("moderate".equalsIgnoreCase(riskProfile)) {
+                    maxRiskLevel = 4;
                 }
                 final int limitRisk = maxRiskLevel;
                 products = products.stream()
@@ -101,23 +97,22 @@ public class ProductManagementService {
         }
 
         // 3. Type filter
-        if (type != null && !type.trim().isEmpty()) {
+        if (type != null && !type.isBlank()) {
             products = products.stream()
-                    .filter(p -> p.getType() != null && p.getType().equalsIgnoreCase(type))
+                    .filter(p -> type.equalsIgnoreCase(p.getType()))
                     .toList();
         }
 
         // 4. Search query filter
-        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+        if (searchQuery != null && !searchQuery.isBlank()) {
             String query = searchQuery.toLowerCase();
             products = products.stream()
-                    .filter(p -> (p.getName() != null && p.getName().toLowerCase().contains(query))
-                            || (p.getIssuer() != null && p.getIssuer().toLowerCase().contains(query)))
+                    .filter(p -> containsIgnoreCase(p.getName(), query) || containsIgnoreCase(p.getIssuer(), query))
                     .toList();
         }
 
         // 5. Dashboard Summary limit
-        if (dashboardSummary != null && dashboardSummary) {
+        if (Boolean.TRUE.equals(dashboardSummary)) {
             products = products.stream()
                     .limit(5)
                     .toList();
@@ -133,6 +128,10 @@ public class ProductManagementService {
 
         List<Product> pageContent = products.subList(start, end);
         return new PageImpl<>(pageContent, pageable, products.size());
+    }
+
+    private static boolean containsIgnoreCase(String source, String query) {
+        return source != null && source.toLowerCase().contains(query);
     }
 
     public Product updateProductVisibility(UUID id, Boolean visibility) {

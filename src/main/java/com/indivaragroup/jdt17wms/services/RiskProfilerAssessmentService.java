@@ -54,19 +54,10 @@ public class RiskProfilerAssessmentService {
     }
 
     public RiskProfilerResponseDTO updateProfilerAssessment(RiskProfilerDTO riskProfilerDTO) {
-        if (riskProfilerDTO == null || riskProfilerDTO.getAnswers() == null) {
-            throw new BadRequestException("Invalid JSON Body");
-        }
 
         int expectedSize = questionnaireDataDTO.getData() != null ? questionnaireDataDTO.getData().size() : AppConstants.DEFAULT_QUESTIONNAIRE_SIZE;
         if (riskProfilerDTO.getAnswers().size() != expectedSize) {
             throw new BadRequestException("Invalid answers count");
-        }
-
-        for (com.indivaragroup.jdt17wms.dto.request.Answer answer : riskProfilerDTO.getAnswers()) {
-            if (answer.getScore() == null || answer.getScore() < AppConstants.MIN_ANSWER_SCORE || answer.getScore() > AppConstants.MAX_ANSWER_SCORE) {
-                throw new BadRequestException("Invalid JSON Body");
-            }
         }
 
         int rawScore = riskProfilerDTO.getAnswers().stream()

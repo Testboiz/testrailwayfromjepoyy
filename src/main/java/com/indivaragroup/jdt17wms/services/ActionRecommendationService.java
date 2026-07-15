@@ -5,6 +5,7 @@ import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
+import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.*;
 import com.indivaragroup.jdt17wms.models.enums.RecommendationStatus;
@@ -67,6 +68,10 @@ public class ActionRecommendationService {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+      if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+        throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+      }
+
         List<Asset> assets = assetRepository.findAllByUserId(user.getId());
         List<Product> products = productRepository.findAll();
         List<Goal> goals = goalRepository.findAllByUserId(user.getId());
@@ -82,15 +87,12 @@ public class ActionRecommendationService {
 
         // ── Portfolio total value ──
         BigDecimal totalValue = assets.stream()
-                .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
+                .map(a -> Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // ── Max risk level for user's profile ──
         String riskProfile = user.getRiskProfile();
-        int maxRiskLv = 5;
-        if (riskProfile != null) {
-            maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
-        }
+        int maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
 
         // Product lookup by ID for O(1) access
         Map<UUID, Product> productMap = products.stream()
@@ -119,10 +121,9 @@ public class ActionRecommendationService {
         final int finalMaxRiskLv = maxRiskLv;
 
         Set<String> eligibleTypes = products.stream()
-                .filter(p -> p.getVisible() != null && p.getVisible()
-                        && p.getRiskLevel() != null && p.getRiskLevel() <= finalMaxRiskLv)
-                .map(p -> p.getType() != null ? p.getType().toLowerCase() : null)
-                .filter(Objects::nonNull)
+                .filter(p ->  p.getVisible()
+                        && p.getRiskLevel() <= finalMaxRiskLv)
+                .map(p ->  p.getType().toLowerCase())
                 .collect(Collectors.toSet());
 
         Set<String> ownedTypes = calcOwnedTypes(assets, productMap);
@@ -145,8 +146,7 @@ public class ActionRecommendationService {
         } else {
             long coveredGoals = goals.stream()
                     .filter(g -> {
-                        String goalType = g.getType() != null
-                                ? g.getType().toLowerCase() : CUSTOM_GOAL;
+                        String goalType = g.getType().toLowerCase();
                         List<String> suitableTypes = GOAL_PRODUCT_TYPES
                                 .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get(CUSTOM_GOAL));
                         return suitableTypes.stream()
@@ -165,17 +165,13 @@ public class ActionRecommendationService {
             double avgRisk = assets.stream()
                     .mapToDouble(a -> {
                         Product p = productMap.get(a.getProductId());
-                        if (p != null && p.getRiskLevel() != null
-                                && a.getCurrentValue() != null) {
                             return (a.getCurrentValue().doubleValue()
                                     / totalValue.doubleValue()) * p.getRiskLevel();
-                        }
-                        return 0.0;
+
                     })
                     .sum();
 
-            double target = RISK_TARGETS.getOrDefault(
-                    riskProfile != null ? riskProfile.toLowerCase() : "", 2.5);
+            double target = RISK_TARGETS.get(riskProfile.toLowerCase());
             double diff = Math.abs(avgRisk - target);
 
             if (diff <= 0.5) {
@@ -270,6 +266,11 @@ public class ActionRecommendationService {
         // ── Fetch all required data ──
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+          throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        }
+
         UUID userId = user.getId();
 
         List<Asset> assets = assetRepository.findAllByUserId(userId);
@@ -287,14 +288,11 @@ public class ActionRecommendationService {
 
         BigDecimal surplus = monthlyIncome.subtract(monthlyExpenses);
         BigDecimal totalValue = assets.stream()
-                .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
+                .map(a -> Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         String riskProfile = user.getRiskProfile();
-        int maxRiskLv = 5;
-        if (riskProfile != null) {
-            maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
-        }
+        int maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
 
         Map<UUID, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
@@ -316,7 +314,7 @@ public class ActionRecommendationService {
             BigDecimal suggested = null;
             if (p != null) {
                 BigDecimal gap = emergencyTarget.subtract(liquidValue);
-                suggested = gap.max(p.getMinInvestment() != null ? p.getMinInvestment() : BigDecimal.ZERO);
+                suggested = gap.max(p.getMinInvestment());
             }
 
             int pct = emergencyTarget.compareTo(BigDecimal.ZERO) > 0
@@ -338,7 +336,7 @@ public class ActionRecommendationService {
             // Aggregate value per product
             Map<UUID, BigDecimal> byProduct = new HashMap<>();
             for (Asset a : assets) {
-                BigDecimal val = a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO;
+                BigDecimal val = Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO);
                 byProduct.merge(a.getProductId(), val, BigDecimal::add);
             }
 
@@ -380,12 +378,11 @@ public class ActionRecommendationService {
         // Rule 3: Priority goal alignment
         // ─────────────────────────────────────────
         Goal priorityGoal = goals.stream()
-                .filter(g -> g.getIsPriority() != null && g.getIsPriority())
+                .filter(Goal::getIsPriority)
                 .findFirst().orElse(null);
 
         if (priorityGoal != null) {
-            String goalType = priorityGoal.getType() != null
-                    ? priorityGoal.getType().toLowerCase() : CUSTOM_GOAL;
+            String goalType = priorityGoal.getType().toLowerCase() ;
             List<String> types = GOAL_PRODUCT_TYPES
                     .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get(CUSTOM_GOAL));
 
@@ -398,24 +395,14 @@ public class ActionRecommendationService {
                             .map(t -> TYPE_LABELS.getOrDefault(t, t))
                             .collect(Collectors.joining(" or "));
 
-                    BigDecimal suggested;
-                  if (priorityGoal.getMonthlyContribution() != null) {
-                    if (p.getMinInvestment() != null) suggested = priorityGoal.getMonthlyContribution()
+                    BigDecimal suggested = priorityGoal.getMonthlyContribution()
                       .max(p.getMinInvestment());
-                    else suggested = priorityGoal.getMonthlyContribution()
-                      .max(BigDecimal.ZERO);
-                  } else {
-                    suggested = (p.getMinInvestment() != null ? p.getMinInvestment() : null);
-                  }
 
                   freshRecs.add(buildRecommendation( HIGH_PRIORITY, "goal",
                             String.format("Start building toward \"%s\"", priorityGoal.getName()),
                             String.format("Your priority goal needs %s%s. "
                                             + "You don't yet hold any %s — the product categories best aligned with this goal type.",
-                                    fmt(priorityGoal.getTargetAmount()),
-                                    priorityGoal.getTargetDate() != null
-                                            ? " by " + priorityGoal.getTargetDate() : "",
-                                    typeNames),
+                                    fmt(priorityGoal.getTargetAmount()), " by " + priorityGoal.getTargetDate() , typeNames),
                             p.getId(), suggested, priorityGoal.getId()));
                 }
             }
@@ -430,9 +417,9 @@ public class ActionRecommendationService {
                 .collect(Collectors.toSet());
 
         for (Goal goal : goals) {
-            if (goal.getIsPriority() != null && goal.getIsPriority()) continue;
+            if (Boolean.TRUE.equals(goal.getIsPriority())) continue;
 
-            String goalType = goal.getType() != null ? goal.getType().toLowerCase() : CUSTOM_GOAL;
+            String goalType = goal.getType().toLowerCase();
             List<String> types = GOAL_PRODUCT_TYPES
                     .getOrDefault(goalType, GOAL_PRODUCT_TYPES.get(CUSTOM_GOAL));
 
@@ -444,21 +431,14 @@ public class ActionRecommendationService {
                             .map(t -> TYPE_LABELS.getOrDefault(t, t))
                             .collect(Collectors.joining(" or "));
 
-                    BigDecimal suggested;
-                  if (goal.getMonthlyContribution() != null) {
-                    if (p.getMinInvestment() != null) suggested = goal.getMonthlyContribution()
+                    BigDecimal suggested = goal.getMonthlyContribution()
                       .max(p.getMinInvestment());
-                    else suggested = goal.getMonthlyContribution()
-                      .max(BigDecimal.ZERO);
-                  } else {
-                    suggested = (p.getMinInvestment() != null ? p.getMinInvestment() : null);
-                  }
+
 
                   freshRecs.add(buildRecommendation(MEDIUM_PRIORITY, "goal",
                             String.format("No product aligned with \"%s\"", goal.getName()),
                             String.format("This goal works best with %s. %s (%s%% p.a.) fits the profile.",
-                                    typeNames, p.getName(),
-                                    p.getAnnualReturn() != null ? p.getAnnualReturn().toPlainString() : "0"),
+                                    typeNames, p.getName(), p.getAnnualReturn()),
                             p.getId(), suggested, goal.getId()));
 
                     usedProductIds.add(p.getId());
@@ -478,10 +458,10 @@ public class ActionRecommendationService {
                             String.format("You hold no %s products. %s returns %s%% p.a. and fits within your %s profile "
                                             + "— adding it reduces single-category concentration.",
                                     TYPE_LABELS.getOrDefault(type, type), p.getName(),
-                                    p.getAnnualReturn() != null ? p.getAnnualReturn().toPlainString() : "0",
+                                    p.getAnnualReturn().toPlainString(),
                                     riskLabel(riskProfile)),
                             p.getId(),
-                            p.getMinInvestment() != null ? p.getMinInvestment() : null,
+                            p.getMinInvestment(),
                             null));
 
                     usedProductIds.add(p.getId());
@@ -494,22 +474,21 @@ public class ActionRecommendationService {
         // ─────────────────────────────────────────
         final int fMaxRisk = maxRiskLv;
         Optional<Product> topGrowth = products.stream()
-                .filter(p -> p.getVisible() != null && p.getVisible()
+                .filter(p -> p.getVisible()
                         && !ownedIds.contains(p.getId())
-                        && p.getRiskLevel() != null && p.getRiskLevel() <= fMaxRisk
+                        && p.getRiskLevel() <= fMaxRisk
                         && !usedProductIds.contains(p.getId()))
-                .max(Comparator.comparing(p ->
-                        p.getAnnualReturn() != null ? p.getAnnualReturn() : BigDecimal.ZERO));
+                .max(Comparator.comparing(Product::getAnnualReturn));
 
       topGrowth.ifPresent(tg -> freshRecs.add(buildRecommendation( LOW_PRIORITY, "growth",
         String.format("Best unowned opportunity: %s", tg.getName()),
         String.format("At %s%% p.a., this is the highest-returning product within your %s profile "
             + "that you don't yet hold. Min. investment: %s.",
-          tg.getAnnualReturn() != null ? tg.getAnnualReturn().toPlainString() : "0",
+          tg.getAnnualReturn().toPlainString(),
           riskLabel(riskProfile),
           fmt(tg.getMinInvestment())),
         tg.getId(),
-        tg.getMinInvestment() != null ? tg.getMinInvestment() : null,
+        tg.getMinInvestment(),
         null)));
 
         // ─────────────────────────────────────────
@@ -517,7 +496,7 @@ public class ActionRecommendationService {
         // ─────────────────────────────────────────
         if (surplus.compareTo(SURPLUS_THRESHOLD) > 0 && !freshRecs.isEmpty()) {
             BigDecimal goalsTotal = goals.stream()
-                    .map(g -> g.getMonthlyContribution() != null ? g.getMonthlyContribution() : BigDecimal.ZERO)
+                    .map(Goal::getMonthlyContribution)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal undeployed = surplus.subtract(goalsTotal);
 
@@ -541,9 +520,7 @@ public class ActionRecommendationService {
         // Build productId → assetId lookup for resolving recommendations
         Map<UUID, UUID> productToAssetId = new HashMap<>();
         for (Asset a : assets) {
-            if (a.getProductId() != null) {
-                productToAssetId.putIfAbsent(a.getProductId(), a.getId());
-            }
+          productToAssetId.putIfAbsent(a.getProductId(), a.getId());
         }
 
         // Index fresh recs by rule key for O(1) matching
@@ -579,11 +556,9 @@ public class ActionRecommendationService {
                 // Rule no longer active → condition met, mark resolved
                 existing.setStatus(RecommendationStatus.APPLIED);
                 existing.setResolvedAt(now);
-                if (existing.getProductId() != null) {
-                    UUID resolverAssetId = productToAssetId.get(existing.getProductId());
-                    if (resolverAssetId != null) {
-                        existing.setResolvedByAssetId(resolverAssetId);
-                    }
+                UUID resolverAssetId = productToAssetId.get(existing.getProductId());
+                if (resolverAssetId != null) {
+                  existing.setResolvedByAssetId(resolverAssetId);
                 }
             }
         }
@@ -635,12 +610,11 @@ public class ActionRecommendationService {
                 .collect(Collectors.toSet());
 
         return products.stream()
-                .filter(p -> p.getVisible() != null && p.getVisible()
-                        && p.getType() != null && lowerTypes.contains(p.getType().toLowerCase())
-                        && p.getRiskLevel() != null && p.getRiskLevel() <= maxRisk
+                .filter(p ->  p.getVisible()
+                        && lowerTypes.contains(p.getType().toLowerCase())
+                        && p.getRiskLevel() <= maxRisk
                         && (excludeIds == null || !excludeIds.contains(p.getId())))
-                .max(Comparator.comparing(p ->
-                        p.getAnnualReturn() != null ? p.getAnnualReturn() : BigDecimal.ZERO))
+                .max(Comparator.comparing(Product::getAnnualReturn))
                 .orElse(null);
     }
 
@@ -649,8 +623,7 @@ public class ActionRecommendationService {
         return assets.stream()
                 .filter(a -> {
                     Product p = productMap.get(a.getProductId());
-                    return p != null && p.getType() != null
-                            && LIQUID_PRODUCT_TYPES.contains(p.getType().toLowerCase());
+                    return LIQUID_PRODUCT_TYPES.contains(p.getType().toLowerCase());
                 })
                 .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -661,9 +634,8 @@ public class ActionRecommendationService {
         return assets.stream()
                 .map(a -> {
                     Product p = productMap.get(a.getProductId());
-                    return p != null && p.getType() != null ? p.getType().toLowerCase() : null;
+                    return p.getType().toLowerCase();
                 })
-                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
     }
 
@@ -708,18 +680,19 @@ public class ActionRecommendationService {
     /** Formats a BigDecimal as a readable currency string (e.g., "1,000,000"). */
     private static String fmt(BigDecimal value) {
         if (value == null) return "0";
+        BigDecimal truncated = value.setScale(0, java.math.RoundingMode.DOWN);
         NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
         nf.setMaximumFractionDigits(0);
-        return nf.format(value);
+        return nf.format(truncated);
     }
 
     /** Human-readable label for a risk profile string. */
     private static String riskLabel(String riskProfile) {
         if (riskProfile == null) return "moderate";
-      return switch (riskProfile.toLowerCase()) {
-        case "risk_averse" -> "risk-averse";
-        case "risk_taker" -> "risk-taker";
-        default -> riskProfile.toLowerCase();
-      };
+        return switch (riskProfile.toLowerCase()) {
+            case "risk_averse" -> "risk-averse";
+            case "risk_taker" -> "risk-taker";
+            default -> riskProfile.toLowerCase();
+        };
     }
 }

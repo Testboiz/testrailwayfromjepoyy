@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GoalsProjectionService {
@@ -35,6 +36,9 @@ public class GoalsProjectionService {
     private final AssetRepository assetRepository;
     private final ProductRepository productRepository;
     private final Clock clock;
+
+  private static final int MAX_SIMULATION_MONTHS = 12_000;
+  private static final int PROJECTION_WINDOW_MONTHS = 60;
 
     public GoalsProjectionService(GoalRepository goalRepository,
                                   UserRepository userRepository,
@@ -50,181 +54,190 @@ public class GoalsProjectionService {
         this.clock = clock;
     }
 
-    public List<GoalProjectionDTO> getProjectionsForUser() {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+  public List<GoalProjectionDTO> getProjectionsForUser() {
+    User user = userRepository.findById(SecurityUtils.getCurrentUserId())
+      .orElseThrow(() -> new NotFoundException("User not found"));
 
-        if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
-            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
-        }
-
-        BigDecimal defaultReturn = financialProfileRepository.findByUserId(user.getId())
-                .map(FinancialProfile::getDefaultReturn)
-                .orElse(BigDecimal.valueOf(7.50));
-
-        double annualRate = defaultReturn.doubleValue();
-        double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
-
-        List<Goal> goals = goalRepository.findAllByUserId(user.getId());
-
-        return goals.stream().map(goal -> {
-            List<Asset> assets = assetRepository.findAllByGoalId(goal.getId());
-
-            double target = goal.getTargetAmount() != null ? goal.getTargetAmount().doubleValue() : 0.0;
-            double totalContribution = goal.getMonthlyContribution() != null ? goal.getMonthlyContribution().doubleValue() : 0.0;
-
-            LocalDate projectedDate;
-            BigDecimal recommendedContribution;
-            List<TimeSeriesPointDTO> timeSeries = new ArrayList<>();
-
-            if (assets.isEmpty()) {
-                // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
-                double balance = goal.getCurrentAmount() != null ? goal.getCurrentAmount().doubleValue() : 0.0;
-
-                // 1. Calculate projected date
-                int monthsToTarget = 0;
-                double simBalance = balance;
-                if (simBalance < target) {
-                    if (totalContribution > 0) {
-                        while (simBalance < target && monthsToTarget < 12000) {
-                            simBalance = simBalance * (1 + defaultMonthlyRate) + totalContribution;
-                            monthsToTarget++;
-                        }
-                    } else {
-                        monthsToTarget = 12000;
-                    }
-                }
-                projectedDate = LocalDate.now(clock).plusMonths(monthsToTarget);
-
-                // 2. Calculate recommended contribution
-                double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(
-                        goal.getType() != null ? goal.getType().toLowerCase() : "custom", 60
-                );
-                double monthsToUse = maxMonths;
-                if (goal.getTargetDate() != null) {
-                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), goal.getTargetDate());
-                    if (actualMonths > 0 && actualMonths < maxMonths) {
-                        monthsToUse = actualMonths;
-                    }
-                }
-                double recContributionVal = (target - balance) / monthsToUse;
-                recommendedContribution = BigDecimal.valueOf(Math.max(0.0, recContributionVal))
-                        .setScale(2, RoundingMode.HALF_UP);
-
-                // 3. Calculate 60-month time-series
-                double runningBalance = balance;
-                for (int m = 1; m <= 60; m++) {
-                    runningBalance = runningBalance * (1 + defaultMonthlyRate) + totalContribution;
-                    timeSeries.add(TimeSeriesPointDTO.builder()
-                            .month(m)
-                            .value(BigDecimal.valueOf(runningBalance).setScale(2, RoundingMode.HALF_UP))
-                            .build());
-                }
-
-            } else {
-                // Scenario B: Assets are tied. Savings are evenly distributed to all assets.
-              int kValue = assets.size();
-                double[] balances = new double[kValue];
-                double[] rates = new double[kValue];
-                double contributionPerAsset = totalContribution / kValue;
-
-                double initialSum = 0.0;
-                for (int j = 0; j < kValue; j++) {
-                    Asset asset = assets.get(j);
-                    balances[j] = asset.getCurrentValue() != null ? asset.getCurrentValue().doubleValue() : 0.0;
-                    initialSum += balances[j];
-
-                    Product product = productRepository.findById(asset.getProductId()).orElse(null);
-                    double assetAnnualReturn = (product != null && product.getAnnualReturn() != null)
-                            ? product.getAnnualReturn().doubleValue() : annualRate;
-                    rates[j] = assetAnnualReturn / 100.0 / 12.0;
-                }
-
-                // 1. Calculate projected date
-                int monthsToTarget = 0;
-                double[] simBalances = balances.clone();
-                double sum = initialSum;
-                if (sum < target) {
-                    boolean canGrow = contributionPerAsset > 0;
-                    for (int j = 0; j < kValue; j++) {
-                      if (rates[j] > 0 && balances[j] > 0) {
-                        canGrow = true;
-                        break;
-                      }
-                    }
-                    if (canGrow) {
-                        while (sum < target && monthsToTarget < 12000) {
-                            sum = 0.0;
-                            for (int j = 0; j < kValue; j++) {
-                                simBalances[j] = simBalances[j] * (1 + rates[j]) + contributionPerAsset;
-                                sum += simBalances[j];
-                            }
-                            monthsToTarget++;
-                        }
-                    } else {
-                        monthsToTarget = 12000;
-                    }
-                }
-                projectedDate = LocalDate.now(clock).plusMonths(monthsToTarget);
-
-                // 2. Calculate recommended contribution
-                double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(
-                        goal.getType() != null ? goal.getType().toLowerCase() : "custom", 60
-                );
-                double monthsToUse = maxMonths;
-                if (goal.getTargetDate() != null) {
-                    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), goal.getTargetDate());
-                    if (actualMonths > 0 && actualMonths < maxMonths) {
-                        monthsToUse = actualMonths;
-                    }
-                }
-                double num = target;
-                double sumS = 0.0;
-                for (int j = 0; j < kValue; j++) {
-                    double fValueFactor = Math.pow(1 + rates[j], monthsToUse);
-                    num -= balances[j] * fValueFactor;
-
-                    double sFactor;
-                    if (rates[j] > 0) {
-                        sFactor = (fValueFactor - 1) / rates[j];
-                    } else {
-                        sFactor = monthsToUse;
-                    }
-                    sumS += sFactor;
-                }
-                double denom = sumS / kValue;
-                double recContributionVal = denom > 0 ? num / denom : 0.0;
-                recommendedContribution = BigDecimal.valueOf(Math.max(0.0, recContributionVal))
-                        .setScale(2, RoundingMode.HALF_UP);
-
-                // 3. Calculate 60-month time-series
-                double[] runBalances = balances.clone();
-                for (int m = 1; m <= 60; m++) {
-                    double stepSum = 0.0;
-                    for (int j = 0; j < kValue; j++) {
-                        runBalances[j] = runBalances[j] * (1 + rates[j]) + contributionPerAsset;
-                        stepSum += runBalances[j];
-                    }
-                    timeSeries.add(TimeSeriesPointDTO.builder()
-                            .month(m)
-                            .value(BigDecimal.valueOf(stepSum).setScale(2, RoundingMode.HALF_UP))
-                            .build());
-                }
-            }
-
-            return GoalProjectionDTO.builder()
-                    .id(goal.getId())
-                    .name(goal.getName())
-                    .type(goal.getType())
-                    .targetAmount(goal.getTargetAmount())
-                    .targetDate(goal.getTargetDate())
-                    .isPriority(goal.getIsPriority())
-                    .notes(goal.getNotes())
-                    .status(goal.getStatus())
-                    .projectedDate(projectedDate)
-                    .recommendedContribution(recommendedContribution)
-                    .timeSeries(timeSeries)
-                    .build();
-        }).toList();
+    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+      throw new MissingRiskProfileException("Risk Profiler Assessment Required");
     }
+
+    // NOTE: intentionally left as-is pending discussion with team — not currently
+    // wired into any calculation below.
+    BigDecimal defaultReturn = financialProfileRepository.findByUserId(user.getId())
+      .map(FinancialProfile::getDefaultReturn)
+      .orElse(BigDecimal.valueOf(7.50));
+    double annualRate = defaultReturn.doubleValue();
+
+    double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
+
+    List<Goal> goals = goalRepository.findAllByUserId(user.getId());
+
+    return goals.stream()
+      .map(goal -> buildProjection(goal, defaultMonthlyRate))
+      .toList();
+  }
+
+  private GoalProjectionDTO buildProjection(Goal goal, double defaultMonthlyRate) {
+    List<Asset> assets = assetRepository.findAllByGoalId(goal.getId());
+
+    double target = goal.getTargetAmount().doubleValue();
+    double totalContribution = goal.getMonthlyContribution().doubleValue();
+    double monthsToUse = calculateMonthsToUse(goal.getType(), goal.getTargetDate());
+
+    LocalDate projectedDate;
+    BigDecimal recommendedContribution;
+    List<TimeSeriesPointDTO> timeSeries;
+
+    if (assets.isEmpty()) {
+      // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
+      double balance = Optional.ofNullable(goal.getCurrentAmount())
+        .map(BigDecimal::doubleValue).orElse(0.0);
+
+      int monthsToTarget = simulateMonthsToTarget(
+        new double[]{balance}, new double[]{defaultMonthlyRate}, totalContribution, target);
+      projectedDate = LocalDate.now(clock).plusMonths(monthsToTarget);
+
+      double recContributionVal = (target - balance) / monthsToUse;
+      recommendedContribution = toScaledBigDecimal(Math.max(0.0, recContributionVal));
+
+      timeSeries = buildTimeSeries(new double[]{balance}, new double[]{defaultMonthlyRate}, totalContribution);
+
+    } else {
+      // Scenario B: Assets are tied. Contribution is split evenly across all assets.
+      int kValue = assets.size();
+      double[] balances = new double[kValue];
+      double[] rates = new double[kValue];
+      double contributionPerAsset = totalContribution / kValue;
+
+      for (int j = 0; j < kValue; j++) {
+        Asset asset = assets.get(j);
+        balances[j] = Optional.ofNullable(asset.getCurrentValue())
+          .map(Number::doubleValue).orElse(0.0);
+
+        Product product = productRepository.findById(asset.getProductId())
+          .orElseThrow(() -> new NotFoundException("Item Not Found"));
+
+        if (product.getAnnualReturn() == null) {
+          // TODO : think about this is it necessary to have "default annual return"??????
+          throw new IllegalStateException("Missing Annual Return");
+        }
+        rates[j] = product.getAnnualReturn().doubleValue() / 100.0 / 12.0;
+      }
+
+      int monthsToTarget = simulateMonthsToTarget(balances, rates, contributionPerAsset, target);
+      projectedDate = LocalDate.now(clock).plusMonths(monthsToTarget);
+
+      recommendedContribution = calculateRecommendedContribution(balances, rates, target, monthsToUse);
+
+      timeSeries = buildTimeSeries(balances, rates, contributionPerAsset);
+    }
+
+    return GoalProjectionDTO.builder()
+      .id(goal.getId())
+      .name(goal.getName())
+      .type(goal.getType())
+      .targetAmount(goal.getTargetAmount())
+      .targetDate(goal.getTargetDate())
+      .isPriority(goal.getIsPriority())
+      .notes(goal.getNotes())
+      .status(goal.getStatus())
+      .projectedDate(projectedDate)
+      .recommendedContribution(recommendedContribution)
+      .timeSeries(timeSeries)
+      .build();
+  }
+
+  /**
+   * Number of months to use as the contribution-planning horizon: capped by the
+   * goal type's default horizon, but shortened if the target date arrives sooner.
+   */
+  private double calculateMonthsToUse(String type, LocalDate targetDate) {
+    double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
+    long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), targetDate);
+    return (actualMonths > 0 && actualMonths < maxMonths) ? actualMonths : maxMonths;
+  }
+
+  /**
+   * Simulates monthly compounding across one or more balances/rates with an even
+   * per-bucket contribution, returning the month count at which the combined sum
+   * first reaches target (capped at MAX_SIMULATION_MONTHS).
+   */
+  private int simulateMonthsToTarget(double[] balances, double[] rates, double contributionPerBucket, double target) {
+    double sum = sumOf(balances);
+    if (sum >= target) {
+      return 0;
+    }
+
+    if (!hasGrowthPotential(balances, rates, contributionPerBucket)) {
+      return MAX_SIMULATION_MONTHS;
+    }
+
+    double[] simBalances = balances.clone();
+    int months = 0;
+    while (sum < target && months < MAX_SIMULATION_MONTHS) {
+      sum = 0.0;
+      for (int j = 0; j < simBalances.length; j++) {
+        simBalances[j] = simBalances[j] * (1 + rates[j]) + contributionPerBucket;
+        sum += simBalances[j];
+      }
+      months++;
+    }
+    return months;
+  }
+
+  /** Standard PMT-style recommended monthly contribution, averaged evenly across buckets. */
+  private BigDecimal calculateRecommendedContribution(double[] balances, double[] rates, double target, double monthsToUse) {
+    double num = target;
+    double sumS = 0.0;
+    for (int j = 0; j < balances.length; j++) {
+      double futureValueFactor = Math.pow(1 + rates[j], monthsToUse);
+      num -= balances[j] * futureValueFactor;
+      sumS += (rates[j] > 0) ? (futureValueFactor - 1) / rates[j] : monthsToUse;
+    }
+    double denom = sumS / balances.length;
+    double recContributionVal = denom > 0 ? num / denom : 0.0;
+    return toScaledBigDecimal(Math.max(0.0, recContributionVal));
+  }
+
+  /** Projects the combined balance forward PROJECTION_WINDOW_MONTHS for the response chart. */
+  private List<TimeSeriesPointDTO> buildTimeSeries(double[] balances, double[] rates, double contributionPerBucket) {
+    List<TimeSeriesPointDTO> series = new ArrayList<>(PROJECTION_WINDOW_MONTHS);
+    double[] runBalances = balances.clone();
+    for (int m = 1; m <= PROJECTION_WINDOW_MONTHS; m++) {
+      double stepSum = 0.0;
+      for (int j = 0; j < runBalances.length; j++) {
+        runBalances[j] = runBalances[j] * (1 + rates[j]) + contributionPerBucket;
+        stepSum += runBalances[j];
+      }
+      series.add(TimeSeriesPointDTO.builder()
+        .month(m)
+        .value(toScaledBigDecimal(stepSum))
+        .build());
+    }
+    return series;
+  }
+
+  private double sumOf(double[] values) {
+    double total = 0.0;
+    for (double v : values) total += v;
+    return total;
+  }
+
+  private BigDecimal toScaledBigDecimal(double value) {
+    return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private boolean hasGrowthPotential(double[] balances, double[] rates, double contributionPerBucket) {
+    if (contributionPerBucket > 0) {
+      return true;
+    }
+    for (int j = 0; j < balances.length; j++) {
+      if (rates[j] > 0 && balances[j] > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 }

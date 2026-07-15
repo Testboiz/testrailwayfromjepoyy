@@ -65,7 +65,7 @@ public class PnLCalculationService {
         BigDecimal potentialPnL = BigDecimal.ZERO;
         BigDecimal potentialPnLPercent = BigDecimal.ZERO;
 
-        if (remainingUnits.compareTo(BigDecimal.ZERO) > 0 && avgPrice.compareTo(BigDecimal.ZERO) > 0) {
+        if (remainingUnits.compareTo(BigDecimal.ZERO) > 0 && avgPrice.compareTo(BigDecimal.ZERO) > 0 && currentPrice.compareTo(BigDecimal.ZERO) > 0) {
             // Potential P&L = (currentPrice - avgPrice) × remainingUnits
             potentialPnL = currentPrice.subtract(avgPrice)
                     .multiply(remainingUnits)
@@ -80,7 +80,7 @@ public class PnLCalculationService {
 
         BigDecimal realizedPnL = BigDecimal.ZERO;
         BigDecimal realizedPnLPercent = BigDecimal.ZERO;
-        if (!sellTransactions.isEmpty() && avgPrice.compareTo(BigDecimal.ZERO) > 0) {
+        if (!sellTransactions.isEmpty()) {
             // Total proceeds from all SELL transactions
             BigDecimal totalSellProceeds = sellTransactions.stream()
                     .map(TransactionHistory::getTotalAmount)
