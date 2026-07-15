@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
+import com.indivaragroup.jdt17wms.exceptions.GoalValidationException;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
 import com.indivaragroup.jdt17wms.models.Goal;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -111,7 +113,7 @@ class GoalsManagementServiceTest {
     }
 
     @Test
-    void createGoalForUser_shouldCreateGoalSuccessfully() throws Exception {
+    void createGoalForUser_shouldCreateGoalSuccessfully() {
         User user = User.builder()
                 .id(AppConstants.USER_ID)
                 .questionnaireCompleted(true)
@@ -182,7 +184,7 @@ class GoalsManagementServiceTest {
     }
 
     @Test
-    void updateGoalForUser_shouldUpdateGoalSuccessfully() throws Exception {
+    void updateGoalForUser_shouldUpdateGoalSuccessfully() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(AppConstants.USER_ID)
@@ -276,9 +278,14 @@ class GoalsManagementServiceTest {
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
 
-        GoalEditingDTO request = GoalEditingDTO.builder()
-                .isPriority(true)
-                .build();
+      GoalEditingDTO request = GoalEditingDTO.builder()
+        .name("Vacation Fund")
+        .targetAmount(new BigDecimal("5000.00"))
+        .monthlyContribution(new BigDecimal("200.00"))
+        .targetDate(LocalDate.now(clock).plusDays(1))
+        .isPriority(true)
+        .build();
+
 
         when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
@@ -302,9 +309,14 @@ class GoalsManagementServiceTest {
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
 
-        GoalEditingDTO request = GoalEditingDTO.builder()
-                .monthlyContribution(new BigDecimal("6000.00")) // Exceeds income of 5000
-                .build();
+      GoalEditingDTO request = GoalEditingDTO.builder()
+        .name("Emergency Fund")
+        .targetAmount(new BigDecimal("10000.00"))
+        .monthlyContribution(new BigDecimal("6000.00")) // Exceeds income of 5000
+        .targetDate(LocalDate.now(clock).plusDays(1))
+        .isPriority(false)
+        .build();
+
 
         FinancialProfile profile = FinancialProfile.builder()
                 .monthlyIncome(new BigDecimal("5000.00"))
@@ -369,5 +381,517 @@ class GoalsManagementServiceTest {
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> goalsManagementService.deleteGoalForUser(goalId));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // createGoalForUser – GoalValidationException paths
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void createGoalForUser_shouldThrowGoalValidationExceptionWhenTypeIsInvalid() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        // "invalid_type" is not a key in AppConstants.GOAL_MAX_MONTHS
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .type("invalid_type")
+                .targetDate(LocalDate.now(clock).plusDays(30))
+                .isPriority(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        GoalValidationException ex = assertThrows(GoalValidationException.class,
+                () -> goalsManagementService.createGoalForUser(request));
+
+        assertThat(ex.getErrors())
+                .hasSize(1)
+                .anySatisfy(err -> {
+                    assertThat(err.getField()).isEqualTo("type");
+                    assertThat(err.getReason()).isEqualTo("Invalid goal type");
+                });
+    }
+
+    @Test
+    void createGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateIsInThePast() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .type("savings")
+                .targetDate(LocalDate.now(clock).minusDays(1)) // past date
+                .isPriority(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        GoalValidationException ex = assertThrows(GoalValidationException.class,
+                () -> goalsManagementService.createGoalForUser(request));
+
+        assertThat(ex.getErrors())
+                .hasSize(1)
+                .anySatisfy(err -> {
+                    assertThat(err.getField()).isEqualTo("target_date");
+                    assertThat(err.getReason()).isEqualTo("Target date must be in the future");
+                });
+    }
+
+    @Test
+    void createGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateExceedsMaxMonths() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        // "savings" max is 18 months — set target 19 months ahead
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .type("savings")
+                .targetDate(LocalDate.now(clock).plusMonths(19))
+                .isPriority(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+
+        GoalValidationException ex = assertThrows(GoalValidationException.class,
+                () -> goalsManagementService.createGoalForUser(request));
+
+        assertThat(ex.getErrors())
+                .hasSize(1)
+                .anySatisfy(err -> {
+                    assertThat(err.getField()).isEqualTo("target_date");
+                    assertThat(err.getReason()).contains("18 months");
+                });
+    }
+
+    @Test
+    void createGoalForUser_shouldCreateGoalSuccessfullyWhenNotPriority() {
+        // Covers the branch where isPriority=false — duplicate-priority check is skipped entirely
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .name("Vacation Fund")
+                .type("vacation")
+                .targetAmount(new BigDecimal("5000.00"))
+                .monthlyContribution(new BigDecimal("500.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(false)
+                .build();
+
+        Goal saved = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .name("Vacation Fund")
+                .type("vacation")
+                .targetAmount(new BigDecimal("5000.00"))
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.save(any(Goal.class))).thenReturn(saved);
+
+        GoalDTO result = goalsManagementService.createGoalForUser(request);
+
+        assertNotNull(result);
+        assertEquals("Vacation Fund", result.getName());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // updateGoalForUser – GoalValidationException paths
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void updateGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateIsInThePast() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("retirement")
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Retirement")
+                .targetAmount(new BigDecimal("500000.00"))
+                .monthlyContribution(new BigDecimal("1000.00"))
+                .targetDate(LocalDate.now(clock).minusDays(1)) // past date
+                .isPriority(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+
+        GoalValidationException ex = assertThrows(GoalValidationException.class,
+                () -> goalsManagementService.updateGoalForUser(goalId, request));
+
+        assertThat(ex.getErrors())
+                .hasSize(1)
+                .anySatisfy(err -> {
+                    assertThat(err.getField()).isEqualTo("target_date");
+                    assertThat(err.getReason()).isEqualTo("Target date must be in the future");
+                });
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateExceedsMaxMonths() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        // "savings" max is 18 months
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("savings")
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Savings Goal")
+                .targetAmount(new BigDecimal("10000.00"))
+                .monthlyContribution(new BigDecimal("500.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(19)) // exceeds 18-month cap
+                .isPriority(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+
+        GoalValidationException ex = assertThrows(GoalValidationException.class,
+                () -> goalsManagementService.updateGoalForUser(goalId, request));
+
+        assertThat(ex.getErrors())
+                .hasSize(1)
+                .anySatisfy(err -> {
+                    assertThat(err.getField()).isEqualTo("target_date");
+                    assertThat(err.getReason()).contains("18 months");
+                });
+    }
+
+    @Test
+    void updateGoalForUser_shouldSkipDuplicatePriorityCheckWhenGoalIsAlreadyPriority() {
+        // Covers branch: isDtoPriority=true AND isGoalPriority=true → condition is false → no duplicate check
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("retirement")
+                .monthlyContribution(new BigDecimal("1000.00"))
+                .isPriority(true) // already priority — re-setting to true must not trigger the check
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Retirement Updated")
+                .targetAmount(new BigDecimal("600000.00"))
+                .monthlyContribution(new BigDecimal("1000.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(12))
+                .isPriority(true)
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .monthlyIncome(new BigDecimal("5000.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.save(any(Goal.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
+
+        assertNotNull(result);
+        assertEquals("Retirement Updated", result.getName());
+        assertEquals(true, result.getIsPriority());
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowInsufficientIncomeExceptionWhenNoFinancialProfileExists() {
+        // Covers branch: financialProfileRepository returns empty → monthlyIncome defaults to ZERO
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("savings")
+                .monthlyContribution(new BigDecimal("100.00"))
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Savings")
+                .targetAmount(new BigDecimal("5000.00"))
+                .monthlyContribution(new BigDecimal("1.00")) // any positive amount > ZERO income
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(false)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.empty());
+
+        assertThrows(InsufficientIncomeException.class,
+                () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Remaining branch coverage for inline "// not covered yet!" markers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void createGoalForUser_shouldCreateGoalSuccessfullyWhenPriorityAndNoPriorityGoalExists() {
+        // Line 116: anyMatch predicate evaluates to FALSE (no existing IN_PROGRESS priority goal)
+        // → hasPriorityGoal=false → no exception → goal is saved
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .name("My Priority Goal")
+                .type("savings")
+                .targetAmount(new BigDecimal("3000.00"))
+                .monthlyContribution(new BigDecimal("500.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(true)
+                .build();
+
+        // Existing goal: is priority but NOT in progress → anyMatch returns false
+        Goal nonInProgressPriorityGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .isPriority(true)
+                .status(GoalStatus.ACHIEVED) // not IN_PROGRESS → predicate is false
+                .build();
+
+        Goal saved = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .name("My Priority Goal")
+                .type("savings")
+                .targetAmount(new BigDecimal("3000.00"))
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(nonInProgressPriorityGoal));
+        when(goalRepository.save(any(Goal.class))).thenReturn(saved);
+
+        GoalDTO result = goalsManagementService.createGoalForUser(request);
+
+        assertNotNull(result);
+        assertEquals("My Priority Goal", result.getName());
+    }
+
+    @Test
+    void updateGoalForUser_shouldNotThrowWhenOtherGoalIsPriorityButNotInProgress() {
+        // Lines 194-195: anyMatch lambda — other goal has isPriority=true but status != IN_PROGRESS
+        // → hasPriorityGoal=false → no DuplicatePriorityGoalException → falls through to financial check
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("savings")
+                .monthlyContribution(new BigDecimal("200.00"))
+                .isPriority(false) // currently not priority
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        // Other goal: isPriority=true but ACHIEVED → sub-conditions fail at getStatus check
+        Goal completedPriorityGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .isPriority(true)
+                .status(GoalStatus.ACHIEVED) // not IN_PROGRESS → predicate false
+                .monthlyContribution(new BigDecimal("100.00"))
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Updated Savings")
+                .targetAmount(new BigDecimal("5000.00"))
+                .monthlyContribution(new BigDecimal("200.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(true) // wants to become priority
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .monthlyIncome(new BigDecimal("5000.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID))
+                .thenReturn(List.of(existingGoal, completedPriorityGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.save(any(Goal.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
+
+        assertNotNull(result);
+        assertEquals("Updated Savings", result.getName());
+        assertEquals(true, result.getIsPriority());
+    }
+
+    @Test
+    void updateGoalForUser_shouldAccumulateContributionFromOtherGoalsInIncomeCheck() {
+        // Line 207: ternary else-branch — a *different* goal in the list uses g.getMonthlyContribution()
+        // Total = dto contribution (for goalId) + other goal's stored contribution → exceeds income
+        UUID goalId = UUID.randomUUID();
+        UUID otherGoalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("savings")
+                .monthlyContribution(new BigDecimal("500.00"))
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        // Another goal with its own contribution that will be picked up by the else-branch
+        Goal otherGoal = Goal.builder()
+                .id(otherGoalId)
+                .userId(AppConstants.USER_ID)
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .monthlyContribution(new BigDecimal("4000.00")) // else-branch: uses this stored value
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Savings")
+                .targetAmount(new BigDecimal("5000.00"))
+                .monthlyContribution(new BigDecimal("1500.00")) // 1500 + 4000 = 5500 > 5000 income
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(false)
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .monthlyIncome(new BigDecimal("5000.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID))
+                .thenReturn(List.of(existingGoal, otherGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+
+        assertThrows(InsufficientIncomeException.class,
+                () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Boolean.TRUE.equals false-hit: anyMatch short-circuits on isPriority=false
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void createGoalForUser_shouldCreateGoalSuccessfullyWhenExistingGoalIsNotPriority() {
+        // Line 116: Boolean.TRUE.equals(g.getIsPriority()) → FALSE (isPriority=false on existing goal)
+        // → && short-circuits, getStatus() never evaluated → hasPriorityGoal=false → goal saved
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalRegistrationDTO request = GoalRegistrationDTO.builder()
+                .name("Emergency Fund")
+                .type("savings")
+                .targetAmount(new BigDecimal("2000.00"))
+                .monthlyContribution(new BigDecimal("300.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(true)
+                .build();
+
+        // Existing goal with isPriority=false → Boolean.TRUE.equals returns false → short-circuit
+        Goal nonPriorityGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+
+        Goal saved = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .name("Emergency Fund")
+                .type("savings")
+                .targetAmount(new BigDecimal("2000.00"))
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(nonPriorityGoal));
+        when(goalRepository.save(any(Goal.class))).thenReturn(saved);
+
+        GoalDTO result = goalsManagementService.createGoalForUser(request);
+
+        assertNotNull(result);
+        assertEquals("Emergency Fund", result.getName());
+    }
+
+    @Test
+    void updateGoalForUser_shouldNotThrowWhenOtherGoalIsNotPriority() {
+        // Line 194: Boolean.TRUE.equals(g.getIsPriority()) → FALSE (other goal has isPriority=false)
+        // → && short-circuits before getStatus() → hasPriorityGoal=false → no exception, falls through
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal existingGoal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .type("savings")
+                .monthlyContribution(new BigDecimal("200.00"))
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .build();
+        // Other goal is NOT priority → Boolean.TRUE.equals(false) = false → short-circuits
+        Goal nonPriorityOtherGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(AppConstants.USER_ID)
+                .isPriority(false)
+                .status(GoalStatus.IN_PROGRESS)
+                .monthlyContribution(new BigDecimal("100.00"))
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .name("Updated Savings")
+                .targetAmount(new BigDecimal("5000.00"))
+                .monthlyContribution(new BigDecimal("200.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(6))
+                .isPriority(true)
+                .build();
+
+        FinancialProfile profile = FinancialProfile.builder()
+                .monthlyIncome(new BigDecimal("5000.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID))
+                .thenReturn(List.of(existingGoal, nonPriorityOtherGoal));
+        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.save(any(Goal.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
+
+        assertNotNull(result);
+        assertEquals("Updated Savings", result.getName());
+        assertEquals(true, result.getIsPriority());
     }
 }
