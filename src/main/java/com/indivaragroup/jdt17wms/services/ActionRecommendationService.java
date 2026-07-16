@@ -330,7 +330,7 @@ public class ActionRecommendationService {
         // ─────────────────────────────────────────
         // Rule 2: Concentration risk (>65% in one product)
         // ─────────────────────────────────────────
-        if (totalValue.compareTo(BigDecimal.ZERO) > 0 && !assets.isEmpty()) {
+        if (totalValue.compareTo(BigDecimal.ZERO) > 0) {
           // Aggregate value per product
           Map<UUID, BigDecimal> byProduct = new HashMap<>();
           for (Asset a : assets) {

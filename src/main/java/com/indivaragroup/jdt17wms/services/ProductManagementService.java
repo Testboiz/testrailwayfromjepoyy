@@ -118,7 +118,7 @@ public class ProductManagementService {
     }
 
     private static boolean containsIgnoreCase(String source, String query) {
-        return source != null && source.toLowerCase().contains(query);
+        return source.toLowerCase().contains(query);
     }
 
     public Product updateProductVisibility(UUID id, Boolean visibility) {
