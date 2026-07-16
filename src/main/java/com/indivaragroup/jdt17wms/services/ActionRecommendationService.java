@@ -96,7 +96,8 @@ public class ActionRecommendationService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // ── Max risk level for user's profile ──
-        String riskProfile = user.getRiskProfile();
+        String riskProfile = Optional.ofNullable(user.getRiskProfile())
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER));
         int maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
 
         // Product lookup by ID for O(1) access
@@ -170,8 +171,9 @@ public class ActionRecommendationService {
             double avgRisk = assets.stream()
                     .mapToDouble(a -> {
                         Product p = productMap.get(a.getProductId());
-                            return (a.getCurrentValue().doubleValue()
-                                    / totalValue.doubleValue()) * p.getRiskLevel();
+                        if (p == null) return 0.0;
+                        return (a.getCurrentValue().doubleValue()
+                                / totalValue.doubleValue()) * p.getRiskLevel();
 
                     })
                     .sum();
@@ -296,6 +298,9 @@ public class ActionRecommendationService {
                 .map(a -> Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        if (user.getRiskProfile() == null) {
+            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
+        }
         String riskProfile = user.getRiskProfile();
         int maxRiskLv = MAX_RISK_LEVELS.getOrDefault(riskProfile.toLowerCase(), 5);
 
@@ -443,7 +448,8 @@ public class ActionRecommendationService {
                   freshRecs.add(buildRecommendation(MEDIUM_PRIORITY, "goal",
                             String.format("No product aligned with \"%s\"", goal.getName()),
                             String.format("This goal works best with %s. %s (%s%% p.a.) fits the profile.",
-                                    typeNames, p.getName(), p.getAnnualReturn()),
+                                    typeNames, p.getName(),
+                                    Optional.ofNullable(p.getAnnualReturn()).map(BigDecimal::toPlainString).orElse("N/A")),
                             p.getId(), suggested, goal.getId()));
 
                     usedProductIds.add(p.getId());
@@ -463,7 +469,7 @@ public class ActionRecommendationService {
                             String.format("You hold no %s products. %s returns %s%% p.a. and fits within your %s profile "
                                             + "— adding it reduces single-category concentration.",
                                     TYPE_LABELS.getOrDefault(type, type), p.getName(),
-                                    p.getAnnualReturn().toPlainString(),
+                                                                        Optional.ofNullable(p.getAnnualReturn()).map(BigDecimal::toPlainString).orElse("N/A"),
                                     riskLabel(riskProfile)),
                             p.getId(),
                             p.getMinInvestment(),
@@ -483,13 +489,14 @@ public class ActionRecommendationService {
                         && !ownedIds.contains(p.getId())
                         && p.getRiskLevel() <= fMaxRisk
                         && !usedProductIds.contains(p.getId()))
+                .filter(p -> p.getAnnualReturn() != null)
                 .max(Comparator.comparing(Product::getAnnualReturn));
 
       topGrowth.ifPresent(tg -> freshRecs.add(buildRecommendation( LOW_PRIORITY, "growth",
         String.format("Best unowned opportunity: %s", tg.getName()),
         String.format("At %s%% p.a., this is the highest-returning product within your %s profile "
             + "that you don't yet hold. Min. investment: %s.",
-          tg.getAnnualReturn().toPlainString(),
+          Optional.ofNullable(tg.getAnnualReturn()).map(BigDecimal::toPlainString).orElse("N/A"),
           riskLabel(riskProfile),
           fmt(tg.getMinInvestment())),
         tg.getId(),
@@ -619,6 +626,7 @@ public class ActionRecommendationService {
                         && lowerTypes.contains(p.getType().toLowerCase())
                         && p.getRiskLevel() <= maxRisk
                         && (excludeIds == null || !excludeIds.contains(p.getId())))
+                .filter(p -> p.getAnnualReturn() != null)
                 .max(Comparator.comparing(Product::getAnnualReturn))
                 .orElse(null);
     }
@@ -628,6 +636,10 @@ public class ActionRecommendationService {
         return assets.stream()
                 .filter(a -> {
                     Product p = productMap.get(a.getProductId());
+                    if (p == null) {
+                        log.warn("Asset {} references deleted product {}, skipping liquid calc", a.getId(), a.getProductId());
+                        return false;
+                    }
                     return LIQUID_PRODUCT_TYPES.contains(p.getType().toLowerCase());
                 })
                 .map(a -> a.getCurrentValue() != null ? a.getCurrentValue() : BigDecimal.ZERO)
@@ -639,8 +651,13 @@ public class ActionRecommendationService {
         return assets.stream()
                 .map(a -> {
                     Product p = productMap.get(a.getProductId());
-                    return p.getType().toLowerCase();
+                    if (p == null) {
+                        log.warn("Asset {} references deleted product {}, skipping owned type", a.getId(), a.getProductId());
+                    }
+                    return p;
                 })
+                .filter(Objects::nonNull)
+                .map(p -> p.getType().toLowerCase())
                 .collect(Collectors.toSet());
     }
 
