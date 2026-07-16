@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -64,8 +65,16 @@ public class PnLCalculationService {
                 .map(TransactionHistory::getUnits)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal remainingUnits = asset.getUnits().subtract(totalSoldUnits)
-                .max(BigDecimal.ZERO); // clamp to 0 — prevent negative remainder
+        BigDecimal units = Optional.ofNullable(asset.getUnits())
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST,
+                        "Asset has null units — data corrupt"));
+
+        BigDecimal remainingUnits = units.subtract(totalSoldUnits);
+        if (remainingUnits.compareTo(BigDecimal.ZERO) < 0) {
+            throw new CoreThrowHandler(ApiError.BAD_REQUEST,
+                    "Asset has negative remaining units (" + remainingUnits
+                            + "): sold units exceed owned units — data corrupt");
+        }
         BigDecimal potentialPnL = BigDecimal.ZERO;
         BigDecimal potentialPnLPercent = BigDecimal.ZERO;
 
