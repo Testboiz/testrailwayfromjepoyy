@@ -75,7 +75,7 @@ public class AuthService {
                 .userId(user.getId())
                 .userName(user.getName())
                 .action(AuditLogAction.LOGIN.name())
-                .details(user.getName()+ "logged in")
+                .details(user.getName() + " logged in")
                 .category(AuditLogCategory.AUTH.toString())
                 .timestamp(Instant.now())
                 .build();
