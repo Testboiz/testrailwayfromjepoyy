@@ -41,18 +41,12 @@ public class AuthController {
     }
 
     @PostMapping(ApiPath.LOGIN_PATH)
-    public ApiResponse<AuthSuccessDTO> login(@Valid @RequestBody(required = false) LoginDTO dto) {
-        if (dto == null) {
-            throw new CoreThrowHandler(ApiError.INVALID_REQUEST_BODY);
-        }
+    public ApiResponse<AuthSuccessDTO> login(@Valid @RequestBody LoginDTO dto) {
         return ApiResponse.success(ApiSuccess.LOGIN, authService.login(dto));
     }
 
     @PostMapping(ApiPath.REGISTER_PATH)
-    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody(required = false) RegisterDTO dto) {
-        if (dto == null) {
-            throw new CoreThrowHandler(ApiError.INVALID_REQUEST_BODY);
-        }
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterDTO dto) {
         authService.register(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(ApiSuccess.REGISTER, null));
@@ -76,11 +70,7 @@ public class AuthController {
     }
 
     @PostMapping(ApiPath.REFRESH_TOKEN_PATH)
-    public ApiResponse<RefreshTokenSuccessDTO> refresh(
-            @RequestBody(required = false) RefreshTokenDTO dto) {
-        if (dto == null || dto.getRefreshToken() == null || dto.getRefreshToken().trim().isEmpty()) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_REFRESH_TOKEN);
-        }
+    public ApiResponse<RefreshTokenSuccessDTO> refresh(@Valid @RequestBody RefreshTokenDTO dto) {
         return ApiResponse.success(ApiSuccess.REFRESH_TOKEN,
                 authService.refreshToken(dto.getRefreshToken()));
     }
