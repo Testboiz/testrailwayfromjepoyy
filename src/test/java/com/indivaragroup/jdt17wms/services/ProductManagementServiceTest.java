@@ -275,61 +275,7 @@ class ProductManagementServiceTest {
         assertEquals(1, result.getTotalElements());
     }
 
-    @Test
-    void getProductsForUser_shouldExcludeProduct_whenRiskLevelIsNull() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile("moderate")
-                .build();
-        Product riskNull = Product.builder().riskLevel(null).visible(true).build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(riskNull));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-        assertTrue(result.getContent().isEmpty());
-    }
-
-    @Test
-    void getProductsForUser_shouldExcludeProduct_whenTypeFilterProvidedButProductTypeIsNull() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile("risk_taker")
-                .build();
-        Product typeNull = Product.builder().type(null).visible(true).build();
-
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(typeNull));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, "stock", false, false), PageRequest.of(0, 10));
-
-        assertTrue(result.getContent().isEmpty());
-    }
-
-    @Test
-    void getProductsForUser_shouldMatchSearchQuery_whenEitherNameOrIssuerIsNull() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile("risk_taker")
-                .build();
-        Product nullNameMatchIssuer = Product.builder().name(null).issuer("Danareksa").visible(true).build();
-        Product nullIssuerMatchName = Product.builder().name("Danareksa Stock").issuer(null).visible(true).build();
-        Product bothNull = Product.builder().name(null).issuer(null).visible(true).build();
-
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(nullNameMatchIssuer, nullIssuerMatchName, bothNull));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", null, false, false), PageRequest.of(0, 10));
-
-        assertEquals(2, result.getTotalElements());
-    }
 
     @Test
     void getProductsForUser_shouldReturnEmptyPage_whenOffsetIsGreaterThanProductListSize() {

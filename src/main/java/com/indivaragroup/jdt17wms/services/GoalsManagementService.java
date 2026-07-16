@@ -107,10 +107,9 @@ public class GoalsManagementService {
       throw new CoreThrowHandler(ApiError.VALIDATION,errors);
     }
 
-    // 3. Check duplicate priority (Enforced non-null by DTO @NotNull)
     if (Boolean.TRUE.equals(dto.getIsPriority())) {
       boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
-        .anyMatch(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS); // not covered yet!
+        .anyMatch(g -> g.getIsPriority() && g.getStatus() == GoalStatus.IN_PROGRESS); // not covered yet!
       if (hasPriorityGoal) {
         throw new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS);
       }
@@ -182,13 +181,13 @@ public class GoalsManagementService {
 
     // 2. Check duplicate priority (Safely defaults null to false)
     boolean isDtoPriority = Boolean.TRUE.equals(dto.getIsPriority());
-    boolean isGoalPriority = Boolean.TRUE.equals(goal.getIsPriority());
+    boolean isGoalPriority = goal.getIsPriority();
 
 
     if (isDtoPriority && !isGoalPriority) {
       boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
         .anyMatch(g -> !g.getId().equals(goalId)
-          && Boolean.TRUE.equals(g.getIsPriority()) // not covered yet!
+          && g.getIsPriority() // not covered yet!
           && g.getStatus() == GoalStatus.IN_PROGRESS);
       if (hasPriorityGoal) {
         throw new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS);

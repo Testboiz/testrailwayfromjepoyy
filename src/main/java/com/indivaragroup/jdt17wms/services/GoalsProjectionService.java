@@ -6,7 +6,6 @@ import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -25,7 +24,6 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class GoalsProjectionService {
@@ -84,8 +82,7 @@ public class GoalsProjectionService {
 
     if (assets.isEmpty()) {
       // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
-      double balance = Optional.ofNullable(goal.getCurrentAmount())
-        .map(BigDecimal::doubleValue).orElse(0.0);
+      double balance = goal.getCurrentAmount().doubleValue();
 
       int monthsToTarget = simulateMonthsToTarget(
         new double[]{balance}, new double[]{defaultMonthlyRate}, totalContribution, target);
@@ -105,8 +102,7 @@ public class GoalsProjectionService {
 
       for (int j = 0; j < kValue; j++) {
         Asset asset = assets.get(j);
-        balances[j] = Optional.ofNullable(asset.getCurrentValue())
-          .map(Number::doubleValue).orElse(0.0);
+        balances[j] = asset.getCurrentValue().doubleValue();
 
         Product product = productRepository.findById(asset.getProductId())
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));

@@ -85,9 +85,7 @@ public class AssetsManagementService {
             throw new CoreThrowHandler(ApiError.DELISTED_PRODUCT);
         }
 
-        if (dto.getUnits() == null || dto.getUnits().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new CoreThrowHandler(ApiError.BAD_REQUEST, "Units must be greater than zero");
-        }
+
 
         Instant purchaseInstant = dto.getPurchaseDate().atZone(ZoneId.systemDefault()).toInstant();
 

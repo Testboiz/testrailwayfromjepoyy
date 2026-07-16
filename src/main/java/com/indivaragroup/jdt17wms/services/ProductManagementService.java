@@ -78,7 +78,7 @@ public class ProductManagementService {
                 }
                 final int limitRisk = maxRiskLevel;
                 products = products.stream()
-                        .filter(p -> p.getRiskLevel() != null && p.getRiskLevel() <= limitRisk)
+                        .filter(p -> p.getRiskLevel() <= limitRisk)
                         .toList();
             }
         }

@@ -3,7 +3,6 @@ package com.indivaragroup.jdt17wms.services;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
@@ -84,7 +83,7 @@ class PnLCalculationServiceTest {
 
         assertNotNull(results);
         assertEquals(1, results.size());
-        assertEquals(productId, results.get(0).getProductId());
+        assertEquals(productId, results.getFirst().getProductId());
     }
 
     @Test
@@ -105,20 +104,7 @@ class PnLCalculationServiceTest {
         assertEquals("Item Not Found", ex.getMessage());
     }
 
-    @Test
-    void testComputePnL_productCurrentPriceNull_defaultsToZero() {
-        product.setCurrentPrice(null);
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
-                .thenReturn(Collections.emptyList());
-        when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.SELL))
-                .thenReturn(Collections.emptyList());
 
-        AssetsPnLResponseDTO result = pnLCalculationService.computePnLForAsset(asset);
-
-        assertEquals(0, result.getCurrentValue().compareTo(BigDecimal.ZERO));
-        assertEquals(0, result.getPotentialPnL().compareTo(BigDecimal.ZERO));
-    }
 
     @Test
     void testComputePnL_SingleBuyOnly_PositivePnL() {

@@ -87,7 +87,7 @@ public class ActionRecommendationService {
 
         // ── Portfolio total value ──
         BigDecimal totalValue = assets.stream()
-                .map(a -> Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO))
+                .map(Asset::getCurrentValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // ── Max risk level for user's profile ──
@@ -288,7 +288,7 @@ public class ActionRecommendationService {
 
         BigDecimal surplus = monthlyIncome.subtract(monthlyExpenses);
         BigDecimal totalValue = assets.stream()
-                .map(a -> Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO))
+                .map(Asset::getCurrentValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         String riskProfile = user.getRiskProfile();
@@ -334,7 +334,7 @@ public class ActionRecommendationService {
           // Aggregate value per product
           Map<UUID, BigDecimal> byProduct = new HashMap<>();
           for (Asset a : assets) {
-            BigDecimal val = Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO);
+            BigDecimal val = a.getCurrentValue();
             byProduct.merge(a.getProductId(), val, BigDecimal::add);
           }
 
