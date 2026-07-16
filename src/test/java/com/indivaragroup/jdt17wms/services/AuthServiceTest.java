@@ -8,7 +8,6 @@ import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.AuditLog;
 import com.indivaragroup.jdt17wms.models.User;
-import com.indivaragroup.jdt17wms.models.enums.ActiveStatus;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
