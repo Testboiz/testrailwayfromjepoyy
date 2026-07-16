@@ -2,7 +2,12 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
-import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
+import static com.indivaragroup.jdt17wms.constants.GoalConstants.*;
+import static com.indivaragroup.jdt17wms.constants.PriorityConstants.*;
+import static com.indivaragroup.jdt17wms.constants.ProductConstants.*;
+import static com.indivaragroup.jdt17wms.constants.RiskConstants.MAX_RISK_LEVELS;
+import static com.indivaragroup.jdt17wms.constants.RiskConstants.RISK_TARGETS;
+
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;

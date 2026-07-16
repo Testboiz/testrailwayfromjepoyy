@@ -1,6 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.constants.GoalConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
@@ -86,7 +86,7 @@ public class GoalsManagementService {
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
     String type = dto.getType(); // Enforced non-blank and lowercase by DTO @Pattern
 
-    if (!AppConstants.GOAL_MAX_MONTHS.containsKey(type)) {
+    if (!GoalConstants.GOAL_MAX_MONTHS.containsKey(type)) {
       errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TYPE).reason("Invalid goal type").build());
     }
 
@@ -95,8 +95,8 @@ public class GoalsManagementService {
 
     if (targetDate.isBefore(now)) {
       errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date must be in the future").build());
-    } else if (AppConstants.GOAL_MAX_MONTHS.containsKey(type)) {
-      int maxMonths = AppConstants.GOAL_MAX_MONTHS.get(type);
+    } else if (GoalConstants.GOAL_MAX_MONTHS.containsKey(type)) {
+      int maxMonths = GoalConstants.GOAL_MAX_MONTHS.get(type);
       long months = ChronoUnit.MONTHS.between(now, targetDate);
       if (months > maxMonths) {
         errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date exceeds maximum limit of " + maxMonths + " months").build());
@@ -169,7 +169,7 @@ public class GoalsManagementService {
     } else {
       // goal.getType() is already sanitized/normalized when the goal was created
       String type = goal.getType() != null ? goal.getType() : "custom";
-      int maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
+      int maxMonths = GoalConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
       long months = ChronoUnit.MONTHS.between(now, targetDate);
       if (months > maxMonths) {
         errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date exceeds maximum limit of " + maxMonths + " months").build());

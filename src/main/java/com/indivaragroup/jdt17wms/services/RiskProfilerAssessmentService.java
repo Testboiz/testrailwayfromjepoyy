@@ -1,6 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.constants.RiskConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.Answer;
@@ -55,7 +55,7 @@ public class RiskProfilerAssessmentService {
 
     public RiskProfilerResponseDTO updateProfilerAssessment(RiskProfilerDTO riskProfilerDTO) {
 
-        int expectedSize = questionnaireDataDTO.getData() != null ? questionnaireDataDTO.getData().size() : AppConstants.DEFAULT_QUESTIONNAIRE_SIZE;
+        int expectedSize = questionnaireDataDTO.getData() != null ? questionnaireDataDTO.getData().size() : RiskConstants.DEFAULT_QUESTIONNAIRE_SIZE;
         if (riskProfilerDTO.getAnswers().size() != expectedSize) {
             throw new CoreThrowHandler(ApiError.BAD_REQUEST,"Invalid answers count");
         }
@@ -65,15 +65,15 @@ public class RiskProfilerAssessmentService {
                 .sum();
 
         String riskProfile;
-        if (rawScore <= AppConstants.RISK_AVERSE_THRESHOLD) {
+        if (rawScore <= RiskConstants.RISK_AVERSE_THRESHOLD) {
             riskProfile = "risk_averse";
-        } else if (rawScore <= AppConstants.RISK_MODERATE_THRESHOLD) {
+        } else if (rawScore <= RiskConstants.RISK_MODERATE_THRESHOLD) {
             riskProfile = "moderate";
         } else {
             riskProfile = "risk_taker";
         }
 
-        int outputScore = rawScore * AppConstants.RISK_SCALING_FACTOR;
+        int outputScore = rawScore * RiskConstants.RISK_SCALING_FACTOR;
 
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
