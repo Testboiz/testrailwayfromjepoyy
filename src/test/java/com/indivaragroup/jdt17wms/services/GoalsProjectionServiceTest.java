@@ -32,6 +32,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -128,9 +130,6 @@ class GoalsProjectionServiceTest {
                 .targetDate(LocalDate.of(2036, Month.JULY, 13))
                 .currentAmount(BigDecimal.ZERO)
                 .build();
-        FinancialProfile profile = FinancialProfile.builder()
-                .defaultReturn(new BigDecimal("7.50"))
-                .build();
         UUID productId = UUID.randomUUID();
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
@@ -196,12 +195,7 @@ class GoalsProjectionServiceTest {
                 .targetDate(LocalDate.of(2031, Month.JULY, 13)) // 60 months < 120 max months
                 .currentAmount(BigDecimal.ZERO)
                 .build();
-        FinancialProfile profile = FinancialProfile.builder()
-                .defaultReturn(new BigDecimal("7.50"))
-                .build();
-
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
 
@@ -245,8 +239,170 @@ class GoalsProjectionServiceTest {
         assertEquals(1, results.size());
         GoalProjectionDTO res = results.getFirst();
 
-        // Expected projected date is now plus MAX_SIMULATION_MONTHS (12000) months because growth is impossible
-        LocalDate expectedDate = LocalDate.now(clock).plusMonths(12000);
+        // Expected projected date is now plus MAX_SIMULATION_MONTHS (1200) months because growth is impossible
+        LocalDate expectedDate = LocalDate.now(clock).plusMonths(1200);
         assertEquals(expectedDate, res.getProjectedDate());
+    }
+
+    @Test
+    void getProjectionsForUser_whenGrowthTooSmall_returnsMaxSimulationMonths() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        UUID goalId = UUID.randomUUID();
+        Goal goal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .name("Slow Growth Goal")
+                .type("property")
+                .targetAmount(new BigDecimal("100000.00")) // target 100k
+                .monthlyContribution(BigDecimal.ZERO) // no monthly contribution
+                .targetDate(LocalDate.of(2030, Month.JANUARY, 1))
+                .currentAmount(BigDecimal.ZERO)
+                .build();
+
+        UUID productId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(productId)
+                .goalId(goalId)
+                .currentValue(new BigDecimal("1.00")) // starts with 1
+                .build();
+
+        // 0.00001% annual return -> extremely slow growth
+        Product product = Product.builder()
+                .id(productId)
+                .annualReturn(new BigDecimal("0.00001"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        List<GoalProjectionDTO> results = goalsProjectionService.getProjectionsForUser();
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        GoalProjectionDTO res = results.getFirst();
+
+        // Expected projected date is now plus MAX_SIMULATION_MONTHS (1200) months because growth exceeds the cap
+        LocalDate expectedDate = LocalDate.now(clock).plusMonths(1200);
+        assertEquals(expectedDate, res.getProjectedDate());
+    }
+
+    @Test
+    void getProjectionsForUser_whenBalanceAlreadyExceedsTarget_returnsZeroMonths() {
+        User user = User.builder()
+                .id(AppConstants.USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        UUID goalId = UUID.randomUUID();
+        Goal goal = Goal.builder()
+                .id(goalId)
+                .userId(AppConstants.USER_ID)
+                .name("Achieved Goal")
+                .type("property")
+                .targetAmount(new BigDecimal("10000.00")) // target 10k
+                .monthlyContribution(new BigDecimal("100.00"))
+                .targetDate(LocalDate.of(2030, Month.JANUARY, 1))
+                .currentAmount(BigDecimal.ZERO)
+                .build();
+
+        UUID productId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(productId)
+                .goalId(goalId)
+                .currentValue(new BigDecimal("15000.00")) // starts with 15k (already exceeds 10k target)
+                .build();
+
+        Product product = Product.builder()
+                .id(productId)
+                .annualReturn(new BigDecimal("5.00"))
+                .build();
+
+        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        List<GoalProjectionDTO> results = goalsProjectionService.getProjectionsForUser();
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        GoalProjectionDTO res = results.getFirst();
+
+        // Expected projected date is now (plus 0 months) because target is already met
+        LocalDate expectedDate = LocalDate.now(clock);
+        assertEquals(expectedDate, res.getProjectedDate());
+    }
+
+    @Test
+    void testCalculateMonthsToUse_variousTimelines() throws Exception {
+        var method = GoalsProjectionService.class.getDeclaredMethod("calculateMonthsToUse", String.class, LocalDate.class);
+        method.setAccessible(true);
+
+        // case 1: actualMonths <= 0 (target date is in the past) -> should return maxMonths
+        // Type "property" maxMonths is 120.
+        LocalDate pastDate = LocalDate.now(clock).minusMonths(5);
+        double resultPast = (double) method.invoke(goalsProjectionService, "property", pastDate);
+        assertEquals(120.0, resultPast);
+
+        // case 2: actualMonths >= maxMonths (target date is far in the future) -> should return maxMonths
+        LocalDate futureDateFar = LocalDate.now(clock).plusMonths(200);
+        double resultFar = (double) method.invoke(goalsProjectionService, "property", futureDateFar);
+        assertEquals(120.0, resultFar);
+
+        // case 3: 0 < actualMonths < maxMonths -> should return actualMonths
+        LocalDate futureDateNear = LocalDate.now(clock).plusMonths(30);
+        double resultNear = (double) method.invoke(goalsProjectionService, "property", futureDateNear);
+        assertEquals(30.0, resultNear);
+    }
+
+    @Test
+    void testCalculateRecommendedContribution_divisionByZeroGuards() throws Exception {
+        var method = GoalsProjectionService.class.getDeclaredMethod("calculateRecommendedContribution", double[].class, double[].class, double.class, double.class);
+        method.setAccessible(true);
+
+        // case 1: rates[j] <= 0 (division by zero rate guard)
+        // target = 10000, monthsToUse = 10. rates = {0.0}. balances = {1000.0}
+        // futureValueFactor = (1+0)^10 = 1
+        // num = 10000 - 1000*1 = 9000
+        // rate is 0 -> sumS += monthsToUse (10.0) -> denom = 10.0
+        // recContribution = 9000 / 10.0 = 900.0
+        BigDecimal resZeroRate = (BigDecimal) method.invoke(goalsProjectionService, new double[]{1000.0}, new double[]{0.0}, 10000.0, 10.0);
+        assertEquals(new BigDecimal("900.00"), resZeroRate);
+
+        // case 2: denom <= 0 (division by zero denom guard)
+        // We can force denom to 0 by passing monthsToUse = 0 and rates = {0.0}
+        // target = 10000, monthsToUse = 0, rates = {0.0}, balances = {1000.0}
+        // num = 10000 - 1000*1 = 9000
+        // sumS = 0.0 -> denom = 0.0 -> recContribution should return 0.0
+        BigDecimal resZeroDenom = (BigDecimal) method.invoke(goalsProjectionService, new double[]{1000.0}, new double[]{0.0}, 10000.0, 0.0);
+        assertEquals(new BigDecimal("0.00"), resZeroDenom);
+    }
+
+    @Test
+    void testHasGrowthPotential_edgeCases() throws Exception {
+        var method = GoalsProjectionService.class.getDeclaredMethod("hasGrowthPotential", double[].class, double[].class, double.class);
+        method.setAccessible(true);
+
+        // case 1: contributionPerBucket > 0 -> should return true immediately
+        assertTrue((boolean) method.invoke(goalsProjectionService, new double[]{0.0}, new double[]{0.0}, 1.0));
+
+        // case 2: contributionPerBucket <= 0 and loop matches:
+        // rate > 0 and balance > 0 -> should return true
+        assertTrue((boolean) method.invoke(goalsProjectionService, new double[]{100.0}, new double[]{0.05}, 0.0));
+
+        // rate <= 0 and balance > 0 -> should return false
+        assertFalse((boolean) method.invoke(goalsProjectionService, new double[]{100.0}, new double[]{0.0}, 0.0));
+        assertFalse((boolean) method.invoke(goalsProjectionService, new double[]{100.0}, new double[]{-0.02}, 0.0));
+
+        // rate > 0 and balance <= 0 -> should return false
+        assertFalse((boolean) method.invoke(goalsProjectionService, new double[]{0.0}, new double[]{0.05}, 0.0));
+        assertFalse((boolean) method.invoke(goalsProjectionService, new double[]{-10.0}, new double[]{0.05}, 0.0));
+
+        // multiple buckets with one having potential -> should return true
+        assertTrue((boolean) method.invoke(goalsProjectionService, new double[]{0.0, 100.0}, new double[]{0.05, 0.05}, 0.0));
     }
 }
