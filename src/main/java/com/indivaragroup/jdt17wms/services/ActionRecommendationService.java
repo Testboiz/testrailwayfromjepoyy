@@ -339,7 +339,7 @@ public class ActionRecommendationService {
                 BigDecimal val = Optional.ofNullable(a.getCurrentValue()).orElse(BigDecimal.ZERO);
                 byProduct.merge(a.getProductId(), val, BigDecimal::add);
             }
-
+            //sampebawah
             // Find the most concentrated product
             Map.Entry<UUID, BigDecimal> top = byProduct.entrySet().stream()
                     .max(Map.Entry.comparingByValue())
