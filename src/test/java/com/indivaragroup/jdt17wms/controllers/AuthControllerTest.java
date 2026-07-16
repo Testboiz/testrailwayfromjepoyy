@@ -20,6 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -83,24 +85,14 @@ class AuthControllerTest extends BaseControllerTest {
 
     @Test
     void register_withValidData_shouldReturnSuccess() throws Exception {
-        AuthSuccessDTO mockResponse = AuthSuccessDTO.builder()
-                .success(true)
-                .message("Registration successful")
-                .accessToken("eyJhbGciOiJIUzI1NiJ9.test-register")
-                .expiresIn(900)
-                .user(mockUser)
-                .build();
-
-        when(authService.register(any(RegisterDTO.class))).thenReturn(mockResponse);
+        doNothing().when(authService).register(any(RegisterDTO.class));
 
         String body = objectMapper.writeValueAsString(RegisterDTO.builder().registerRequestName("Test User").registerRequestEmail("test@example.com").registerRequestPassword("Test1234!").build());
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.success").value(true))
-                .andExpect(jsonPath("$.result.message").value("Registration successful"));
+                .andExpect(status().isCreated());
     }
 
     @Test

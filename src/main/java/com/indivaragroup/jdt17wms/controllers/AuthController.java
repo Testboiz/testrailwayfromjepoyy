@@ -17,6 +17,8 @@ import com.indivaragroup.jdt17wms.services.JwtService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -47,16 +49,17 @@ public class AuthController {
     }
 
     @PostMapping(ApiPath.REGISTER_PATH)
-    public ApiResponse<AuthSuccessDTO> register(@Valid @RequestBody(required = false) RegisterDTO dto) {
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody(required = false) RegisterDTO dto) {
         if (dto == null) {
             throw new CoreThrowHandler(ApiError.INVALID_REQUEST_BODY);
         }
-        return ApiResponse.created(ApiSuccess.REGISTER, authService.register(dto));
+        authService.register(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(ApiSuccess.REGISTER, null));
     }
 
     @PostMapping(ApiPath.LOGOUT_PATH)
-    public ApiResponse<LogoutSuccessDTO> logout(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public ApiResponse<LogoutSuccessDTO> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         String email = null;
         UUID userId = null;

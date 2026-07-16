@@ -56,17 +56,17 @@ public class AuthService {
 
     // Login
     public AuthSuccessDTO login(LoginDTO dto) {
-        List<ValidationErrorDetailDTO> errors = new ArrayList<>();
-        if (dto.getLoginRequestEmail() == null || dto.getLoginRequestEmail().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
-        }
-        if (dto.getLoginRequestPassword() == null || dto.getLoginRequestPassword().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("password","Password is Required", "ERR-001"));
-        }
-
-        if (!errors.isEmpty()) {
-            throw new CoreThrowHandler(ApiError.VALIDATION,  errors);
-        }
+//        List<ValidationErrorDetailDTO> errors = new ArrayList<>();
+//        if (dto.getLoginRequestEmail() == null || dto.getLoginRequestEmail().trim().isEmpty()) {
+//            errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
+//        }
+//        if (dto.getLoginRequestPassword() == null || dto.getLoginRequestPassword().trim().isEmpty()) {
+//            errors.add(new ValidationErrorDetailDTO("password","Password is Required", "ERR-001"));
+//        }
+//
+//        if (!errors.isEmpty()) {
+//            throw new CoreThrowHandler(ApiError.VALIDATION,  errors);
+//        }
 
         User user = userRepository.findByEmail(dto.getLoginRequestEmail())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST,"Email Or Password Invalid"));
@@ -133,7 +133,7 @@ public class AuthService {
 
     //Register Harusnya Udah,coba crosscheck lagi
     @Transactional
-    public AuthSuccessDTO register(RegisterDTO dto) {
+    public void register(RegisterDTO dto) {
         List<ValidationErrorDetailDTO> errors = new ArrayList<>();
         if (dto.getRegisterRequestEmail() == null || dto.getRegisterRequestEmail().trim().isEmpty()) {
             errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
@@ -204,16 +204,6 @@ public class AuthService {
                 .email(savedUser.getEmail())
                 .questionnaireCompleted(user.getQuestionnaireCompleted())
                 .isAdmin(savedUser.getRole() == UserRole.ADMIN)
-                .build();
-
-        return AuthSuccessDTO.builder()
-                .success(true)
-                .message("Registration successful")
-                .accessToken(accessToken)
-                .expiresIn(jwtService.getAccessTokenExpirationMs())
-                .refreshToken(refreshToken)
-                .refreshExpiresIn(jwtService.getRefreshTokenExpirationMs())
-                .user(userDto)
                 .build();
     }
 
