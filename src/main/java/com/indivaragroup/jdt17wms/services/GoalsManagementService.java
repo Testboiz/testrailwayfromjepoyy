@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class GoalsManagementService {
+public class GoalsManagementService implements VerifiedUserProvider {
 
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_TARGET_DATE = "target_date";
@@ -48,12 +48,7 @@ public class GoalsManagementService {
     }
 
     public List<GoalDTO> getGoalsForUser() {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-      if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
 
         List<Goal> goals = goalRepository.findAllByUserId(user.getId());
 
@@ -76,12 +71,7 @@ public class GoalsManagementService {
     }
 
   public GoalDTO createGoalForUser(GoalRegistrationDTO dto) {
-    User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-      .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
+    User user = getVerifiedUser();
 
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
     String type = dto.getType(); // Enforced non-blank and lowercase by DTO @Pattern
@@ -110,7 +100,7 @@ public class GoalsManagementService {
     // 3. Check duplicate priority (Enforced non-null by DTO @NotNull)
     if (Boolean.TRUE.equals(dto.getIsPriority())) {
       boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
-        .anyMatch(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS); // not covered yet!
+        .anyMatch(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS);
       if (hasPriorityGoal) {
         throw new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS);
       }
@@ -148,12 +138,7 @@ public class GoalsManagementService {
   }
 
   public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) {
-    User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-      .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
+    User user = getVerifiedUser();
 
     Goal goal = goalRepository.findById(goalId)
       .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
@@ -235,12 +220,7 @@ public class GoalsManagementService {
   }
     @Transactional
     public void deleteGoalForUser(UUID goalId) {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-      if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted()))  {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
 
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
