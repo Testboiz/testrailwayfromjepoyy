@@ -127,12 +127,6 @@ public class AuthService {
          if (!Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matcher(dto.getRegisterRequestEmail()).matches()) {
             errors.add(new ValidationErrorDetailDTO("email", "Invalid email format", "ERR-001"));
         }
-            if (dto.getRegisterRequestPassword().length() < 8) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must be at least 8 characters", "ERR-001"));
-            }
-            if (dto.getRegisterRequestPassword().length() > 72) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must not exceed 72 characters", "ERR-001"));
-            }
             if (!Pattern.compile("[a-z]").matcher(dto.getRegisterRequestPassword()).find()) {
                 errors.add(new ValidationErrorDetailDTO("password", "Must contain lowercase letter", "ERR-001"));
             }
