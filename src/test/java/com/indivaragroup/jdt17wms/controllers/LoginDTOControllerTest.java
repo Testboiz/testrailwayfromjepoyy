@@ -1,12 +1,11 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.indivaragroup.jdt17wms.dto.request.AuthDTO;
-import com.indivaragroup.jdt17wms.dto.response.AuthSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.request.RegisterDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
-import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
-import com.indivaragroup.jdt17wms.exceptions.ConflictException;
-import com.indivaragroup.jdt17wms.exceptions.ValidationException;
+import com.indivaragroup.jdt17wms.dto.response.auth.AuthSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.services.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +15,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -55,55 +52,48 @@ class RegisterControllerTest extends BaseControllerTest {
                 .user(mockUser)
                 .build();
 
-        when(authService.register(any(AuthDTO.class))).thenReturn(mockResponse);
+        when(authService.register(any(RegisterDTO.class))).thenReturn(mockResponse);
 
-        String body = objectMapper.writeValueAsString(new AuthDTO("Test User", "test@example.com", "Test1234!"));
+        String body = objectMapper.writeValueAsString(RegisterDTO.builder().registerRequestName("Test User").registerRequestEmail("test@example.com").registerRequestPassword("Test1234!").build());
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Registration successful"))
-                .andExpect(jsonPath("$.accessToken").value("eyJhbGciOiJIUzI1NiJ9.test-register"))
-                .andExpect(jsonPath("$.expiresIn").value(900))
-                .andExpect(jsonPath("$.user.email").value("test@example.com"));
+                .andExpect(jsonPath("$.result.success").value(true))
+                .andExpect(jsonPath("$.result.message").value("Registration successful"))
+                .andExpect(jsonPath("$.result.accessToken").value("eyJhbGciOiJIUzI1NiJ9.test-register"))
+                .andExpect(jsonPath("$.result.expiresIn").value(900))
+                .andExpect(jsonPath("$.result.user.email").value("test@example.com"));
     }
 
     // 📝 REGISTER — validation error (e.g. invalid fields)
     @Test
     void register_withInvalidData_shouldReturnValidationError() throws Exception {
-        List<ValidationErrorDetailDTO> details = new ArrayList<>();
-        details.add(new ValidationErrorDetailDTO("email", "Invalid email format", "ERR-002"));
+        when(authService.register(any(RegisterDTO.class))).thenThrow(new CoreThrowHandler(ApiError.VALIDATION));
 
-        when(authService.register(any(AuthDTO.class))).thenThrow(new ValidationException(details, "VALIDATION"));
-
-        String body = objectMapper.writeValueAsString(new AuthDTO("Test User", "invalid-email", "Test1234!"));
+        String body = objectMapper.writeValueAsString(RegisterDTO.builder().registerRequestName("Test User").registerRequestEmail("invalid-email").registerRequestPassword("Test1234!").build());
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid field values"))
-                .andExpect(jsonPath("$.type").value("ERR-VALIDATION"))
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.details[0].field").value("email"))
-                .andExpect(jsonPath("$.details[0].reason").value("Invalid email format"))
-                .andExpect(jsonPath("$.details[0].type").value("ERR-002"));
+                .andExpect(jsonPath("$.message").value("INVALID FIELD VALUES"))
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     // 📝 REGISTER — duplicate email (conflict error)
     @Test
     void register_withDuplicateEmail_shouldReturnConflictError() throws Exception {
-        when(authService.register(any(AuthDTO.class))).thenThrow(new ConflictException("Email already in use"));
+        when(authService.register(any(RegisterDTO.class))).thenThrow(new CoreThrowHandler(ApiError.NOT_UNIQUE_EMAIL));
 
-        String body = objectMapper.writeValueAsString(new AuthDTO("Test User", "duplicate@example.com", "Test1234!"));
+        String body = objectMapper.writeValueAsString(RegisterDTO.builder().registerRequestName("Test User").registerRequestEmail("duplicate@example.com").registerRequestPassword("Test1234!").build());
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("Email already in use"))
+                .andExpect(jsonPath("$.message").value("Email Already Used"))
                 .andExpect(jsonPath("$.code").value(409));
     }
 
@@ -113,7 +103,7 @@ class RegisterControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid JSON Body"))
+                .andExpect(jsonPath("$.message").value("Invalid Request Body"))
                 .andExpect(jsonPath("$.code").value(400));
     }
 }

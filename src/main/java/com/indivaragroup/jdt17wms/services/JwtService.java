@@ -1,19 +1,28 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.models.User;
+import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.time.Instant;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     // Token type constants
     private static final String TOKEN_TYPE_CLAIM = "token_type";
@@ -26,80 +35,99 @@ public class JwtService {
     private static final String CLAIM_ROLE = "role";
     private static final String CLAIM_IAT = "iat";
     private static final String CLAIM_EXP = "exp";
+    private static final String USER_ID_CLAIM = "userId";
+    private static final String USER_ROLE_CLAIM = "role";
+    private static final String USER_NAME_CLAIM = "name";
 
     // Minimum 256-bit key for HS256
     private static final String DEFAULT_SECRET = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
 
-    @Value("${jwt.secret:" + DEFAULT_SECRET + "}")
+    @Value("${jwt.secret}")
     private String secretKey;
 
-    @Value("${jwt.access-token-expiration-ms:900000}") // 15 minutes
-    private long accessTokenExpirationMs;
+    @Getter
+    @Value("${jwt.access-token-expiration-ms}") // 15 minutes
+    private Integer accessTokenExpirationMs;
 
-    @Value("${jwt.refresh-token-expiration-ms:604800000}") // 7 days
-    private long refreshTokenExpirationMs;
+    @Getter
+    @Value("${jwt.refresh-token-expiration-ms}") // 7 days
+    private Integer refreshTokenExpirationMs;
+
+    @PostConstruct
+    public void validateConfiguration() {
+        if (secretKey == null || secretKey.trim().isEmpty()) {
+            throw new IllegalStateException(
+                "JWT secret not configured. Set JWT_SECRET environment variable."
+            );
+        }
+
+        if (secretKey.length() < 64) {
+            throw new IllegalStateException(
+                "JWT secret too short. Minimum 64 characters (256 bits) required. Current: "
+                + secretKey.length()
+            );
+        }
+
+        log.info("JWT Service initialized successfully. Secret length: {} characters", secretKey.length());
+        log.info("Access token expiration: {} ms ({} minutes)", accessTokenExpirationMs, accessTokenExpirationMs / 60000);
+        log.info("Refresh token expiration: {} ms ({} days)", refreshTokenExpirationMs, refreshTokenExpirationMs / 86400000);
+    }
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateAccessToken(User user) {
-        return buildToken(user, accessTokenExpirationMs, ACCESS_TOKEN_TYPE);
-    }
-
-    public String generateRefreshToken(User user) {
-        return buildToken(user, refreshTokenExpirationMs, REFRESH_TOKEN_TYPE);
-    }
-
-    private String buildToken(User user, long expirationMs, String tokenType) {
-        Instant now = Instant.now();
         return Jwts.builder()
                 .subject(user.getEmail())
-                .claim(CLAIM_EMAIL, user.getEmail())
-                .claim(CLAIM_USER_ID, user.getId().toString())
-                .claim(CLAIM_ROLE, "ROLE_" + user.getRole().name())
-                .claim(TOKEN_TYPE_CLAIM, tokenType)
-                .claim(CLAIM_IAT, now.getEpochSecond())
-                .claim(CLAIM_EXP, now.plusMillis(expirationMs).getEpochSecond())
+                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
+                .claim(USER_ID_CLAIM, user.getId().toString())
+                .claim(USER_ROLE_CLAIM, user.getRole().name())
+                .claim(USER_NAME_CLAIM, user.getName())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
                 .signWith(getSigningKey())
                 .compact();
     }
 
-    public String getRoleFromToken(String token) {
-        return getClaim(token, claims -> claims.get(CLAIM_ROLE, String.class));
-    }
-
-    public String getUserIdFromToken(String token) {
-        return getClaim(token, claims -> claims.get(CLAIM_USER_ID, String.class));
+    public String generateRefreshToken(User user) {
+        return Jwts.builder()
+                .subject(user.getEmail())
+                .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpirationMs))
+                .signWith(getSigningKey())
+                .compact();
     }
 
     public String getEmailFromToken(String token) {
         return getClaim(token, Claims::getSubject);
     }
 
-    public String getEmailClaimFromToken(String token) {
-        try {
-            return getClaim(token, claims -> claims.get(CLAIM_EMAIL, String.class));
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            return e.getClaims().get(CLAIM_EMAIL, String.class);
-        }
+    public UUID getUserIdFromToken(String token) {
+        String userId = getClaim(token, claims -> claims.get(USER_ID_CLAIM, String.class));
+        return userId != null ? UUID.fromString(userId) : null;
     }
 
-    public String getUserIdClaimFromToken(String token) {
-        try {
-            return getClaim(token, claims -> claims.get(CLAIM_USER_ID, String.class));
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            return e.getClaims().get(CLAIM_USER_ID, String.class);
-        }
+    public String getRoleFromToken(String token) {
+        return getClaim(token, claims -> claims.get(USER_ROLE_CLAIM, String.class));
+    }
+
+    public String getNameFromToken(String token) {
+        return getClaim(token, claims -> claims.get(USER_NAME_CLAIM, String.class));
     }
 
     public boolean isTokenValid(String token, User user) {
-        try {
-            final String email = getEmailFromToken(token);
-            return (email.equals(user.getEmail()));
-        } catch (Exception e) {
-            return false;
-        }
+        final String email = getEmailFromToken(token);
+        return (email.equals(user.getEmail())) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return getExpiration(token).before(new Date());
+    }
+
+    private Date getExpiration(String token) {
+        return getClaim(token, Claims::getExpiration);
     }
 
     public <T> T getClaim(String token, Function<Claims, T> claimsResolver) {

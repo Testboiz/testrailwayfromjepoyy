@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.Answer;
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
@@ -8,8 +9,7 @@ import com.indivaragroup.jdt17wms.dto.response.OptionDTO;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
 import com.indivaragroup.jdt17wms.dto.response.RiskProfilerResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.QuestionnaireDataDTO;
-import com.indivaragroup.jdt17wms.exceptions.BadRequestException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.springframework.stereotype.Service;
@@ -57,7 +57,7 @@ public class RiskProfilerAssessmentService {
 
         int expectedSize = questionnaireDataDTO.getData() != null ? questionnaireDataDTO.getData().size() : AppConstants.DEFAULT_QUESTIONNAIRE_SIZE;
         if (riskProfilerDTO.getAnswers().size() != expectedSize) {
-            throw new BadRequestException("Invalid answers count");
+            throw new CoreThrowHandler(ApiError.BAD_REQUEST,"Invalid answers count");
         }
 
         int rawScore = riskProfilerDTO.getAnswers().stream()
@@ -76,7 +76,7 @@ public class RiskProfilerAssessmentService {
         int outputScore = rawScore * AppConstants.RISK_SCALING_FACTOR;
 
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
         user.setRiskProfile(riskProfile);
         user.setQuestionnaireCompleted(true);

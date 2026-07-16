@@ -1,12 +1,14 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
 import com.indivaragroup.jdt17wms.dto.response.RiskProfilerResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.QuestionnaireDataDTO;
 import com.indivaragroup.jdt17wms.dto.utils.QuestionnaireItem;
-import com.indivaragroup.jdt17wms.exceptions.BadRequestException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
@@ -83,12 +85,12 @@ class RiskProfilerAssessmentServiceTest {
         com.indivaragroup.jdt17wms.dto.request.Answer answer2 = com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(2).build();
         RiskProfilerDTO request = new RiskProfilerDTO(List.of(answer1, answer2)); // sum = 3
 
-        User user = User.builder().id(AppConstants.USER_ID).build();
+        User user = User.builder().id(SecurityUtils.STATIC_USER_ID).build();
         when(questionnaireDataDTO.getData()).thenReturn(List.of(
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build()
         ));
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RiskProfilerResponseDTO response = riskProfilerAssessmentService.updateProfilerAssessment(request);
@@ -107,14 +109,14 @@ class RiskProfilerAssessmentServiceTest {
         com.indivaragroup.jdt17wms.dto.request.Answer answer4 = com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(1).build(); // sum = 7
         RiskProfilerDTO request = new RiskProfilerDTO(List.of(answer1, answer2, answer3, answer4));
 
-        User user = User.builder().id(AppConstants.USER_ID).build();
+        User user = User.builder().id(SecurityUtils.STATIC_USER_ID).build();
         when(questionnaireDataDTO.getData()).thenReturn(List.of(
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build()
         ));
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RiskProfilerResponseDTO response = riskProfilerAssessmentService.updateProfilerAssessment(request);
@@ -133,14 +135,14 @@ class RiskProfilerAssessmentServiceTest {
         com.indivaragroup.jdt17wms.dto.request.Answer answer4 = com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(2).build(); // sum = 8
         RiskProfilerDTO request = new RiskProfilerDTO(List.of(answer1, answer2, answer3, answer4));
 
-        User user = User.builder().id(AppConstants.USER_ID).build();
+        User user = User.builder().id(SecurityUtils.STATIC_USER_ID).build();
         when(questionnaireDataDTO.getData()).thenReturn(List.of(
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build(),
                 QuestionnaireItem.builder().build()
         ));
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RiskProfilerResponseDTO response = riskProfilerAssessmentService.updateProfilerAssessment(request);
@@ -161,7 +163,7 @@ class RiskProfilerAssessmentServiceTest {
                 QuestionnaireItem.builder().build()
         )); // expected 2 answers, got 1
 
-        org.junit.jupiter.api.Assertions.assertThrows(BadRequestException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             riskProfilerAssessmentService.updateProfilerAssessment(request);
         });
     }
@@ -196,8 +198,8 @@ class RiskProfilerAssessmentServiceTest {
                 com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(0).build());
         RiskProfilerDTO request = new RiskProfilerDTO(answers);
 
-        User user = User.builder().id(AppConstants.USER_ID).build();
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        User user = User.builder().id(SecurityUtils.STATIC_USER_ID).build();
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RiskProfilerResponseDTO response = riskProfilerAssessmentService.updateProfilerAssessment(request);

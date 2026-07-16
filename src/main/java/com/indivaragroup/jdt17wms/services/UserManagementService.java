@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import jakarta.validation.constraints.NotNull;
@@ -34,7 +35,7 @@ public class UserManagementService {
     String status
     ) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
         user.setStatus(status);
         return userRepository.save(user);
     }

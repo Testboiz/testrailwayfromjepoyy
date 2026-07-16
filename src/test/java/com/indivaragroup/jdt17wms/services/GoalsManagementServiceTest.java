@@ -1,19 +1,16 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
-import com.indivaragroup.jdt17wms.exceptions.GoalValidationException;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.GoalStatus;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
-import com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException;
 import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
-import com.indivaragroup.jdt17wms.exceptions.InsufficientIncomeException;
 import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
@@ -72,18 +69,18 @@ class GoalsManagementServiceTest {
     @Test
     void getGoalsForUser_shouldReturnGoalsWhenQuestionnaireCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal goal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Retirement Fund")
                 .targetAmount(new java.math.BigDecimal("500000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
 
         List<GoalDTO> result = goalsManagementService.getGoalsForUser();
 
@@ -96,26 +93,26 @@ class GoalsManagementServiceTest {
     @Test
     void getGoalsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.getGoalsForUser());
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.getGoalsForUser());
     }
 
     @Test
     void getGoalsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> goalsManagementService.getGoalsForUser());
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.getGoalsForUser());
     }
 
     @Test
     void createGoalForUser_shouldCreateGoalSuccessfully() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
@@ -129,15 +126,15 @@ class GoalsManagementServiceTest {
 
         Goal goal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Retirement Fund")
                 .type("retirement")
                 .targetAmount(new java.math.BigDecimal("500000.00"))
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of());
         when(goalRepository.save(any(Goal.class))).thenReturn(goal);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
@@ -150,20 +147,20 @@ class GoalsManagementServiceTest {
     @Test
     void createGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder().build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.createGoalForUser(request));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.createGoalForUser(request));
     }
 
     @Test
     void createGoalForUser_shouldThrowDuplicatePriorityGoalExceptionWhenPriorityGoalAlreadyExists() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
@@ -177,22 +174,22 @@ class GoalsManagementServiceTest {
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(existingGoal));
 
-        assertThrows(DuplicatePriorityGoalException.class, () -> goalsManagementService.createGoalForUser(request));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.createGoalForUser(request));
     }
 
     @Test
     void updateGoalForUser_shouldUpdateGoalSuccessfully() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Retirement Fund")
                 .type("retirement")
                 .targetAmount(new BigDecimal("500000.00"))
@@ -214,10 +211,10 @@ class GoalsManagementServiceTest {
                 .monthlyIncome(new BigDecimal("5000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.save(any(Goal.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
@@ -233,47 +230,47 @@ class GoalsManagementServiceTest {
     void updateGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
         GoalEditingDTO request = GoalEditingDTO.builder().build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
 
     @Test
     void updateGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalEditingDTO request = GoalEditingDTO.builder().build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
 
     @Test
     void updateGoalForUser_shouldThrowDuplicatePriorityGoalExceptionWhenPriorityGoalAlreadyExists() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(false)
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
         Goal otherGoal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(true)
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
@@ -287,23 +284,23 @@ class GoalsManagementServiceTest {
         .build();
 
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal, otherGoal));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(existingGoal, otherGoal));
 
-        assertThrows(DuplicatePriorityGoalException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
 
     @Test
     void updateGoalForUser_shouldThrowInsufficientIncomeExceptionWhenContributionExceedsIncome() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .isPriority(false)
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
@@ -322,31 +319,31 @@ class GoalsManagementServiceTest {
                 .monthlyIncome(new BigDecimal("5000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
 
-        assertThrows(InsufficientIncomeException.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
 
     @Test
     void deleteGoalForUser_shouldDeleteGoalSuccessfully() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal goal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .build();
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
                 .goalId(goalId)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
         when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
 
@@ -360,27 +357,27 @@ class GoalsManagementServiceTest {
     void deleteGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> goalsManagementService.deleteGoalForUser(goalId));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.deleteGoalForUser(goalId));
     }
 
     @Test
     void deleteGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> goalsManagementService.deleteGoalForUser(goalId));
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.deleteGoalForUser(goalId));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -390,7 +387,7 @@ class GoalsManagementServiceTest {
     @Test
     void createGoalForUser_shouldThrowGoalValidationExceptionWhenTypeIsInvalid() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         // "invalid_type" is not a key in AppConstants.GOAL_MAX_MONTHS
@@ -400,12 +397,12 @@ class GoalsManagementServiceTest {
                 .isPriority(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        GoalValidationException ex = assertThrows(GoalValidationException.class,
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.createGoalForUser(request));
 
-        assertThat(ex.getErrors())
+        assertThat(ex.getDetails())
                 .hasSize(1)
                 .anySatisfy(err -> {
                     assertThat(err.getField()).isEqualTo("type");
@@ -416,7 +413,7 @@ class GoalsManagementServiceTest {
     @Test
     void createGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateIsInThePast() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
@@ -425,12 +422,12 @@ class GoalsManagementServiceTest {
                 .isPriority(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        GoalValidationException ex = assertThrows(GoalValidationException.class,
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.createGoalForUser(request));
 
-        assertThat(ex.getErrors())
+        assertThat(ex.getDetails())
                 .hasSize(1)
                 .anySatisfy(err -> {
                     assertThat(err.getField()).isEqualTo("target_date");
@@ -441,7 +438,7 @@ class GoalsManagementServiceTest {
     @Test
     void createGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateExceedsMaxMonths() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         // "savings" max is 18 months — set target 19 months ahead
@@ -451,12 +448,12 @@ class GoalsManagementServiceTest {
                 .isPriority(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        GoalValidationException ex = assertThrows(GoalValidationException.class,
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.createGoalForUser(request));
 
-        assertThat(ex.getErrors())
+        assertThat(ex.getDetails())
                 .hasSize(1)
                 .anySatisfy(err -> {
                     assertThat(err.getField()).isEqualTo("target_date");
@@ -468,7 +465,7 @@ class GoalsManagementServiceTest {
     void createGoalForUser_shouldCreateGoalSuccessfullyWhenNotPriority() {
         // Covers the branch where isPriority=false — duplicate-priority check is skipped entirely
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
@@ -482,14 +479,14 @@ class GoalsManagementServiceTest {
 
         Goal saved = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Vacation Fund")
                 .type("vacation")
                 .targetAmount(new BigDecimal("5000.00"))
                 .status(GoalStatus.IN_PROGRESS)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.save(any(Goal.class))).thenReturn(saved);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
@@ -506,12 +503,12 @@ class GoalsManagementServiceTest {
     void updateGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateIsInThePast() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("retirement")
                 .isPriority(false)
                 .status(GoalStatus.IN_PROGRESS)
@@ -524,13 +521,13 @@ class GoalsManagementServiceTest {
                 .isPriority(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
 
-        GoalValidationException ex = assertThrows(GoalValidationException.class,
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.updateGoalForUser(goalId, request));
 
-        assertThat(ex.getErrors())
+        assertThat(ex.getDetails())
                 .hasSize(1)
                 .anySatisfy(err -> {
                     assertThat(err.getField()).isEqualTo("target_date");
@@ -542,13 +539,13 @@ class GoalsManagementServiceTest {
     void updateGoalForUser_shouldThrowGoalValidationExceptionWhenTargetDateExceedsMaxMonths() {
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         // "savings" max is 18 months
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("savings")
                 .isPriority(false)
                 .status(GoalStatus.IN_PROGRESS)
@@ -561,13 +558,13 @@ class GoalsManagementServiceTest {
                 .isPriority(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
 
-        GoalValidationException ex = assertThrows(GoalValidationException.class,
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.updateGoalForUser(goalId, request));
 
-        assertThat(ex.getErrors())
+        assertThat(ex.getDetails())
                 .hasSize(1)
                 .anySatisfy(err -> {
                     assertThat(err.getField()).isEqualTo("target_date");
@@ -580,12 +577,12 @@ class GoalsManagementServiceTest {
         // Covers branch: isDtoPriority=true AND isGoalPriority=true → condition is false → no duplicate check
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("retirement")
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .isPriority(true) // already priority — re-setting to true must not trigger the check
@@ -603,10 +600,10 @@ class GoalsManagementServiceTest {
                 .monthlyIncome(new BigDecimal("5000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.save(any(Goal.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
@@ -621,12 +618,12 @@ class GoalsManagementServiceTest {
         // Covers branch: financialProfileRepository returns empty → monthlyIncome defaults to ZERO
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("savings")
                 .monthlyContribution(new BigDecimal("100.00"))
                 .isPriority(false)
@@ -640,12 +637,12 @@ class GoalsManagementServiceTest {
                 .isPriority(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(existingGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.empty());
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(existingGoal));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(InsufficientIncomeException.class,
+        assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
 
@@ -658,7 +655,7 @@ class GoalsManagementServiceTest {
         // Line 116: anyMatch predicate evaluates to FALSE (no existing IN_PROGRESS priority goal)
         // → hasPriorityGoal=false → no exception → goal is saved
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
@@ -673,22 +670,22 @@ class GoalsManagementServiceTest {
         // Existing goal: is priority but NOT in progress → anyMatch returns false
         Goal nonInProgressPriorityGoal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(true)
                 .status(GoalStatus.ACHIEVED) // not IN_PROGRESS → predicate is false
                 .build();
 
         Goal saved = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("My Priority Goal")
                 .type("savings")
                 .targetAmount(new BigDecimal("3000.00"))
                 .status(GoalStatus.IN_PROGRESS)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(nonInProgressPriorityGoal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(nonInProgressPriorityGoal));
         when(goalRepository.save(any(Goal.class))).thenReturn(saved);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
@@ -703,12 +700,12 @@ class GoalsManagementServiceTest {
         // → hasPriorityGoal=false → no DuplicatePriorityGoalException → falls through to financial check
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("savings")
                 .monthlyContribution(new BigDecimal("200.00"))
                 .isPriority(false) // currently not priority
@@ -717,7 +714,7 @@ class GoalsManagementServiceTest {
         // Other goal: isPriority=true but ACHIEVED → sub-conditions fail at getStatus check
         Goal completedPriorityGoal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(true)
                 .status(GoalStatus.ACHIEVED) // not IN_PROGRESS → predicate false
                 .monthlyContribution(new BigDecimal("100.00"))
@@ -734,11 +731,11 @@ class GoalsManagementServiceTest {
                 .monthlyIncome(new BigDecimal("5000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID))
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID))
                 .thenReturn(List.of(existingGoal, completedPriorityGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.save(any(Goal.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);
@@ -755,12 +752,12 @@ class GoalsManagementServiceTest {
         UUID goalId = UUID.randomUUID();
         UUID otherGoalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("savings")
                 .monthlyContribution(new BigDecimal("500.00"))
                 .isPriority(false)
@@ -769,7 +766,7 @@ class GoalsManagementServiceTest {
         // Another goal with its own contribution that will be picked up by the else-branch
         Goal otherGoal = Goal.builder()
                 .id(otherGoalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(false)
                 .status(GoalStatus.IN_PROGRESS)
                 .monthlyContribution(new BigDecimal("4000.00")) // else-branch: uses this stored value
@@ -786,13 +783,13 @@ class GoalsManagementServiceTest {
                 .monthlyIncome(new BigDecimal("5000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID))
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID))
                 .thenReturn(List.of(existingGoal, otherGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
 
-        assertThrows(InsufficientIncomeException.class,
+        assertThrows(CoreThrowHandler.class,
                 () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
 
@@ -805,7 +802,7 @@ class GoalsManagementServiceTest {
         // Line 116: Boolean.TRUE.equals(g.getIsPriority()) → FALSE (isPriority=false on existing goal)
         // → && short-circuits, getStatus() never evaluated → hasPriorityGoal=false → goal saved
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         GoalRegistrationDTO request = GoalRegistrationDTO.builder()
@@ -820,22 +817,22 @@ class GoalsManagementServiceTest {
         // Existing goal with isPriority=false → Boolean.TRUE.equals returns false → short-circuit
         Goal nonPriorityGoal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(false)
                 .status(GoalStatus.IN_PROGRESS)
                 .build();
 
         Goal saved = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Emergency Fund")
                 .type("savings")
                 .targetAmount(new BigDecimal("2000.00"))
                 .status(GoalStatus.IN_PROGRESS)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(nonPriorityGoal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(nonPriorityGoal));
         when(goalRepository.save(any(Goal.class))).thenReturn(saved);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
@@ -850,12 +847,12 @@ class GoalsManagementServiceTest {
         // → && short-circuits before getStatus() → hasPriorityGoal=false → no exception, falls through
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal existingGoal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .type("savings")
                 .monthlyContribution(new BigDecimal("200.00"))
                 .isPriority(false)
@@ -864,7 +861,7 @@ class GoalsManagementServiceTest {
         // Other goal is NOT priority → Boolean.TRUE.equals(false) = false → short-circuits
         Goal nonPriorityOtherGoal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(false)
                 .status(GoalStatus.IN_PROGRESS)
                 .monthlyContribution(new BigDecimal("100.00"))
@@ -881,11 +878,11 @@ class GoalsManagementServiceTest {
                 .monthlyIncome(new BigDecimal("5000.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingGoal));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID))
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID))
                 .thenReturn(List.of(existingGoal, nonPriorityOtherGoal));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.save(any(Goal.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GoalDTO result = goalsManagementService.updateGoalForUser(goalId, request);

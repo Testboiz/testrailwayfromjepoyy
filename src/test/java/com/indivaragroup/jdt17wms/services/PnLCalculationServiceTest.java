@@ -1,8 +1,9 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
@@ -70,8 +71,8 @@ class PnLCalculationServiceTest {
 
     @Test
     void testComputePnLForAllAssets_success() {
-        User user = User.builder().id(AppConstants.USER_ID).build();
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        User user = User.builder().id(SecurityUtils.STATIC_USER_ID).build();
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findAllByUserId(user.getId())).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(transactionHistoryRepository.findAllByAssetIdAndActionOrderByTransactionDateAsc(assetId, TransactionAction.BUY))
@@ -88,10 +89,10 @@ class PnLCalculationServiceTest {
 
     @Test
     void testComputePnLForAllAssets_userNotFound_throwsNotFoundException() {
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
-        NotFoundException ex = assertThrows(NotFoundException.class, () -> pnLCalculationService.computePnLForAllAssets());
-        assertEquals("User not Found", ex.getMessage());
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> pnLCalculationService.computePnLForAllAssets());
+        assertEquals("User Not Found", ex.getMessage());
     }
 
     // --- computePnLForAsset Tests ---
@@ -100,8 +101,8 @@ class PnLCalculationServiceTest {
     void testComputePnL_productNotFound_throwsNotFoundException() {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        NotFoundException ex = assertThrows(NotFoundException.class, () -> pnLCalculationService.computePnLForAsset(asset));
-        assertEquals("Product not found", ex.getMessage());
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> pnLCalculationService.computePnLForAsset(asset));
+        assertEquals("Item Not Found", ex.getMessage());
     }
 
     @Test

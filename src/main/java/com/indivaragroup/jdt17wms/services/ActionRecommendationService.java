@@ -1,12 +1,12 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.*;
 import com.indivaragroup.jdt17wms.models.enums.RecommendationStatus;
 import com.indivaragroup.jdt17wms.repositories.*;
@@ -66,10 +66,10 @@ public class ActionRecommendationService {
     public HealthDTO getHealthScore() {
         // ── Fetch all required data ──
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
       if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-        throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
       }
 
         List<Asset> assets = assetRepository.findAllByUserId(user.getId());
@@ -265,10 +265,10 @@ public class ActionRecommendationService {
     public List<RecommendationDTO> generateRecommendations() {
         // ── Fetch all required data ──
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
         if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-          throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+          throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
         }
 
         UUID userId = user.getId();

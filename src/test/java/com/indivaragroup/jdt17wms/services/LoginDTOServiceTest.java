@@ -1,10 +1,10 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.dto.request.AuthDTO;
-import com.indivaragroup.jdt17wms.dto.response.AuthSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.request.RegisterDTO;
+import com.indivaragroup.jdt17wms.dto.response.auth.AuthSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
-import com.indivaragroup.jdt17wms.exceptions.ConflictException;
-import com.indivaragroup.jdt17wms.exceptions.ValidationException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.AuditLog;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
@@ -47,11 +47,11 @@ class RegisterServiceTest {
     // 📝 REGISTER — success
     @Test
     void register_withValidData_shouldRegisterSuccessfully() {
-        AuthDTO dto = new AuthDTO("John Doe", "johndoe@example.com", "Password123!");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("John Doe").registerRequestEmail("johndoe@example.com").registerRequestPassword("Password123!").build();
         User mockSavedUser = User.builder()
                 .id(UUID.randomUUID())
-                .name(dto.getName())
-                .email(dto.getEmail())
+                .name(dto.getRegisterRequestName())
+                .email(dto.getRegisterRequestEmail())
                 .passwordHash("encodedPassword")
                 .role(UserRole.USER)
                 .status("ACTIVE")
@@ -61,11 +61,12 @@ class RegisterServiceTest {
         com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection mockProjection = mock(com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection.class);
         when(mockProjection.getPriorCount()).thenReturn(1L);
 
-        when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
-        when(passwordEncoder.encode(dto.getPassword())).thenReturn("encodedPassword");
+        when(userRepository.existsByEmail(dto.getRegisterRequestEmail())).thenReturn(false);
+        when(passwordEncoder.encode(dto.getRegisterRequestPassword())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(mockSavedUser);
-        when(userRepository.findUserSecurityProjectionByEmail(dto.getEmail())).thenReturn(java.util.Optional.of(mockProjection));
+        when(userRepository.findUserSecurityProjectionByEmail(dto.getRegisterRequestEmail())).thenReturn(java.util.Optional.of(mockProjection));
         when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
+        when(jwtService.getAccessTokenExpirationMs()).thenReturn(900);
 
         AuthSuccessDTO response = authService.register(dto);
 
@@ -80,10 +81,10 @@ class RegisterServiceTest {
         assertFalse(response.getUser().getQuestionnaireCompleted());
         assertFalse(response.getUser().getIsAdmin());
 
-        verify(userRepository, times(1)).existsByEmail(dto.getEmail());
-        verify(passwordEncoder, times(1)).encode(dto.getPassword());
+        verify(userRepository, times(1)).existsByEmail(dto.getRegisterRequestEmail());
+        verify(passwordEncoder, times(1)).encode(dto.getRegisterRequestPassword());
         verify(userRepository, times(1)).save(any(User.class));
-        verify(userRepository, times(1)).findUserSecurityProjectionByEmail(dto.getEmail());
+        verify(userRepository, times(1)).findUserSecurityProjectionByEmail(dto.getRegisterRequestEmail());
         verify(jwtService, times(1)).generateAccessToken(any(User.class));
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
     }
@@ -91,11 +92,11 @@ class RegisterServiceTest {
     // 📝 REGISTER — success (first user gets Admin role)
     @Test
     void register_firstUser_shouldRegisterAsAdmin() {
-        AuthDTO dto = new AuthDTO("Admin User", "admin@example.com", "Password123!");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("Admin User").registerRequestEmail("admin@example.com").registerRequestPassword("Password123!").build();
         User mockSavedAdmin = User.builder()
                 .id(UUID.randomUUID())
-                .name(dto.getName())
-                .email(dto.getEmail())
+                .name(dto.getRegisterRequestName())
+                .email(dto.getRegisterRequestEmail())
                 .passwordHash("encodedPassword")
                 .role(UserRole.USER)
                 .status("ACTIVE")
@@ -105,11 +106,12 @@ class RegisterServiceTest {
         com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection mockProjection = mock(com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection.class);
         when(mockProjection.getPriorCount()).thenReturn(0L);
 
-        when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
-        when(passwordEncoder.encode(dto.getPassword())).thenReturn("encodedPassword");
+        when(userRepository.existsByEmail(dto.getRegisterRequestEmail())).thenReturn(false);
+        when(passwordEncoder.encode(dto.getRegisterRequestPassword())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(mockSavedAdmin);
-        when(userRepository.findUserSecurityProjectionByEmail(dto.getEmail())).thenReturn(java.util.Optional.of(mockProjection));
+        when(userRepository.findUserSecurityProjectionByEmail(dto.getRegisterRequestEmail())).thenReturn(java.util.Optional.of(mockProjection));
         when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
+        when(jwtService.getAccessTokenExpirationMs()).thenReturn(900);
 
         AuthSuccessDTO response = authService.register(dto);
 
@@ -124,10 +126,10 @@ class RegisterServiceTest {
         assertFalse(response.getUser().getQuestionnaireCompleted());
         assertTrue(response.getUser().getIsAdmin());
 
-        verify(userRepository, times(1)).existsByEmail(dto.getEmail());
-        verify(passwordEncoder, times(1)).encode(dto.getPassword());
+        verify(userRepository, times(1)).existsByEmail(dto.getRegisterRequestEmail());
+        verify(passwordEncoder, times(1)).encode(dto.getRegisterRequestPassword());
         verify(userRepository, times(1)).save(any(User.class));
-        verify(userRepository, times(1)).findUserSecurityProjectionByEmail(dto.getEmail());
+        verify(userRepository, times(1)).findUserSecurityProjectionByEmail(dto.getRegisterRequestEmail());
         verify(jwtService, times(1)).generateAccessToken(any(User.class));
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
     }
@@ -135,23 +137,24 @@ class RegisterServiceTest {
     // 📝 REGISTER — duplicate email (conflict exception)
     @Test
     void register_withDuplicateEmail_shouldThrowConflictException() {
-        AuthDTO dto = new AuthDTO("John Doe", "duplicate@example.com", "Password123!");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("John Doe").registerRequestEmail("duplicate@example.com").registerRequestPassword("Password123!").build();
 
-        when(userRepository.existsByEmail(dto.getEmail())).thenReturn(true);
+        when(userRepository.existsByEmail(dto.getRegisterRequestEmail())).thenReturn(true);
 
-        ConflictException exception = assertThrows(ConflictException.class, () -> authService.register(dto));
-        assertEquals("Email already in use", exception.getMessage());
+        CoreThrowHandler exception = assertThrows(CoreThrowHandler.class, () -> authService.register(dto));
+        assertEquals("Email Already Used", exception.getMessage());
 
-        verify(userRepository, times(1)).existsByEmail(dto.getEmail());
+        verify(userRepository, times(1)).existsByEmail(dto.getRegisterRequestEmail());
         verify(userRepository, never()).save(any(User.class));
     }
 
     // 📝 REGISTER — missing email (validation exception)
     @Test
     void register_withMissingEmail_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", null, "Password123!");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("John Doe").registerRequestPassword("Password123!").build();
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
+        CoreThrowHandler exception = assertThrows(CoreThrowHandler.class, () -> authService.register(dto));
+        assertEquals("INVALID FIELD VALUES", exception.getMessage());
         List<ValidationErrorDetailDTO> details = exception.getDetails();
 
         assertFalse(details.isEmpty());
@@ -171,9 +174,10 @@ class RegisterServiceTest {
     // 📝 REGISTER — invalid email format (validation exception)
     @Test
     void register_withInvalidEmailFormat_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", "invalidEmailFormat", "Password123!");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("John Doe").registerRequestEmail("invalidEmailFormat").registerRequestPassword("Password123!").build();
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
+        CoreThrowHandler exception = assertThrows(CoreThrowHandler.class, () -> authService.register(dto));
+        assertEquals("INVALID FIELD VALUES", exception.getMessage());
         List<ValidationErrorDetailDTO> details = exception.getDetails();
 
         assertFalse(details.isEmpty());
@@ -190,9 +194,10 @@ class RegisterServiceTest {
     // 📝 REGISTER — missing password (validation exception)
     @Test
     void register_withMissingPassword_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", "johndoe@example.com", "");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("John Doe").registerRequestEmail("johndoe@example.com").registerRequestPassword("").build();
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
+        CoreThrowHandler exception = assertThrows(CoreThrowHandler.class, () -> authService.register(dto));
+        assertEquals("INVALID FIELD VALUES", exception.getMessage());
         List<ValidationErrorDetailDTO> details = exception.getDetails();
 
         assertFalse(details.isEmpty());
@@ -209,9 +214,10 @@ class RegisterServiceTest {
     // 📝 REGISTER — password too short (validation exception)
     @Test
     void register_withShortPassword_shouldThrowValidationException() {
-        AuthDTO dto = new AuthDTO("John Doe", "johndoe@example.com", "Pass1!");
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("John Doe").registerRequestEmail("johndoe@example.com").registerRequestPassword("Pass1!").build();
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
+        CoreThrowHandler exception = assertThrows(CoreThrowHandler.class, () -> authService.register(dto));
+        assertEquals("INVALID FIELD VALUES", exception.getMessage());
         List<ValidationErrorDetailDTO> details = exception.getDetails();
 
         assertTrue(details.stream().anyMatch(d -> "password".equals(d.getField()) && "Must be at least 8 characters".equals(d.getReason())));
@@ -227,9 +233,9 @@ class RegisterServiceTest {
     })
     void register_withInvalidData_shouldThrowValidationException(
             String name, String email, String password, String expectedField, String expectedReason, String expectedType) {
-        AuthDTO dto = new AuthDTO(name, email, password);
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName(name).registerRequestEmail(email).registerRequestPassword(password).build();
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> authService.register(dto));
+        CoreThrowHandler exception = assertThrows(CoreThrowHandler.class, () -> authService.register(dto));
         List<ValidationErrorDetailDTO> details = exception.getDetails();
 
         assertFalse(details.isEmpty());

@@ -1,11 +1,11 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
@@ -56,10 +56,10 @@ public class GoalsProjectionService {
 
   public List<GoalProjectionDTO> getProjectionsForUser() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-      .orElseThrow(() -> new NotFoundException("User not found"));
+      .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
     if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
     }
 
     // NOTE: intentionally left as-is pending discussion with team — not currently
@@ -116,7 +116,7 @@ public class GoalsProjectionService {
           .map(Number::doubleValue).orElse(0.0);
 
         Product product = productRepository.findById(asset.getProductId())
-          .orElseThrow(() -> new NotFoundException("Item Not Found"));
+          .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         if (product.getAnnualReturn() == null) {
           // TODO : think about this is it necessary to have "default annual return"??????

@@ -1,4 +1,4 @@
-package com.indivaragroup.jdt17wms.dto.request;
+package com.indivaragroup.jdt17wms.dto.response.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,8 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AuthDTO {
-    private String name;
-    private String email;
-    private String password;
+public class LogoutSuccessDTO {
+    private Boolean success;
+    private String message;
 }

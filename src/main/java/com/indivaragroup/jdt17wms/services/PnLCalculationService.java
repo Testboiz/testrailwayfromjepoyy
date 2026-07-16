@@ -1,8 +1,9 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PnLCalculationService {
@@ -33,8 +35,9 @@ public class PnLCalculationService {
     }
 
     public List<AssetsPnLResponseDTO> computePnLForAllAssets() {
-        User user = userRepository.findById(AppConstants.USER_ID)
-                .orElseThrow(()-> new NotFoundException("User not Found"));
+        UUID userId = SecurityUtils.getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
         List<Asset> assets = assetRepository.findAllByUserId(user.getId());
 
@@ -45,7 +48,7 @@ public class PnLCalculationService {
 
     public AssetsPnLResponseDTO computePnLForAsset(Asset asset) {
         Product product = productRepository.findById(asset.getProductId())
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         BigDecimal currentPrice = product.getCurrentPrice() != null ? product.getCurrentPrice() : BigDecimal.ZERO;
 
@@ -61,7 +64,8 @@ public class PnLCalculationService {
                 .map(TransactionHistory::getUnits)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal remainingUnits = asset.getUnits().subtract(totalSoldUnits);
+        BigDecimal remainingUnits = asset.getUnits().subtract(totalSoldUnits)
+                .max(BigDecimal.ZERO); // clamp to 0 — prevent negative remainder
         BigDecimal potentialPnL = BigDecimal.ZERO;
         BigDecimal potentialPnLPercent = BigDecimal.ZERO;
 

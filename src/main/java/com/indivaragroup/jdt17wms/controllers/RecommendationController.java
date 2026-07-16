@@ -1,7 +1,10 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
+import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.services.ActionRecommendationService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/me")
+@RequestMapping(ApiPath.BASE_USER_PATH)
 public class RecommendationController {
 
     private final ActionRecommendationService actionRecommendationService;
@@ -21,12 +24,14 @@ public class RecommendationController {
   }
 
     @GetMapping("/health")
-    public HealthDTO getHealth() {
-        return actionRecommendationService.getHealthScore();
+    public ApiResponse<HealthDTO> getHealth() {
+        return ApiResponse.success(ApiSuccess.HEALTH_OK,
+                actionRecommendationService.getHealthScore());
     }
 
     @PostMapping("/recommendations")
-    public List<RecommendationDTO> getRecommendations() {
-        return actionRecommendationService.generateRecommendations();
+    public ApiResponse<List<RecommendationDTO>> getRecommendations() {
+        return ApiResponse.success(ApiSuccess.RECOMMENDATIONS_FETCHED,
+                actionRecommendationService.generateRecommendations());
     }
 }

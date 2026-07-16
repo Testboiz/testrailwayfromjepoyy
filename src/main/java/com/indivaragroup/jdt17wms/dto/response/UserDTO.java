@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +18,7 @@ public class UserDTO {
     private UUID id;
     private String name;
     private String email;
-//    @JsonProperty("isAdmin")
+    @JsonProperty("isAdmin")
     private Boolean isAdmin;
     private Boolean questionnaireCompleted;
 }

@@ -17,7 +17,6 @@ public final class AppConstants {
   public static final String HIGH_PRIORITY = "high";
   public static final String LOW_PRIORITY = "low";
 
-    public static final UUID USER_ID = UUID.fromString("7957b44d-131c-4e84-8bb8-6b68ebde72d9");
     public static final int DEFAULT_QUESTIONNAIRE_SIZE = 5;
     public static final int RISK_AVERSE_THRESHOLD = 3;
     public static final int RISK_MODERATE_THRESHOLD = 7;
@@ -25,7 +24,7 @@ public final class AppConstants {
     public static final int MIN_ANSWER_SCORE = 0;
     public static final int MAX_ANSWER_SCORE = 2;
 
-    // Asset/Product Type Constants
+    // Asset/Product Type Constants;typeLabels
     public static final String MONEY_MARKET = "money_market";
     public static final String DEPOSIT = "deposit";
     public static final String BOND = "bond";
@@ -76,13 +75,6 @@ public final class AppConstants {
             "retirement", 420,
             CUSTOM_GOAL, 60
     );
-
-    // Security/Role Constants
-    public static final String ADMIN_ROLE = "ADMIN";
-    public static final String USER_ROLE = "USER";
-    public static final String ROLE_ADMIN = "ROLE_ADMIN";
-    public static final String ROLE_USER = "ROLE_USER";
-
     // Pre-constructed ErrorResponseDTOs
     public static final ErrorResponseDTO ERROR_UNAUTHORIZED = ErrorResponseDTO.builder()
             .error("Unauthorized")

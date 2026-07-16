@@ -1,6 +1,8 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.services.AuditTrailManagementService;
+import com.indivaragroup.jdt17wms.services.JwtService;
+import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,6 +29,12 @@ class AdminControllerTest extends BaseControllerTest {
 
     @MockBean
     private AuditTrailManagementService auditTrailManagementService;
+
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserRepository userRepository;
 
     @Test
     void getAuditLogs_shouldReturnOk() throws Exception {

@@ -1,7 +1,11 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
+import com.indivaragroup.jdt17wms.services.JwtService;
+import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,6 +37,12 @@ class ProductControllerTest extends BaseControllerTest {
     @MockBean
     private ProductManagementService productManagementService;
 
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserRepository userRepository;
+
     @Test
     void getAllProducts_shouldReturnOk() throws Exception {
         Page<Product> expectedPage = new PageImpl<>(List.of());
@@ -59,7 +69,7 @@ class ProductControllerTest extends BaseControllerTest {
     void updateProduct_shouldReturnNotFound_whenProductDoesNotExist() throws Exception {
         UUID id = UUID.randomUUID();
         when(productManagementService.updateProductVisibility(any(UUID.class), any(Boolean.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.NotFoundException("No valid item with the ID"));
+                .thenThrow(new CoreThrowHandler(ApiError.NOT_FOUND, "No valid item with the ID"));
 
         mockMvc.perform(put("/api/v1/products/" + id)
                         .contentType("application/json")

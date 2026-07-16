@@ -1,12 +1,13 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.indivaragroup.jdt17wms.dto.request.AuthDTO;
+import com.indivaragroup.jdt17wms.dto.request.LoginDTO;
 import com.indivaragroup.jdt17wms.dto.request.RefreshTokenDTO;
-import com.indivaragroup.jdt17wms.dto.response.AuthSuccessDTO;
-import com.indivaragroup.jdt17wms.dto.response.LogoutSuccessDTO;
-import com.indivaragroup.jdt17wms.dto.response.RefreshTokenSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.request.RegisterDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
+import com.indivaragroup.jdt17wms.dto.response.auth.AuthSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.response.auth.RefreshTokenSuccessDTO;
 import com.indivaragroup.jdt17wms.services.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -55,19 +55,19 @@ class AuthControllerTest extends BaseControllerTest {
                 .user(mockUser)
                 .build();
 
-        when(authService.login(any(AuthDTO.class))).thenReturn(mockResponse);
+        when(authService.login(any(LoginDTO.class))).thenReturn(mockResponse);
 
-        String body = objectMapper.writeValueAsString(new AuthDTO("Test", "test@example.com", "Test1234!"));
+        String body = objectMapper.writeValueAsString(LoginDTO.builder().loginRequestEmail("test@example.com").loginRequestPassword("Test1234!").build());
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Login successful"))
-                .andExpect(jsonPath("$.accessToken").value("eyJhbGciOiJIUzI1NiJ9.test"))
-                .andExpect(jsonPath("$.expiresIn").value(900))
-                .andExpect(jsonPath("$.user.email").value("test@example.com"));
+                .andExpect(jsonPath("$.result.success").value(true))
+                .andExpect(jsonPath("$.result.message").value("Login successful"))
+                .andExpect(jsonPath("$.result.accessToken").value("eyJhbGciOiJIUzI1NiJ9.test"))
+                .andExpect(jsonPath("$.result.expiresIn").value(900))
+                .andExpect(jsonPath("$.result.user.email").value("test@example.com"));
     }
 
     @Test
@@ -75,7 +75,8 @@ class AuthControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid JSON Body"));
+                .andExpect(jsonPath("$.message").value("Invalid Request Body"))
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     // --- REGISTER ---
@@ -90,16 +91,16 @@ class AuthControllerTest extends BaseControllerTest {
                 .user(mockUser)
                 .build();
 
-        when(authService.register(any(AuthDTO.class))).thenReturn(mockResponse);
+        when(authService.register(any(RegisterDTO.class))).thenReturn(mockResponse);
 
-        String body = objectMapper.writeValueAsString(new AuthDTO("Test User", "test@example.com", "Test1234!"));
+        String body = objectMapper.writeValueAsString(RegisterDTO.builder().registerRequestName("Test User").registerRequestEmail("test@example.com").registerRequestPassword("Test1234!").build());
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Registration successful"));
+                .andExpect(jsonPath("$.result.success").value(true))
+                .andExpect(jsonPath("$.result.message").value("Registration successful"));
     }
 
     @Test
@@ -107,86 +108,115 @@ class AuthControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid JSON Body"));
+                .andExpect(jsonPath("$.message").value("Invalid Request Body"))
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     // --- LOGOUT ---
 
     @Test
     void logout_withValidToken_shouldReturnSuccess() throws Exception {
-        when(authService.extractEmailFromToken(anyString())).thenReturn("test@example.com");
-        when(authService.extractUserIdFromToken(anyString())).thenReturn(UUID.randomUUID());
-
         LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
                 .success(true)
                 .message("Logout successful")
                 .build();
 
-        when(authService.logout(any(UUID.class), anyString())).thenReturn(mockResponse);
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.test"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Logout successful"));
+                .andExpect(jsonPath("$.result.success").value(true))
+                .andExpect(jsonPath("$.result.message").value("Logout successful"));
     }
 
     @Test
-    void logout_withoutToken_shouldFailWithUnauthorized() throws Exception {
+    void logout_withoutToken_shouldReturnSuccess() throws Exception {
+        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
+                .success(true)
+                .message("Logout successful")
+                .build();
+
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
+
         mockMvc.perform(post("/api/v1/auth/logout"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("No token provided"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.success").value(true));
     }
 
     @Test
-    void logout_withInvalidHeaderPrefix_shouldFailWithUnauthorized() throws Exception {
+    void logout_withInvalidHeaderPrefix_shouldReturnSuccess() throws Exception {
+        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
+                .success(true)
+                .message("Logout successful")
+                .build();
+
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
+
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Basic abcdef"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("No token provided"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.success").value(true));
     }
 
     @Test
-    void logout_whenExtractionThrowsException_shouldFailWithUnauthorized() throws Exception {
-        when(authService.extractEmailFromToken(anyString())).thenThrow(new RuntimeException("Token extraction failed"));
+    void logout_whenExtractionThrowsException_shouldReturnSuccess() throws Exception {
+        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
+                .success(true)
+                .message("Logout successful")
+                .build();
+
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Invalid token"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.success").value(true));
     }
 
     @Test
-    void logout_whenEmailNull_shouldFailWithUnauthorized() throws Exception {
-        when(authService.extractEmailFromToken(anyString())).thenReturn(null);
-        when(authService.extractUserIdFromToken(anyString())).thenReturn(UUID.randomUUID());
+    void logout_whenEmailNull_shouldReturnSuccess() throws Exception {
+        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
+                .success(true)
+                .message("Logout successful")
+                .build();
+
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Invalid token claims"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.success").value(true));
     }
 
     @Test
-    void logout_whenEmailEmpty_shouldFailWithUnauthorized() throws Exception {
-        when(authService.extractEmailFromToken(anyString())).thenReturn("   ");
-        when(authService.extractUserIdFromToken(anyString())).thenReturn(UUID.randomUUID());
+    void logout_whenEmailEmpty_shouldReturnSuccess() throws Exception {
+        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
+                .success(true)
+                .message("Logout successful")
+                .build();
+
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Invalid token claims"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.success").value(true));
     }
 
     @Test
-    void logout_whenUserIdNull_shouldFailWithUnauthorized() throws Exception {
-        when(authService.extractEmailFromToken(anyString())).thenReturn("test@example.com");
-        when(authService.extractUserIdFromToken(anyString())).thenReturn(null);
+    void logout_whenUserIdNull_shouldReturnSuccess() throws Exception {
+        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
+                .success(true)
+                .message("Logout successful")
+                .build();
+
+        when(authService.logout(any(), any())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Invalid token claims"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.success").value(true));
     }
 
     // --- REFRESH ---
@@ -210,9 +240,9 @@ class AuthControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
-                .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
+                .andExpect(jsonPath("$.result.success").value(true))
+                .andExpect(jsonPath("$.result.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.result.refreshToken").value("new-refresh-token"));
     }
 
     @Test
@@ -220,7 +250,8 @@ class AuthControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid JSON Body"));
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Refresh Token Required"));
     }
 
     @Test
@@ -231,7 +262,8 @@ class AuthControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid JSON Body"));
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Refresh Token Required"));
     }
 
     @Test
@@ -242,6 +274,7 @@ class AuthControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid JSON Body"));
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Refresh Token Required"));
     }
 }

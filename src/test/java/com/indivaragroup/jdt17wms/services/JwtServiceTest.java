@@ -24,8 +24,8 @@ class JwtServiceTest {
         jwtService = new JwtService();
         // Set secret and expirations via reflection
         ReflectionTestUtils.setField(jwtService, "secretKey", "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey");
-        ReflectionTestUtils.setField(jwtService, "accessTokenExpirationMs", 900000L);
-        ReflectionTestUtils.setField(jwtService, "refreshTokenExpirationMs", 604800000L);
+        ReflectionTestUtils.setField(jwtService, "accessTokenExpirationMs", 900000);
+        ReflectionTestUtils.setField(jwtService, "refreshTokenExpirationMs", 604800000);
     }
 
     @Test
@@ -80,7 +80,7 @@ class JwtServiceTest {
                 .claim("exp", now.minusSeconds(10).getEpochSecond())
                 .signWith(key)
                 .compact();
-        assertEquals("expired@example.com", jwtService.getEmailClaimFromToken(expiredToken));
+        assertEquals("expired@example.com", jwtService.getEmailFromToken(expiredToken));
     }
 
     @Test
@@ -99,7 +99,7 @@ class JwtServiceTest {
                 .claim("exp", now.minusSeconds(10).getEpochSecond())
                 .signWith(key)
                 .compact();
-        assertEquals(uid.toString(), jwtService.getUserIdClaimFromToken(expiredToken));
+        assertEquals(uid.toString(), jwtService.getUserIdFromToken(expiredToken));
     }
 
     @Test

@@ -23,6 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 
 @WebMvcTest(GoalController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -88,7 +90,7 @@ class GoalControllerTest extends BaseControllerTest {
     @Test
     void createGoal_shouldReturn422WhenMultiplePriority() throws Exception {
         when(goalsManagementService.createGoalForUser(any(GoalRegistrationDTO.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException("Can’t set more than 1 priority"));
+                .thenThrow(new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS, "Can’t set more than 1 priority"));
 
         mockMvc.perform(post("/api/v1/me/goals")
                         .contentType("application/json")
@@ -136,7 +138,7 @@ class GoalControllerTest extends BaseControllerTest {
     void updateGoal_shouldReturn422WhenMultiplePriority() throws Exception {
         UUID id = UUID.randomUUID();
         when(goalsManagementService.updateGoalForUser(any(UUID.class), any(GoalEditingDTO.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException("Can’t set more than 1 priority"));
+                .thenThrow(new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS, "Can’t set more than 1 priority"));
 
         mockMvc.perform(put("/api/v1/me/goals/" + id)
                         .contentType("application/json")
@@ -151,7 +153,7 @@ class GoalControllerTest extends BaseControllerTest {
     void updateGoal_shouldReturn422WhenInsufficientIncome() throws Exception {
         UUID id = UUID.randomUUID();
         when(goalsManagementService.updateGoalForUser(any(UUID.class), any(GoalEditingDTO.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.InsufficientIncomeException("Can’t set more allocation than income"));
+                .thenThrow(new CoreThrowHandler(ApiError.INSUFFICIENT_INCOME, "Can’t set more allocation than income"));
 
         mockMvc.perform(put("/api/v1/me/goals/" + id)
                         .contentType("application/json")
@@ -166,7 +168,7 @@ class GoalControllerTest extends BaseControllerTest {
     void updateGoal_shouldReturn404WhenGoalNotFound() throws Exception {
         UUID id = UUID.randomUUID();
         when(goalsManagementService.updateGoalForUser(any(UUID.class), any(GoalEditingDTO.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.NotFoundException("No valid item with the ID"));
+                .thenThrow(new CoreThrowHandler(ApiError.ITEM_NOT_FOUND, "No valid item with the ID"));
 
         mockMvc.perform(put("/api/v1/me/goals/" + id)
                         .contentType("application/json")
@@ -186,7 +188,7 @@ class GoalControllerTest extends BaseControllerTest {
     @Test
     void deleteGoal_shouldReturn404WhenNotFound() throws Exception {
         UUID id = UUID.randomUUID();
-        doThrow(new com.indivaragroup.jdt17wms.exceptions.NotFoundException("No valid item with the ID"))
+        doThrow(new CoreThrowHandler(ApiError.ITEM_NOT_FOUND, "No valid item with the ID"))
                 .when(goalsManagementService).deleteGoalForUser(any(UUID.class));
 
         mockMvc.perform(delete("/api/v1/me/goals/" + id))
@@ -198,7 +200,7 @@ class GoalControllerTest extends BaseControllerTest {
     @Test
     void deleteGoal_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
         UUID id = UUID.randomUUID();
-        doThrow(new com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException("Risk Profiler Assessment Required"))
+        doThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER, "Risk Profiler Assessment Required"))
                 .when(goalsManagementService).deleteGoalForUser(any(UUID.class));
 
         mockMvc.perform(delete("/api/v1/me/goals/" + id))
@@ -237,7 +239,7 @@ class GoalControllerTest extends BaseControllerTest {
     @Test
     void getGoalProjections_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
         when(goalsProjectionService.getProjectionsForUser())
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException("Risk Profiler Assessment Required"));
+                .thenThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER, "Risk Profiler Assessment Required"));
 
         mockMvc.perform(get("/api/v1/me/goals/projections"))
                 .andExpect(status().isUnprocessableEntity())

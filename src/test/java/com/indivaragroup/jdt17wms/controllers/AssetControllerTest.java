@@ -2,8 +2,8 @@ package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
-import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.services.AssetsManagementService;
 import com.indivaragroup.jdt17wms.services.PnLCalculationService;
@@ -59,25 +59,23 @@ class AssetControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"product_id\":\"" + productId + "\",\"units\":-10.5,\"amount\":100.0,\"current_value\":110.0,\"purchase_date\":\"2023-01-01 00:00:00\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid field values"))
-                .andExpect(jsonPath("$.type").value("ERR-001"))
-                .andExpect(jsonPath("$.details[0].field").value("units"))
-                .andExpect(jsonPath("$.details[0].reason").value("Must be at least positive"));
+                .andExpect(jsonPath("$.message").value("INVALID FIELD VALUES"))
+                .andExpect(jsonPath("$.error.fields[0].field").value("units"))
+                .andExpect(jsonPath("$.error.fields[0].reason").value("Must be at least positive"));
     }
 
     @Test
-    void createAsset_shouldReturn422WhenProductIsDelisted() throws Exception {
+    void createAsset_shouldReturn409WhenProductIsDelisted() throws Exception {
         UUID productId = UUID.randomUUID();
         when(assetsManagementService.createAssetForUser(any(AssetRegistrationDTO.class)))
-                .thenThrow(new DelistedProductException("Can’t track delisted products"));
+                .thenThrow(new CoreThrowHandler(ApiError.DELISTED_PRODUCT));
 
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")
                         .content("{\"product_id\":\"" + productId + "\",\"units\":10.5,\"amount\":100.0,\"current_value\":110.0,\"purchase_date\":\"2023-01-01 00:00:00\"}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Can’t track delisted products"))
-                .andExpect(jsonPath("$.type").value("ERR-004"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Can’t track delisted products"))
+                .andExpect(jsonPath("$.code").value(409));
     }
 
     @Test
@@ -89,14 +87,14 @@ class AssetControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void getAssets_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
+    void getAssets_shouldReturn403WhenQuestionnaireNotCompleted() throws Exception {
         when(assetsManagementService.getAssetsForUser())
-                .thenThrow(new MissingRiskProfileException("Risk Profiler Assessment Required"));
+                .thenThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER));
 
         mockMvc.perform(get("/api/v1/me/assets"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test
@@ -108,14 +106,14 @@ class AssetControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void getTransactionLogs_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
+    void getTransactionLogs_shouldReturn403WhenQuestionnaireNotCompleted() throws Exception {
         when(assetsManagementService.getTransactionLogsForUser())
-                .thenThrow(new MissingRiskProfileException("Risk Profiler Assessment Required"));
+                .thenThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER));
 
         mockMvc.perform(get("/api/v1/me/assets/transaction-logs"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test
@@ -136,7 +134,7 @@ class AssetControllerTest extends BaseControllerTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(delete("/api/v1/me/assets/" + id))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -149,6 +147,6 @@ class AssetControllerTest extends BaseControllerTest {
 
         mockMvc.perform(get("/api/v1/me/assets/pnl"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].currentValue").value(10));
+                .andExpect(jsonPath("$.result[0].currentValue").value(10));
     }
 }

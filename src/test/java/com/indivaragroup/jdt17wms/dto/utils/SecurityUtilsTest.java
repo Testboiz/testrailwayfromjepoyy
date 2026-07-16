@@ -1,6 +1,5 @@
 package com.indivaragroup.jdt17wms.dto.utils;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,7 @@ class SecurityUtilsTest {
     @Test
     void getCurrentUserId_whenAuthenticationIsNull_shouldReturnDefaultUserId() {
         SecurityContextHolder.clearContext();
-        assertEquals(AppConstants.USER_ID, SecurityUtils.getCurrentUserId());
+        assertEquals(SecurityUtils.STATIC_USER_ID, SecurityUtils.getCurrentUserId());
     }
 
     @Test
@@ -40,7 +39,7 @@ class SecurityUtilsTest {
         Authentication auth = new UsernamePasswordAuthenticationToken("anonymous", null);
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        assertEquals(AppConstants.USER_ID, SecurityUtils.getCurrentUserId());
+        assertEquals(SecurityUtils.STATIC_USER_ID, SecurityUtils.getCurrentUserId());
     }
 
     @Test

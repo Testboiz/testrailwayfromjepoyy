@@ -1,7 +1,10 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.response.AdminDashboardDTO;
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
+import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.UserDashboardDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.services.DashboardService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,13 +18,15 @@ public class DashboardController {
         this.dashboardService = dashboardService;
     }
 
-    @GetMapping("/api/v1/admin-dashboard")
-    public AdminDashboardDTO getAdminDashboard() {
-      return dashboardService.getAdminDashboard();
+    @GetMapping(ApiPath.BASE_ADMIN_PATH + "/dashboard")
+    public ApiResponse<AdminDashboardDTO> getAdminDashboard() {
+        return ApiResponse.success(ApiSuccess.DASHBOARD_FETCHED,
+                dashboardService.getAdminDashboard());
     }
 
-    @GetMapping("/api/v1/me/dashboard")
-    public UserDashboardDTO getUserDashboard() {
-        return dashboardService.getUserDashboard();
+    @GetMapping(ApiPath.BASE_USER_PATH + "/dashboard")
+    public ApiResponse<UserDashboardDTO> getUserDashboard() {
+        return ApiResponse.success(ApiSuccess.DASHBOARD_FETCHED,
+                dashboardService.getUserDashboard());
     }
 }

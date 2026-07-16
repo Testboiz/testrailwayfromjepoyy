@@ -1,5 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -71,7 +74,7 @@ class UserManagementServiceTest {
         UUID id = UUID.randomUUID();
         when(userRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
-        org.junit.jupiter.api.Assertions.assertThrows(com.indivaragroup.jdt17wms.exceptions.NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             userManagementService.updateUserStatus(id, "active");
         });
     }

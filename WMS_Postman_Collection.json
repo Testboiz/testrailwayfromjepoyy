@@ -1,0 +1,1426 @@
+{
+  "info": {
+    "_postman_id": "wms-jdt17-collection-v1",
+    "name": "JDT17 WMS API - Full Test Suite",
+    "description": "Wealth Management System — Complete Postman test collection.\nCovers Auth, User (me), Assets, Goals, Risk Profiler, Products, Admin, and Dashboard.\n\nSetup:\n1. Set baseUrl variable to http://localhost:8080\n2. Run 'Login - Success' first to auto-save the accessToken\n3. Then run other folders in order",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:8080", "type": "string" },
+    { "key": "accessToken",  "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "userId",       "value": "", "type": "string" },
+    { "key": "assetId",      "value": "", "type": "string" },
+    { "key": "goalId",       "value": "", "type": "string" },
+    { "key": "productId",    "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Register - Success",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "console.log('=== [REGISTER] prerequest ===');",
+                  "console.log('URL:', pm.request.url.toString());",
+                  "console.log('Body:', pm.request.body.raw);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// CAVEMAN DEBUG",
+                  "console.log('=== [REGISTER] response ===');",
+                  "console.log('Status:', pm.response.status, pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('accessToken exists', () => {",
+                  "  pm.expect(pm.response.json().data.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('refreshToken exists', () => {",
+                  "  pm.expect(pm.response.json().data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  console.log('SAVED accessToken + refreshToken');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser{{$timestamp}}@wms.dev\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","auth","register"]
+            }
+          }
+        },
+        {
+          "name": "Register - Missing Fields (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [REGISTER MISSING] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"\",\n  \"email\": \"\",\n  \"password\": \"short\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] }
+          }
+        },
+        {
+          "name": "Register - Empty Body (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [REGISTER EMPTY BODY] Status:', pm.response.code);",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] }
+          }
+        },
+        {
+          "name": "Login - Success",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "console.log('=== [LOGIN] prerequest ===');",
+                  "console.log('Body:', pm.request.body.raw);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// CAVEMAN DEBUG",
+                  "console.log('=== [LOGIN] response ===');",
+                  "console.log('Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('accessToken exists', () => pm.expect(pm.response.json().data.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.test('refreshToken exists', () => pm.expect(pm.response.json().data.refreshToken).to.be.a('string').and.not.empty);",
+                  "pm.test('Response time < 3000ms', () => pm.expect(pm.response.responseTime).to.be.below(3000));",
+                  "",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  console.log('SAVED accessToken:', json.data.accessToken.substring(0,30) + '...');",
+                  "  console.log('SAVED refreshToken:', json.data.refreshToken.substring(0,30) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@wms.dev\",\n  \"password\": \"Password123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] }
+          }
+        },
+        {
+          "name": "Login - Wrong Password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [LOGIN WRONG PASS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@wms.dev\",\n  \"password\": \"WrongPassword!\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] }
+          }
+        },
+        {
+          "name": "Login - Non-existent Email (4xx)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [LOGIN NOT FOUND] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status is 4xx', () => pm.expect(pm.response.code).to.be.within(400, 499));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"ghost99999@nobody.com\",\n  \"password\": \"Password123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] }
+          }
+        },
+        {
+          "name": "Refresh Token - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [REFRESH TOKEN] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('New accessToken returned', () => pm.expect(pm.response.json().data.accessToken).to.be.a('string').and.not.empty);",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  console.log('SAVED new accessToken');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] }
+          }
+        },
+        {
+          "name": "Refresh Token - Empty Body (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [REFRESH EMPTY] Status:', pm.response.code);",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] }
+          }
+        },
+        {
+          "name": "Logout - With Token (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [LOGOUT] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] }
+          }
+        },
+        {
+          "name": "Logout - No Token (graceful 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [LOGOUT NO TOKEN] Status:', pm.response.code);",
+                  "pm.test('Status 200 graceful', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": { "mode": "raw", "raw": "" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Dashboard",
+      "item": [
+        {
+          "name": "Get User Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [USER DASHBOARD] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is object', () => pm.expect(pm.response.json().data).to.be.an('object'));",
+                  "pm.test('Response time < 3000ms', () => pm.expect(pm.response.responseTime).to.be.below(3000));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/dashboard", "host": ["{{baseUrl}}"], "path": ["api","v1","me","dashboard"] }
+          }
+        },
+        {
+          "name": "Get Admin Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [ADMIN DASHBOARD] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is object', () => pm.expect(pm.response.json().data).to.be.an('object'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/admin/dashboard", "host": ["{{baseUrl}}"], "path": ["api","v1","admin","dashboard"] }
+          }
+        },
+        {
+          "name": "Dashboard - No Auth (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [DASHBOARD NO AUTH] Status:', pm.response.code);",
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/dashboard", "host": ["{{baseUrl}}"], "path": ["api","v1","me","dashboard"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏦 Assets",
+      "item": [
+        {
+          "name": "Get All Assets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [GET ASSETS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "var assets = pm.response.json().data;",
+                  "if (assets && assets.length > 0 && assets[0].id) {",
+                  "  pm.collectionVariables.set('assetId', assets[0].id);",
+                  "  console.log('SAVED assetId:', assets[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets"] }
+          }
+        },
+        {
+          "name": "Create Asset - Success",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE ASSET] prerequest ===');",
+                  "console.log('productId:', pm.collectionVariables.get('productId'));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE ASSET] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data has id', () => pm.expect(pm.response.json().data).to.have.property('id'));",
+                  "var id = pm.response.json().data && pm.response.json().data.id;",
+                  "if (id) { pm.collectionVariables.set('assetId', id); console.log('SAVED assetId:', id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"{{productId}}\",\n  \"units\": 10.5,\n  \"amount\": 5000000,\n  \"current_value\": 5250000,\n  \"purchase_date\": \"2024-01-15 09:00:00\",\n  \"platform\": \"Bibit\",\n  \"notes\": \"Testing via Postman\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets"] }
+          }
+        },
+        {
+          "name": "Create Asset - Missing Required Fields (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE ASSET BAD] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('success = false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"units\": -1\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets"] }
+          }
+        },
+        {
+          "name": "Get Assets PnL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [ASSETS PNL] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets/pnl", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets","pnl"] }
+          }
+        },
+        {
+          "name": "Get Transaction Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [TRANSACTION LOGS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets/transaction-logs", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets","transaction-logs"] }
+          }
+        },
+        {
+          "name": "Update Asset (Link Goal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [UPDATE ASSET] Status:', pm.response.code);",
+                  "console.log('assetId:', pm.collectionVariables.get('assetId'));",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"goalId\": \"{{goalId}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets/{{assetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets","{{assetId}}"] }
+          }
+        },
+        {
+          "name": "Delete Asset - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [DELETE ASSET] Status:', pm.response.code);",
+                  "console.log('assetId:', pm.collectionVariables.get('assetId'));",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.collectionVariables.set('assetId', '');",
+                  "console.log('assetId cleared');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets/{{assetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets","{{assetId}}"] }
+          }
+        },
+        {
+          "name": "Delete Asset - Non-existent UUID (4xx)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [DELETE ASSET INVALID] Status:', pm.response.code);",
+                  "pm.test('Status is 4xx', () => pm.expect(pm.response.code).to.be.within(400, 499));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets","00000000-0000-0000-0000-000000000000"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 Goals",
+      "item": [
+        {
+          "name": "Get All Goals",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [GET GOALS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "var goals = pm.response.json().data;",
+                  "if (goals && goals.length > 0 && goals[0].id) {",
+                  "  pm.collectionVariables.set('goalId', goals[0].id);",
+                  "  console.log('SAVED goalId:', goals[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals"] }
+          }
+        },
+        {
+          "name": "Create Goal - Success (savings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE GOAL] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('name matches', () => pm.expect(pm.response.json().data.name).to.equal('Dana Darurat Test'));",
+                  "pm.test('type is savings', () => pm.expect(pm.response.json().data.type).to.equal('savings'));",
+                  "var id = pm.response.json().data && pm.response.json().data.id;",
+                  "if (id) { pm.collectionVariables.set('goalId', id); console.log('SAVED goalId:', id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dana Darurat Test\",\n  \"type\": \"savings\",\n  \"target_amount\": 50000000,\n  \"monthly_contribution\": 2000000,\n  \"target_date\": \"2026-12-31\",\n  \"is_priority\": true,\n  \"notes\": \"Postman test goal\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals"] }
+          }
+        },
+        {
+          "name": "Create Goal - Invalid Type (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE GOAL INVALID TYPE] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Bad Goal\",\n  \"type\": \"crypto_moon\",\n  \"target_amount\": 1000000,\n  \"monthly_contribution\": 100000,\n  \"target_date\": \"2027-01-01\",\n  \"is_priority\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals"] }
+          }
+        },
+        {
+          "name": "Create Goal - Past Target Date (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE GOAL PAST DATE] Status:', pm.response.code);",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Past Goal\",\n  \"type\": \"vacation\",\n  \"target_amount\": 10000000,\n  \"monthly_contribution\": 500000,\n  \"target_date\": \"2020-01-01\",\n  \"is_priority\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals"] }
+          }
+        },
+        {
+          "name": "Create Goal - Exceeds Max Amount (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [CREATE GOAL EXCEED MAX] Status:', pm.response.code);",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Overshoot\",\n  \"type\": \"retirement\",\n  \"target_amount\": 999999999999,\n  \"monthly_contribution\": 1000000,\n  \"target_date\": \"2050-01-01\",\n  \"is_priority\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals"] }
+          }
+        },
+        {
+          "name": "Update Goal - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [UPDATE GOAL] Status:', pm.response.code);",
+                  "console.log('goalId:', pm.collectionVariables.get('goalId'));",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('name updated', () => pm.expect(pm.response.json().data.name).to.equal('Dana Darurat Updated'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Dana Darurat Updated\",\n  \"target_amount\": 60000000,\n  \"monthly_contribution\": 2500000,\n  \"target_date\": \"2027-06-30\",\n  \"is_priority\": true,\n  \"notes\": \"Updated via Postman\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals/{{goalId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals","{{goalId}}"] }
+          }
+        },
+        {
+          "name": "Get Goal Projections",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [GOAL PROJECTIONS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals/projections", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals","projections"] }
+          }
+        },
+        {
+          "name": "Delete Goal - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [DELETE GOAL] Status:', pm.response.code);",
+                  "console.log('goalId:', pm.collectionVariables.get('goalId'));",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.collectionVariables.set('goalId', '');",
+                  "console.log('goalId cleared');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals/{{goalId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals","{{goalId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📈 Products",
+      "item": [
+        {
+          "name": "Get All Products (default)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [GET PRODUCTS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data.content is array', () => pm.expect(pm.response.json().data.content).to.be.an('array'));",
+                  "var content = pm.response.json().data && pm.response.json().data.content;",
+                  "if (content && content.length > 0 && content[0].id) {",
+                  "  pm.collectionVariables.set('productId', content[0].id);",
+                  "  console.log('SAVED productId:', content[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/products", "host": ["{{baseUrl}}"], "path": ["api","v1","products"] }
+          }
+        },
+        {
+          "name": "Get Products - Filter type=stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [PRODUCTS STOCK] Status:', pm.response.code);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All products are stock type', () => {",
+                  "  var content = pm.response.json().data && pm.response.json().data.content || [];",
+                  "  content.forEach(function(p) { pm.expect(p.type).to.equal('stock'); });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?type=stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","products"],
+              "query": [{ "key": "type", "value": "stock" }]
+            }
+          }
+        },
+        {
+          "name": "Get Products - Search Query",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [PRODUCTS SEARCH] Status:', pm.response.code);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?searchQuery=reksa",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","products"],
+              "query": [{ "key": "searchQuery", "value": "reksa" }]
+            }
+          }
+        },
+        {
+          "name": "Get Products - Pagination (page=0, size=5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [PRODUCTS PAGINATION] Status:', pm.response.code);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Page size = 5', () => pm.expect(pm.response.json().data.size).to.equal(5));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?page=0&size=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","products"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "5" }]
+            }
+          }
+        },
+        {
+          "name": "Get Products - showAll=true (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [PRODUCTS SHOW ALL] Status:', pm.response.code);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?showAll=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","products"],
+              "query": [{ "key": "showAll", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "Update Product Visibility (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [UPDATE PRODUCT VISIBILITY] Status:', pm.response.code);",
+                  "console.log('productId:', pm.collectionVariables.get('productId'));",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"visibility\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","products","{{productId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧠 Risk Profiler",
+      "item": [
+        {
+          "name": "Get Questionnaire",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [GET QUESTIONNAIRE] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "pm.test('5 questions', () => pm.expect(pm.response.json().data.length).to.equal(5));",
+                  "pm.test('each question has id, question, options', () => {",
+                  "  pm.response.json().data.forEach(function(q) {",
+                  "    pm.expect(q).to.have.property('id');",
+                  "    pm.expect(q).to.have.property('question');",
+                  "    pm.expect(q).to.have.property('options');",
+                  "    pm.expect(q.options).to.be.an('array').with.lengthOf(3);",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        },
+        {
+          "name": "Submit Assessment - Risk Taker (score=2 x5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [RISK TAKER] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('riskProfile = risk_taker', () => {",
+                  "  var data = pm.response.json().data;",
+                  "  var profile = data.riskProfile || data.risk_profile;",
+                  "  pm.expect(profile).to.equal('risk_taker');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "[\n  { \"questionnaireAnswer\": \"Maximize returns — I accept high risk for high reward\", \"score\": 2 },\n  { \"questionnaireAnswer\": \"More than 5 years — building long-term wealth\", \"score\": 2 },\n  { \"questionnaireAnswer\": \"Buy more — it is a buying opportunity\", \"score\": 2 },\n  { \"questionnaireAnswer\": \"More than 30% — committed to aggressive wealth building\", \"score\": 2 },\n  { \"questionnaireAnswer\": \"Experienced with stocks, bonds, and market cycles\", \"score\": 2 }\n]" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        },
+        {
+          "name": "Submit Assessment - Risk Averse (score=0 x5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [RISK AVERSE] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('riskProfile = risk_averse', () => {",
+                  "  var data = pm.response.json().data;",
+                  "  var profile = data.riskProfile || data.risk_profile;",
+                  "  pm.expect(profile).to.equal('risk_averse');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "[\n  { \"questionnaireAnswer\": \"Protect my capital — I cannot afford to lose money\", \"score\": 0 },\n  { \"questionnaireAnswer\": \"Less than 1 year — I need liquidity soon\", \"score\": 0 },\n  { \"questionnaireAnswer\": \"Sell everything to stop further losses\", \"score\": 0 },\n  { \"questionnaireAnswer\": \"Less than 10% — only comfortable surplus\", \"score\": 0 },\n  { \"questionnaireAnswer\": \"No experience — this is my first time investing\", \"score\": 0 }\n]" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        },
+        {
+          "name": "Submit Assessment - Moderate (score=1 x5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [MODERATE] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('riskProfile = moderate', () => {",
+                  "  var data = pm.response.json().data;",
+                  "  var profile = data.riskProfile || data.risk_profile;",
+                  "  pm.expect(profile).to.equal('moderate');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "[\n  { \"questionnaireAnswer\": \"Balance growth with moderate security\", \"score\": 1 },\n  { \"questionnaireAnswer\": \"1 to 5 years — medium-term financial goals\", \"score\": 1 },\n  { \"questionnaireAnswer\": \"Hold position and wait for recovery\", \"score\": 1 },\n  { \"questionnaireAnswer\": \"10% to 30% — disciplined regular investing\", \"score\": 1 },\n  { \"questionnaireAnswer\": \"Some experience with deposits or mutual funds\", \"score\": 1 }\n]" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        },
+        {
+          "name": "Submit Assessment - Invalid Score > 2 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [INVALID SCORE] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "[\n  { \"questionnaireAnswer\": \"test\", \"score\": 99 },\n  { \"questionnaireAnswer\": \"test\", \"score\": 99 }\n]" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        },
+        {
+          "name": "Submit Assessment - Empty Array (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [EMPTY ANSWERS] Status:', pm.response.code);",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "[]" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        },
+        {
+          "name": "Submit Assessment - Negative Score (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [NEGATIVE SCORE] Status:', pm.response.code);",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "[\n  { \"questionnaireAnswer\": \"test\", \"score\": -1 },\n  { \"questionnaireAnswer\": \"test\", \"score\": -5 }\n]" },
+            "url": { "raw": "{{baseUrl}}/api/v1/me/profiler", "host": ["{{baseUrl}}"], "path": ["api","v1","me","profiler"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💡 Recommendations & Health",
+      "item": [
+        {
+          "name": "Get Health Score",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [HEALTH SCORE] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is object', () => pm.expect(pm.response.json().data).to.be.an('object'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/health", "host": ["{{baseUrl}}"], "path": ["api","v1","me","health"] }
+          }
+        },
+        {
+          "name": "Get Recommendations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [RECOMMENDATIONS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/recommendations", "host": ["{{baseUrl}}"], "path": ["api","v1","me","recommendations"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin",
+      "item": [
+        {
+          "name": "Get Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [AUDIT LOGS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data.content exists', () => pm.expect(pm.response.json().data).to.have.property('content'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/admin/audit", "host": ["{{baseUrl}}"], "path": ["api","v1","admin","audit"] }
+          }
+        },
+        {
+          "name": "Get Audit Logs - headView=true",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [AUDIT HEADVIEW] Status:', pm.response.code);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/audit?headView=true&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","admin","audit"],
+              "query": [{ "key": "headView", "value": "true" }, { "key": "size", "value": "10" }]
+            }
+          }
+        },
+        {
+          "name": "Get All Users (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [ALL USERS] Status:', pm.response.code);",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data.content exists', () => pm.expect(pm.response.json().data).to.have.property('content'));",
+                  "var content = pm.response.json().data && pm.response.json().data.content;",
+                  "if (content && content.length > 0 && content[0].id) {",
+                  "  pm.collectionVariables.set('userId', content[0].id);",
+                  "  console.log('SAVED userId:', content[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v2/users/users", "host": ["{{baseUrl}}"], "path": ["api","v2","users","users"] }
+          }
+        },
+        {
+          "name": "Update User Status - ACTIVE (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [UPDATE USER STATUS] Status:', pm.response.code);",
+                  "console.log('userId:', pm.collectionVariables.get('userId'));",
+                  "console.log('Body:', pm.response.text());",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACTIVE\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v2/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v2","users","{{userId}}"] }
+          }
+        },
+        {
+          "name": "Update User Status - SUSPENDED (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [SUSPEND USER] Status:', pm.response.code);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"SUSPENDED\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v2/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v2","users","{{userId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 Security Checks",
+      "item": [
+        {
+          "name": "No Token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [SECURITY NO TOKEN] Status:', pm.response.code);",
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","me","assets"] }
+          }
+        },
+        {
+          "name": "Malformed Token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [SECURITY MALFORMED TOKEN] Status:', pm.response.code);",
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer thisis.not.avalid.jwt.token" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","me","goals"] }
+          }
+        },
+        {
+          "name": "Expired Token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== [SECURITY EXPIRED TOKEN] Status:', pm.response.code);",
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleHBpcmVkQHRlc3QuY29tIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjE2MDAwMDkwMDB9.fake_signature_expired" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/me/dashboard", "host": ["{{baseUrl}}"], "path": ["api","v1","me","dashboard"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,14 +1,12 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
-import com.indivaragroup.jdt17wms.exceptions.DuplicatePriorityGoalException;
-import com.indivaragroup.jdt17wms.exceptions.GoalValidationException;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
@@ -19,7 +17,6 @@ import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
-import com.indivaragroup.jdt17wms.exceptions.InsufficientIncomeException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -52,10 +49,10 @@ public class GoalsManagementService {
 
     public List<GoalDTO> getGoalsForUser() {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
       if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
         }
 
         List<Goal> goals = goalRepository.findAllByUserId(user.getId());
@@ -80,10 +77,10 @@ public class GoalsManagementService {
 
   public GoalDTO createGoalForUser(GoalRegistrationDTO dto) {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-      .orElseThrow(() -> new NotFoundException("User not found"));
+      .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
     if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
     }
 
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
@@ -107,7 +104,7 @@ public class GoalsManagementService {
     }
 
     if (!errors.isEmpty()) {
-      throw new GoalValidationException(errors);
+      throw new CoreThrowHandler(ApiError.VALIDATION,errors);
     }
 
     // 3. Check duplicate priority (Enforced non-null by DTO @NotNull)
@@ -115,7 +112,7 @@ public class GoalsManagementService {
       boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
         .anyMatch(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS); // not covered yet!
       if (hasPriorityGoal) {
-        throw new DuplicatePriorityGoalException("Can’t set more than 1 priority");
+        throw new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS);
       }
     }
 
@@ -152,14 +149,14 @@ public class GoalsManagementService {
 
   public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-      .orElseThrow(() -> new NotFoundException("User not found"));
+      .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
     if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
     }
 
     Goal goal = goalRepository.findById(goalId)
-      .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+      .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
 
@@ -180,7 +177,7 @@ public class GoalsManagementService {
     }
 
     if (!errors.isEmpty()) {
-      throw new GoalValidationException(errors);
+      throw new CoreThrowHandler(ApiError.VALIDATION,errors);
     }
 
     // 2. Check duplicate priority (Safely defaults null to false)
@@ -194,7 +191,7 @@ public class GoalsManagementService {
           && Boolean.TRUE.equals(g.getIsPriority()) // not covered yet!
           && g.getStatus() == GoalStatus.IN_PROGRESS);
       if (hasPriorityGoal) {
-        throw new DuplicatePriorityGoalException("Can’t set more than 1 priority");
+        throw new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS);
       }
     }
 
@@ -208,7 +205,7 @@ public class GoalsManagementService {
       .reduce(BigDecimal.ZERO, BigDecimal::add);
 
     if (totalContribution.compareTo(monthlyIncome) > 0) {
-      throw new InsufficientIncomeException("Can’t set more allocation than income");
+      throw new CoreThrowHandler(ApiError.INSUFFICIENT_INCOME);
     }
 
     // 4. Update and Save
@@ -239,14 +236,14 @@ public class GoalsManagementService {
     @Transactional
     public void deleteGoalForUser(UUID goalId) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
       if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted()))  {
-            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
         }
 
         Goal goal = goalRepository.findById(goalId)
-                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         List<Asset> assets = assetRepository.findAllByGoalId(goalId);
         for (Asset asset : assets) {

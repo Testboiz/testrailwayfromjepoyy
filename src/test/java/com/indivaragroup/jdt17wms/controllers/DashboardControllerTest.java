@@ -1,8 +1,11 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.response.*;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.services.DashboardService;
+import com.indivaragroup.jdt17wms.services.JwtService;
+import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -28,6 +31,12 @@ class DashboardControllerTest extends BaseControllerTest {
 
     @MockBean
     private DashboardService dashboardService;
+
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserRepository userRepository;
 
     @Test
     void getAdminDashboard_shouldReturnOk() throws Exception {
@@ -59,7 +68,7 @@ class DashboardControllerTest extends BaseControllerTest {
 
     @Test
     void getUserDashboard_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
-        doThrow(new MissingRiskProfileException("Risk Profiler Assessment Required"))
+        doThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER, "Risk Profiler Assessment Required"))
                 .when(dashboardService).getUserDashboard();
 
         mockMvc.perform(get("/api/v1/me/dashboard"))

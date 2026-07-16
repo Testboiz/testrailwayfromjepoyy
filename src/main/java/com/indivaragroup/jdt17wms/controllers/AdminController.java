@@ -1,5 +1,8 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
+import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
+import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.models.AuditLog;
 import com.indivaragroup.jdt17wms.services.AuditTrailManagementService;
 import org.springframework.data.domain.Page;
@@ -10,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/audit")
+@RequestMapping(ApiPath.BASE_ADMIN_PATH)
 public class AdminController {
 
     private final AuditTrailManagementService auditTrailManagementService;
@@ -19,10 +22,11 @@ public class AdminController {
         this.auditTrailManagementService = auditTrailManagementService;
     }
 
-    @GetMapping
-    public Page<AuditLog> getAuditLogs(
+    @GetMapping("/audit")
+    public ApiResponse<Page<AuditLog>> getAuditLogs(
             @RequestParam(required = false, defaultValue = "false") Boolean headView,
             Pageable pageable) {
-        return auditTrailManagementService.getAuditLogs(headView, pageable);
+        return ApiResponse.success(ApiSuccess.AUDIT_LOGS_FETCHED,
+                auditTrailManagementService.getAuditLogs(headView, pageable));
     }
 }

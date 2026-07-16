@@ -211,20 +211,17 @@ class SecurityConfigIntegrationTest {
         when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
                 .thenReturn(java.util.Optional.of(projection));
 
-        when(authService.extractEmailFromToken(token)).thenReturn("user@example.com");
-        when(authService.extractUserIdFromToken(token)).thenReturn(mockUserId);
-        
-        com.indivaragroup.jdt17wms.dto.response.LogoutSuccessDTO mockResponse =
-                com.indivaragroup.jdt17wms.dto.response.LogoutSuccessDTO.builder()
+        com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO mockResponse =
+                com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO.builder()
                         .success(true)
                         .message("Logout successful")
                         .build();
-        when(authService.logout(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.any(String.class))).thenReturn(mockResponse);
+        when(authService.logout(org.mockito.ArgumentMatchers.any(String.class), org.mockito.ArgumentMatchers.any(UUID.class))).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Logout successful"));
+                .andExpect(jsonPath("$.result.success").value(true))
+                .andExpect(jsonPath("$.result.message").value("Logout successful"));
     }
 }

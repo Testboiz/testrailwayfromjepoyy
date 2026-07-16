@@ -1,9 +1,13 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
+import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
 import com.indivaragroup.jdt17wms.dto.response.RiskProfilerResponseDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.services.RiskProfilerAssessmentService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/me/profiler")
+@RequestMapping(ApiPath.BASE_PROFILER_PATH)
 public class RiskProfilerAssessmentController {
 
     private final RiskProfilerAssessmentService riskProfilerAssessmentService;
@@ -23,12 +27,15 @@ public class RiskProfilerAssessmentController {
     }
 
     @GetMapping
-    public List<QuestionnaireDTO> getProfilerAssessment() {
-        return riskProfilerAssessmentService.getQuestionnaire();
+    public ApiResponse<List<QuestionnaireDTO>> getProfilerAssessment() {
+        return ApiResponse.success(ApiSuccess.PROFILER_FETCHED,
+                riskProfilerAssessmentService.getQuestionnaire());
     }
 
     @PutMapping
-    public RiskProfilerResponseDTO updateProfilerAssessment(@RequestBody RiskProfilerDTO riskProfilerDTO) {
-        return riskProfilerAssessmentService.updateProfilerAssessment(riskProfilerDTO);
+    public ApiResponse<RiskProfilerResponseDTO> updateProfilerAssessment(
+            @Valid @RequestBody RiskProfilerDTO riskProfilerDTO) {
+        return ApiResponse.success(ApiSuccess.PROFILER_UPDATED,
+                riskProfilerAssessmentService.updateProfilerAssessment(riskProfilerDTO));
     }
 }

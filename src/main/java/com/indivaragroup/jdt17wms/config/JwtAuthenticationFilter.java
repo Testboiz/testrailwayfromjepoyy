@@ -1,11 +1,9 @@
 package com.indivaragroup.jdt17wms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.indivaragroup.jdt17wms.constants.AppConstants;
-import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
-import com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection;
-import com.indivaragroup.jdt17wms.models.enums.UserRole;
+import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.services.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -23,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -39,14 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        String path = request.getServletPath();
         String uri = request.getRequestURI();
-        if ((path != null && (path.endsWith("/logout") || path.endsWith("/logout/")))
-                || (uri != null && (uri.endsWith("/logout") || uri.endsWith("/logout/")))) {
+        if ((uri != null && (uri.endsWith("/logout") || uri.endsWith("/logout/")))) {
             return false;
         }
-        return (path != null && (path.startsWith("/api/v1/auth/") || path.startsWith("/auth/")))
-                || (uri != null && (uri.startsWith("/api/v1/auth/") || uri.startsWith("/auth/")));
+        return ((uri != null && (uri.startsWith(ApiPath.BASE_AUTH_PATH) || uri.startsWith("/auth/"))));
     }
 
     @Override
@@ -55,9 +51,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-
+        
         final String authHeader = request.getHeader("Authorization");
-
+        
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -65,46 +61,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             final String token = authHeader.substring(7);
-
+            
             if (!jwtService.isAccessToken(token)) {
                 sendUnauthorizedError(response, "Invalid token type");
                 return;
             }
 
+            // Extract user info from JWT claims (no database lookup)
             final String email = jwtService.getEmailFromToken(token);
-            final String claimRole = jwtService.getRoleFromToken(token);
-
-            UserSecurityProjection projection = userRepository.findUserSecurityProjectionByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            String userEmail = projection.getEmail();
-            UserRole userRole = projection.getRole();
-            Long priorCount = projection.getPriorCount();
-            boolean isEarliest = (priorCount == 0);
-
-            String roleToUse = (claimRole != null) ? claimRole : ("ROLE_" + userRole.name());
-            if (isEarliest) {
-                roleToUse = AppConstants.ROLE_ADMIN;
-            } else if (AppConstants.ROLE_ADMIN.equals(roleToUse)) {
-                roleToUse = AppConstants.ROLE_USER;
-            }
+            final String role = jwtService.getRoleFromToken(token);
+            final UUID userId = jwtService.getUserIdFromToken(token);
+            final String name = jwtService.getNameFromToken(token);
 
             UserDTO principal = UserDTO.builder()
-                    .id(projection.getId())
-                    .name(projection.getName())
-                    .email(userEmail)
-                    .isAdmin(AppConstants.ROLE_ADMIN.equals(roleToUse))
+                    .id(userId)
+                    .email(email)
+                    .name(name)
                     .questionnaireCompleted(false)
+                    .isAdmin("ADMIN".equals(role))
                     .build();
 
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
-                    List.of(new SimpleGrantedAuthority(roleToUse))
+                    List.of(new SimpleGrantedAuthority("ROLE_" + role))
             );
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);
-
+            
         } catch (ExpiredJwtException e) {
             sendUnauthorizedError(response, "Token expired");
             return;
@@ -112,11 +96,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             sendUnauthorizedError(response, "Invalid token");
             return;
         } catch (Exception e) {
-          System.out.println(e.getMessage());
             sendUnauthorizedError(response, "Authentication failed");
             return;
         }
-
+        
         filterChain.doFilter(request, response);
     }
 
@@ -125,7 +108,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType("application/json");
         ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
                 .error(message)
-                .code(401)
+                .code(HttpServletResponse.SC_UNAUTHORIZED)
                 .build();
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }

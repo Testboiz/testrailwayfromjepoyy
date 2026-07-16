@@ -1,11 +1,10 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
-import com.indivaragroup.jdt17wms.exceptions.DelistedProductException;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.Product;
@@ -76,14 +75,14 @@ class AssetsManagementServiceTest {
     @Test
     void getAssetsForUser_shouldReturnAssetsWhenQuestionnaireCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
-        Asset asset = Asset.builder().id(UUID.randomUUID()).userId(AppConstants.USER_ID).build();
+        Asset asset = Asset.builder().id(UUID.randomUUID()).userId(SecurityUtils.STATIC_USER_ID).build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(assetRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(asset));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
 
         List<Asset> result = assetsManagementService.getAssetsForUser();
 
@@ -95,22 +94,22 @@ class AssetsManagementServiceTest {
     @Test
     void getAssetsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.getAssetsForUser();
         });
     }
 
     @Test
     void getAssetsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.getAssetsForUser();
         });
     }
@@ -118,14 +117,14 @@ class AssetsManagementServiceTest {
     @Test
     void getTransactionLogsForUser_shouldReturnLogsWhenQuestionnaireCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
-        TransactionHistory log = TransactionHistory.builder().id(UUID.randomUUID()).userId(AppConstants.USER_ID).build();
+        TransactionHistory log = TransactionHistory.builder().id(UUID.randomUUID()).userId(SecurityUtils.STATIC_USER_ID).build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(transactionHistoryRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(log));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(transactionHistoryRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(log));
 
         List<TransactionHistory> result = assetsManagementService.getTransactionLogsForUser();
 
@@ -137,22 +136,22 @@ class AssetsManagementServiceTest {
     @Test
     void getTransactionLogsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.getTransactionLogsForUser();
         });
     }
 
     @Test
     void getTransactionLogsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.getTransactionLogsForUser();
         });
     }
@@ -160,7 +159,7 @@ class AssetsManagementServiceTest {
     @Test
     void createAssetForUser_shouldCreateAssetAndRecordTransactionHistory_whenValid() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -185,7 +184,7 @@ class AssetsManagementServiceTest {
                 .productId(product.getId())
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(assetRepository.save(any(Asset.class))).thenReturn(savedAsset);
 
@@ -200,7 +199,7 @@ class AssetsManagementServiceTest {
     @Test
     void createAssetForUser_shouldThrowDelistedProductException_whenProductIsHidden() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -213,10 +212,10 @@ class AssetsManagementServiceTest {
                 .productId(product.getId())
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
 
-        assertThrows(DelistedProductException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.createAssetForUser(dto);
         });
     }
@@ -224,7 +223,7 @@ class AssetsManagementServiceTest {
     @Test
     void createAssetForUser_shouldThrowMissingRiskProfileException_whenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
@@ -232,9 +231,9 @@ class AssetsManagementServiceTest {
                 .productId(UUID.randomUUID())
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.createAssetForUser(dto);
         });
     }
@@ -242,7 +241,7 @@ class AssetsManagementServiceTest {
     @Test
     void createAssetForUser_shouldThrowNotFoundException_whenProductNotFound() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -251,10 +250,10 @@ class AssetsManagementServiceTest {
                 .productId(productId)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.createAssetForUser(dto);
         });
     }
@@ -262,7 +261,7 @@ class AssetsManagementServiceTest {
     @Test
     void updateAssetForUser_shouldUpdateAssetGoal_whenValid() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -280,7 +279,7 @@ class AssetsManagementServiceTest {
 
         Goal goal = Goal.builder().id(goalId).build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
         when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -295,7 +294,7 @@ class AssetsManagementServiceTest {
     @Test
     void updateAssetForUser_shouldClearGoalId_whenGoalIdIsNull() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -310,7 +309,7 @@ class AssetsManagementServiceTest {
 
         GoalSettingDTO dto = GoalSettingDTO.builder().build(); // goalId null
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -324,7 +323,7 @@ class AssetsManagementServiceTest {
     @Test
     void updateAssetForUser_shouldThrowNotFoundException_whenGoalNotFound() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -340,11 +339,11 @@ class AssetsManagementServiceTest {
                 .goalId(goalId)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.updateAssetForUser(assetId, dto);
         });
     }
@@ -352,17 +351,17 @@ class AssetsManagementServiceTest {
     @Test
     void updateAssetForUser_shouldThrowNotFoundException_whenAssetNotFound() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
         UUID assetId = UUID.randomUUID();
         GoalSettingDTO dto = GoalSettingDTO.builder().build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.updateAssetForUser(assetId, dto);
         });
     }
@@ -370,7 +369,7 @@ class AssetsManagementServiceTest {
     @Test
     void updateAssetForUser_shouldThrowNotFoundException_whenAssetDoesNotBelongToUser() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -382,10 +381,10 @@ class AssetsManagementServiceTest {
                 .userId(UUID.randomUUID()) // different user
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.updateAssetForUser(assetId, dto);
         });
     }
@@ -393,16 +392,16 @@ class AssetsManagementServiceTest {
     @Test
     void updateAssetForUser_shouldThrowMissingRiskProfileException_whenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
         UUID assetId = UUID.randomUUID();
         GoalSettingDTO dto = GoalSettingDTO.builder().build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.updateAssetForUser(assetId, dto);
         });
     }
@@ -410,7 +409,7 @@ class AssetsManagementServiceTest {
     @Test
     void deleteAssetForUser_shouldDeleteAssetAndDeallocateReferences_whenValid() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -428,7 +427,7 @@ class AssetsManagementServiceTest {
                 .resolvedByAssetId(assetId)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(recommendationRepository.findAllByResolvedByAssetId(assetId)).thenReturn(List.of(recommendation));
 
@@ -442,16 +441,16 @@ class AssetsManagementServiceTest {
     @Test
     void deleteAssetForUser_shouldThrowNotFoundException_whenAssetNotFound() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
         UUID assetId = UUID.randomUUID();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.deleteAssetForUser(assetId);
         });
     }
@@ -459,7 +458,7 @@ class AssetsManagementServiceTest {
     @Test
     void deleteAssetForUser_shouldDeleteAssetAndCalculatePricePerUnit_whenUnitsPositive() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -474,7 +473,7 @@ class AssetsManagementServiceTest {
                 .productId(UUID.randomUUID())
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(recommendationRepository.findAllByResolvedByAssetId(assetId)).thenReturn(List.of());
 
@@ -490,7 +489,7 @@ class AssetsManagementServiceTest {
     @Test
     void deleteAssetForUser_shouldDeleteAssetAndSetZeroPricePerUnit_whenUnitsZero() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -503,7 +502,7 @@ class AssetsManagementServiceTest {
                 .productId(UUID.randomUUID())
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(recommendationRepository.findAllByResolvedByAssetId(assetId)).thenReturn(List.of());
 
@@ -518,7 +517,7 @@ class AssetsManagementServiceTest {
     @Test
     void deleteAssetForUser_shouldThrowNotFoundException_whenAssetDoesNotBelongToUser() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
@@ -528,10 +527,10 @@ class AssetsManagementServiceTest {
                 .userId(UUID.randomUUID()) // different user
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
 
-        assertThrows(NotFoundException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.deleteAssetForUser(assetId);
         });
     }
@@ -539,15 +538,15 @@ class AssetsManagementServiceTest {
     @Test
     void deleteAssetForUser_shouldThrowMissingRiskProfileException_whenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
         UUID assetId = UUID.randomUUID();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> {
+        assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.deleteAssetForUser(assetId);
         });
     }

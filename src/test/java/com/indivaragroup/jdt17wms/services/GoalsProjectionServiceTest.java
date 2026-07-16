@@ -1,9 +1,9 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
@@ -69,12 +69,12 @@ class GoalsProjectionServiceTest {
     @Test
     void getProjectionsForUser_shouldReturnProjectionsWhenNoAssets() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal goal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Retirement Fund")
                 .type("property")
                 .targetAmount(new BigDecimal("500000.00"))
@@ -86,9 +86,9 @@ class GoalsProjectionServiceTest {
                 .defaultReturn(new BigDecimal("7.50"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
 
         List<GoalProjectionDTO> results = goalsProjectionService.getProjectionsForUser();
@@ -114,13 +114,13 @@ class GoalsProjectionServiceTest {
     @Test
     void getProjectionsForUser_shouldReturnProjectionsWhenAssetsTied() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         UUID goalId = UUID.randomUUID();
         Goal goal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Retirement Fund")
                 .type("property")
                 .targetAmount(new BigDecimal("500000.00"))
@@ -143,9 +143,9 @@ class GoalsProjectionServiceTest {
                 .annualReturn(new BigDecimal("12.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -164,31 +164,31 @@ class GoalsProjectionServiceTest {
     @Test
     void getProjectionsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
 
-        assertThrows(MissingRiskProfileException.class, () -> goalsProjectionService.getProjectionsForUser());
+        assertThrows(CoreThrowHandler.class, () -> goalsProjectionService.getProjectionsForUser());
     }
 
     @Test
     void getProjectionsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> goalsProjectionService.getProjectionsForUser());
+        assertThrows(CoreThrowHandler.class, () -> goalsProjectionService.getProjectionsForUser());
     }
 
     @Test
     void getProjectionsForUser_shouldUseTargetDateWhenTimelineIsEarlierThanMaxMonths() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal goal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Retirement Fund")
                 .type("property") // Max limit is 120 months
                 .targetAmount(new BigDecimal("300000.00"))
@@ -200,9 +200,9 @@ class GoalsProjectionServiceTest {
                 .defaultReturn(new BigDecimal("7.50"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
 
         List<GoalProjectionDTO> results = goalsProjectionService.getProjectionsForUser();
@@ -216,12 +216,12 @@ class GoalsProjectionServiceTest {
     @Test
     void getProjectionsForUser_whenCannotGrow_returnsMaxSimulationMonths() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         Goal goal = Goal.builder()
                 .id(UUID.randomUUID())
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Stagnant Goal")
                 .type("property")
                 .targetAmount(new BigDecimal("10000.00"))
@@ -234,9 +234,9 @@ class GoalsProjectionServiceTest {
                 .defaultReturn(new BigDecimal("7.50"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(AppConstants.USER_ID)).thenReturn(Optional.of(profile));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         // No assets tied to the goal
         when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
 

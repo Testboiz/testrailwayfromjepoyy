@@ -1,24 +1,22 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
+import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
+import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
+import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.services.GoalsManagementService;
 import com.indivaragroup.jdt17wms.services.GoalsProjectionService;
-import org.springframework.validation.BindException;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
-import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
-import jakarta.validation.Valid;
-
-import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
-
-import org.springframework.http.HttpStatus;
-
-import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
-
 @RestController
+@RequestMapping(ApiPath.BASE_GOALS_PATH)
 public class GoalController {
 
     private final GoalsManagementService goalsManagementService;
@@ -30,29 +28,34 @@ public class GoalController {
         this.goalsProjectionService = goalsProjectionService;
     }
 
-    @GetMapping("/api/v1/me/goals")
-    public List<GoalDTO> getGoals() {
-        return goalsManagementService.getGoalsForUser();
+    @GetMapping
+    public ApiResponse<List<GoalDTO>> getGoals() {
+        return ApiResponse.success(ApiSuccess.GOALS_FETCHED,
+                goalsManagementService.getGoalsForUser());
     }
 
-    @PostMapping("/api/v1/me/goals")
-    public GoalDTO createGoal(@Valid @RequestBody GoalRegistrationDTO goalRegistrationDTO) throws BindException {
-        return goalsManagementService.createGoalForUser(goalRegistrationDTO);
+    @PostMapping
+    public ApiResponse<GoalDTO> createGoal(@Valid @RequestBody GoalRegistrationDTO dto) {
+        return ApiResponse.created(ApiSuccess.GOAL_CREATED,
+                goalsManagementService.createGoalForUser(dto));
     }
 
-    @PutMapping({"/api/v1/me/goals/{id}"})
-    public GoalDTO updateGoal(@PathVariable UUID id, @Valid @RequestBody GoalEditingDTO goalEditingDTO) throws BindException {
-        return goalsManagementService.updateGoalForUser(id, goalEditingDTO);
+    @PutMapping("/{id}")
+    public ApiResponse<GoalDTO> updateGoal(@PathVariable UUID id,
+                                            @Valid @RequestBody GoalEditingDTO dto) {
+        return ApiResponse.success(ApiSuccess.GOAL_UPDATED,
+                goalsManagementService.updateGoalForUser(id, dto));
     }
 
-    @DeleteMapping({"/api/v1/me/goals/{id}"})
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteGoal(@PathVariable UUID id) {
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteGoal(@PathVariable UUID id) {
         goalsManagementService.deleteGoalForUser(id);
+        return ApiResponse.success(ApiSuccess.GOAL_DELETED, null);
     }
 
-    @GetMapping("/api/v1/me/goals/projections")
-    public List<GoalProjectionDTO> getGoalProjections() {
-        return goalsProjectionService.getProjectionsForUser();
+    @GetMapping("/projections")
+    public ApiResponse<List<GoalProjectionDTO>> getGoalProjections() {
+        return ApiResponse.success(ApiSuccess.GOAL_PROJECTIONS_FETCHED,
+                goalsProjectionService.getProjectionsForUser());
     }
 }

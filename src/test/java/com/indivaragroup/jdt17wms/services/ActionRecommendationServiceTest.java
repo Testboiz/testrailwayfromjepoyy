@@ -3,7 +3,8 @@ package com.indivaragroup.jdt17wms.services;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.*;
 import com.indivaragroup.jdt17wms.models.enums.RecommendationStatus;
 import com.indivaragroup.jdt17wms.repositories.*;
@@ -89,7 +90,7 @@ class ActionRecommendationServiceTest {
     void getHealthScore_UserNotFound_ThrowsNotFoundException() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> actionRecommendationService.getHealthScore());
+        assertThrows(CoreThrowHandler.class, () -> actionRecommendationService.getHealthScore());
     }
 
     @Test
@@ -98,7 +99,7 @@ class ActionRecommendationServiceTest {
         User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException.class,
+        assertThrows(CoreThrowHandler.class,
                 () -> actionRecommendationService.getHealthScore(),
                 "Should throw MissingRiskProfileException when questionnaireCompleted is false");
     }
@@ -267,7 +268,7 @@ class ActionRecommendationServiceTest {
     void generateRecommendations_UserNotFound_ThrowsNotFoundException() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> actionRecommendationService.generateRecommendations());
+        assertThrows(CoreThrowHandler.class, () -> actionRecommendationService.generateRecommendations());
     }
 
     @Test
@@ -276,7 +277,7 @@ class ActionRecommendationServiceTest {
         User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException.class,
+        assertThrows(CoreThrowHandler.class,
                 () -> actionRecommendationService.generateRecommendations(),
                 "Should throw MissingRiskProfileException when questionnaireCompleted is false");
     }

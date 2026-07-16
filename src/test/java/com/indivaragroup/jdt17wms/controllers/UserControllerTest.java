@@ -1,7 +1,11 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.services.UserManagementService;
+import com.indivaragroup.jdt17wms.services.JwtService;
+import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +35,12 @@ class UserControllerTest extends BaseControllerTest {
     @MockBean
     private UserManagementService userManagementService;
 
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserRepository userRepository;
+
     @Test
     void getAllUsers_shouldReturnOk() throws Exception {
         Page<User> expectedPage = new PageImpl<>(List.of());
@@ -58,7 +68,7 @@ class UserControllerTest extends BaseControllerTest {
     void updateUser_shouldReturnNotFound_whenUserDoesNotExist() throws Exception {
         UUID id = UUID.randomUUID();
         when(userManagementService.updateUserStatus(any(UUID.class), any(String.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.NotFoundException("No valid item with the ID"));
+                .thenThrow(new CoreThrowHandler(ApiError.NOT_FOUND, "No valid item with the ID"));
 
         mockMvc.perform(put("/api/v1/users/" + id)
                         .contentType("application/json")
@@ -72,13 +82,13 @@ class UserControllerTest extends BaseControllerTest {
     void updateUser_shouldReturnBadRequest_whenStatusIsInvalid() throws Exception {
         UUID id = UUID.randomUUID();
         when(userManagementService.updateUserStatus(any(UUID.class), any(String.class)))
-                .thenThrow(new com.indivaragroup.jdt17wms.exceptions.BadRequestException("Invalid status value"));
+                .thenThrow(new CoreThrowHandler(ApiError.BAD_REQUEST, "Invalid status value"));
 
         mockMvc.perform(put("/api/v1/users/" + id)
                         .contentType("application/json")
                         .content("{\"status\":\"invalid_status\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("Invalid JSON Body"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("Invalid status value"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(400));
     }
 }

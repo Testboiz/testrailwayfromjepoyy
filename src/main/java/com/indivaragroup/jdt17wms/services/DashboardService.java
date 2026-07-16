@@ -1,9 +1,9 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.*;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.User;
@@ -102,9 +102,9 @@ public class DashboardService {
 
   public UserDashboardDTO getUserDashboard() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-      .orElseThrow(() -> new NotFoundException("User not found"));
+      .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
     if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
-      throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
     }
 
     List<Asset> assetList = assetRepository.findAllByUserId(user.getId());
@@ -114,7 +114,7 @@ public class DashboardService {
 
     for (Asset asset : assetList) {
       Product product = productRepository.findById(asset.getProductId())
-        .orElseThrow(() -> new NotFoundException("Product not found"));
+        .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
       BigDecimal assetValue = asset.getUnits().multiply(product.getCurrentPrice());
       totalValue = totalValue.add(assetValue);

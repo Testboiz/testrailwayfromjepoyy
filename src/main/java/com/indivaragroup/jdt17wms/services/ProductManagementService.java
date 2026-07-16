@@ -1,9 +1,9 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
-import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
-import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
+import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
@@ -32,18 +32,14 @@ public class ProductManagementService {
         this.userRepository = userRepository;
     }
 
-    private boolean isUserRole(User user) {
-        if (user == null) {
-            return false;
-        }
-        if (user.getRole() == UserRole.ADMIN) {
+    private boolean isNonAdminUser(User user) {
+        if (user == null || user.getRole() == UserRole.ADMIN) {
             return false;
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-      return auth == null
-        || !(auth.getPrincipal() instanceof UserDTO principal)
-        || !principal.getId().equals(user.getId())
-        || !Boolean.TRUE.equals(principal.getIsAdmin());
+        return auth != null && auth.getPrincipal() instanceof UserDTO principal
+                && principal.getId().equals(user.getId())
+                && !Boolean.TRUE.equals(principal.getIsAdmin());
     }
 
     public Page<Product> getAllProducts(Pageable pageable) {
@@ -63,21 +59,21 @@ public class ProductManagementService {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
 
         // Check user risk profile questionnaire
-        if (isUserRole(user) && !Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new MissingRiskProfileException("Risk Profiler Assessment Required");
+        if (isNonAdminUser(user) && !Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
         }
 
         List<Product> products = productRepository.findAll();
 
         // 1. Visibility filter
-        if (isUserRole(user)) {
+        if (isNonAdminUser(user)) {
             products = products.stream()
                     .filter(p -> Boolean.TRUE.equals(p.getVisible()))
                     .toList();
         }
 
         // 2. Risk level filter
-        if (isUserRole(user)) {
+        if (isNonAdminUser(user)) {
             boolean shouldShowAll = Boolean.TRUE.equals(showAll);
             String riskProfile = user.getRiskProfile();
             boolean isRiskTaker = "risk_taker".equalsIgnoreCase(riskProfile);
@@ -136,7 +132,7 @@ public class ProductManagementService {
 
     public Product updateProductVisibility(UUID id, Boolean visibility) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("No valid item with the ID"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
         product.setVisible(visibility);
         return productRepository.save(product);
     }
