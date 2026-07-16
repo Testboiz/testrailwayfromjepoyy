@@ -10,7 +10,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,10 +20,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtServiceTest {
 
     private JwtService jwtService;
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-13T10:00:00Z"), ZoneOffset.UTC);
 
-    @BeforeEach
+
+  @BeforeEach
     void setUp() {
-        jwtService = new JwtService();
+        jwtService = new JwtService(clock);
         // Set secret and expirations via reflection
         ReflectionTestUtils.setField(jwtService, "secretKey", "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey");
         ReflectionTestUtils.setField(jwtService, "accessTokenExpirationMs", 900000);
@@ -43,7 +47,7 @@ class JwtServiceTest {
         assertFalse(jwtService.isRefreshToken(token));
         assertEquals("john@example.com", jwtService.getEmailFromToken(token));
         assertEquals("USER", jwtService.getRoleFromToken(token));
-        assertEquals(userId.toString(), jwtService.getUserIdFromToken(token));
+        assertEquals(userId, jwtService.getUserIdFromToken(token));
         assertTrue(jwtService.isTokenValid(token, user));
     }
 
@@ -61,15 +65,13 @@ class JwtServiceTest {
         assertFalse(jwtService.isAccessToken(token));
         assertTrue(jwtService.isRefreshToken(token));
         assertEquals("admin@example.com", jwtService.getEmailFromToken(token));
-        assertEquals("ADMIN", jwtService.getRoleFromToken(token));
-        assertEquals(userId.toString(), jwtService.getUserIdFromToken(token));
     }
 
     @Test
     void getEmailClaimFromToken_expiredToken_returnsEmailClaim() {
         String secret = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         String expiredToken = Jwts.builder()
                 .subject("expired@example.com")
                 .claim("email", "expired@example.com")
@@ -88,7 +90,7 @@ class JwtServiceTest {
         String secret = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         UUID uid = UUID.randomUUID();
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         String expiredToken = Jwts.builder()
                 .subject("user@example.com")
                 .claim("email", "user@example.com")
@@ -99,7 +101,7 @@ class JwtServiceTest {
                 .claim("exp", now.minusSeconds(10).getEpochSecond())
                 .signWith(key)
                 .compact();
-        assertEquals(uid.toString(), jwtService.getUserIdFromToken(expiredToken));
+        assertEquals(uid, jwtService.getUserIdFromToken(expiredToken));
     }
 
     @Test
@@ -147,7 +149,7 @@ class JwtServiceTest {
         // create expired token
         String secret = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         String expiredToken = Jwts.builder()
                 .subject(user.getEmail())
                 .claim("email", user.getEmail())

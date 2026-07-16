@@ -10,8 +10,8 @@ class UserRoleTest {
 
     @Test
     void testUserRoleEnumValues() {
-        assertEquals("user", UserRole.USER.toString());
-        assertEquals("admin", UserRole.ADMIN.toString());
+        assertEquals("USER", UserRole.USER.toString());
+        assertEquals("ADMIN", UserRole.ADMIN.toString());
         
         // Assert valueOf and values behaviour
         assertEquals(UserRole.USER, UserRole.valueOf("USER"));

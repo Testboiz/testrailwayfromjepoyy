@@ -3,7 +3,6 @@ package com.indivaragroup.jdt17wms.services;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
@@ -23,14 +22,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.indivaragroup.jdt17wms.dto.response.UserDTO;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class ProductManagementServiceTest {
@@ -223,114 +218,7 @@ class ProductManagementServiceTest {
         assertEquals(2, result.getTotalElements());
     }
 
-    @Test
-    void isUserRole_whenAuthPrincipalNotUserDTO_shouldReturnTrue() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            when(auth.getPrincipal()).thenReturn("Not A UserDTO");
-            SecurityContextHolder.getContext().setAuthentication(auth);
 
-            User user = User.builder()
-                    .id(SecurityUtils.STATIC_USER_ID)
-                    .role(UserRole.USER)
-                    .questionnaireCompleted(true)
-                    .riskProfile("moderate")
-                    .build();
-            when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-            Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
-            Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, lowRiskHidden));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(1, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    void isUserRole_whenPrincipalIdNotMatchesUserId_shouldReturnTrue() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            UserDTO principal = UserDTO.builder().id(UUID.randomUUID()).isAdmin(true).build();
-            when(auth.getPrincipal()).thenReturn(principal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            User user = User.builder()
-                    .id(SecurityUtils.STATIC_USER_ID)
-                    .role(UserRole.USER)
-                    .questionnaireCompleted(true)
-                    .riskProfile("moderate")
-                    .build();
-            when(userRepository.findById(principal.getId())).thenReturn(Optional.of(user));
-
-            Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
-            Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, lowRiskHidden));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(1, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    void isUserRole_whenPrincipalIsAdminNotTrue_shouldReturnTrue() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            UserDTO principal = UserDTO.builder().id(SecurityUtils.STATIC_USER_ID).isAdmin(false).build();
-            when(auth.getPrincipal()).thenReturn(principal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            User user = User.builder()
-                    .id(SecurityUtils.STATIC_USER_ID)
-                    .role(UserRole.USER)
-                    .questionnaireCompleted(true)
-                    .riskProfile("moderate")
-                    .build();
-            when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-            Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
-            Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, lowRiskHidden));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(1, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    void isUserRole_whenPrincipalIsAdminTrue_shouldReturnFalse() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            UserDTO principal = UserDTO.builder().id(SecurityUtils.STATIC_USER_ID).isAdmin(true).build();
-            when(auth.getPrincipal()).thenReturn(principal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            User user = User.builder()
-                    .id(SecurityUtils.STATIC_USER_ID)
-                    .role(UserRole.USER)
-                    .build();
-            when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-            Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
-            Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(2, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
 
     @Test
     void getProductsForUser_shouldWork_whenQueryDtoIsNull() {

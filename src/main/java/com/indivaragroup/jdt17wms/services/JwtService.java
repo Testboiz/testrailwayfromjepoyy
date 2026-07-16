@@ -1,7 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.models.User;
-import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -14,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.function.Function;
@@ -42,6 +41,8 @@ public class JwtService {
     // Minimum 256-bit key for HS256
     private static final String DEFAULT_SECRET = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
 
+    private final Clock clock;
+
     @Value("${jwt.secret}")
     private String secretKey;
 
@@ -52,6 +53,10 @@ public class JwtService {
     @Getter
     @Value("${jwt.refresh-token-expiration-ms}") // 7 days
     private Integer refreshTokenExpirationMs;
+
+    public JwtService(Clock clock) {
+        this.clock = clock;
+    }
 
     @PostConstruct
     public void validateConfiguration() {
@@ -78,24 +83,26 @@ public class JwtService {
     }
 
     public String generateAccessToken(User user) {
+        Instant now = Instant.now(clock);
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
                 .claim(USER_ID_CLAIM, user.getId().toString())
                 .claim(USER_ROLE_CLAIM, user.getRole().name())
                 .claim(USER_NAME_CLAIM, user.getName())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
+                .issuedAt(java.util.Date.from(now))
+                .expiration(java.util.Date.from(now.plusMillis(accessTokenExpirationMs)))
                 .signWith(getSigningKey())
                 .compact();
     }
 
     public String generateRefreshToken(User user) {
+        Instant now = Instant.now(clock);
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpirationMs))
+                .issuedAt(java.util.Date.from(now))
+                .expiration(java.util.Date.from(now.plusMillis(refreshTokenExpirationMs)))
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -123,11 +130,13 @@ public class JwtService {
     }
 
     private boolean isTokenExpired(String token) {
-        return getExpiration(token).before(new Date());
+        Instant expiration = getExpiration(token);
+        return expiration != null && expiration.isBefore(Instant.now(clock));
     }
 
-    private Date getExpiration(String token) {
-        return getClaim(token, Claims::getExpiration);
+    private Instant getExpiration(String token) {
+        java.util.Date expiration = getClaim(token, Claims::getExpiration);
+        return expiration != null ? expiration.toInstant() : null;
     }
 
     public <T> T getClaim(String token, Function<Claims, T> claimsResolver) {
@@ -136,11 +145,15 @@ public class JwtService {
     }
 
     private Claims getAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims();
+        }
     }
 
     public String getTokenType(String token) {

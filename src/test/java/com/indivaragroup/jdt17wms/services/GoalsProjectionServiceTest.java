@@ -2,9 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
-import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -84,12 +82,8 @@ class GoalsProjectionServiceTest {
                 .targetDate(LocalDate.of(2036, Month.JULY, 13))
                 .currentAmount(BigDecimal.ZERO)
                 .build();
-        FinancialProfile profile = FinancialProfile.builder()
-                .defaultReturn(new BigDecimal("7.50"))
-                .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());
 
@@ -143,7 +137,6 @@ class GoalsProjectionServiceTest {
                 .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-//        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -224,12 +217,8 @@ class GoalsProjectionServiceTest {
                 .currentAmount(BigDecimal.ZERO)
                 .build();
 
-        FinancialProfile profile = FinancialProfile.builder()
-                .defaultReturn(new BigDecimal("7.50"))
-                .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         // No assets tied to the goal
         when(assetRepository.findAllByGoalId(any(UUID.class))).thenReturn(List.of());

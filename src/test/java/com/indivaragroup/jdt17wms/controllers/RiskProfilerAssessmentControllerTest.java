@@ -5,8 +5,6 @@ import com.indivaragroup.jdt17wms.dto.response.OptionDTO;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
 import com.indivaragroup.jdt17wms.dto.response.RiskProfilerResponseDTO;
 import com.indivaragroup.jdt17wms.services.RiskProfilerAssessmentService;
-import com.indivaragroup.jdt17wms.services.JwtService;
-import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,11 +30,7 @@ class RiskProfilerAssessmentControllerTest extends BaseControllerTest {
     @MockBean
     private RiskProfilerAssessmentService riskProfilerAssessmentService;
 
-    @MockBean
-    private JwtService jwtService;
 
-    @MockBean
-    private UserRepository userRepository;
 
     @Test
     void getProfilerAssessment_shouldReturnOk() throws Exception {
@@ -52,9 +46,9 @@ class RiskProfilerAssessmentControllerTest extends BaseControllerTest {
 
         mockMvc.perform(get("/api/v1/me/profiler"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].question").value("Goal?"))
-                .andExpect(jsonPath("$[0].options[0].label").value("Protect my capital"))
-                .andExpect(jsonPath("$[0].options[0].score").value(0));
+                .andExpect(jsonPath("$.result[0].question").value("Goal?"))
+                .andExpect(jsonPath("$.result[0].options[0].label").value("Protect my capital"))
+                .andExpect(jsonPath("$.result[0].options[0].score").value(0));
     }
 
     @Test
@@ -69,8 +63,8 @@ class RiskProfilerAssessmentControllerTest extends BaseControllerTest {
                 .build();
         com.indivaragroup.jdt17wms.dto.request.Answer answer3 = com.indivaragroup.jdt17wms.dto.request.Answer.builder()
                 .questionnaireAnswer("C")
-                .score(3)
-                .build(); // sum = 7
+                .score(2)
+                .build(); // sum = 6
         RiskProfilerDTO request = new RiskProfilerDTO(List.of(answer1, answer2, answer3));
 
         java.util.UUID userId = java.util.UUID.randomUUID();
@@ -89,9 +83,9 @@ class RiskProfilerAssessmentControllerTest extends BaseControllerTest {
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(userId.toString()))
-                .andExpect(jsonPath("$.risk_profile").value("moderate"))
-                .andExpect(jsonPath("$.questionnaire_completed").value(true))
-                .andExpect(jsonPath("$.score").value(70));
+                .andExpect(jsonPath("$.result.id").value(userId.toString()))
+                .andExpect(jsonPath("$.result.risk_profile").value("moderate"))
+                .andExpect(jsonPath("$.result.questionnaire_completed").value(true))
+                .andExpect(jsonPath("$.result.score").value(70));
     }
 }

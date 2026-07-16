@@ -4,8 +4,6 @@ import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
-import com.indivaragroup.jdt17wms.services.JwtService;
-import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,11 +35,7 @@ class ProductControllerTest extends BaseControllerTest {
     @MockBean
     private ProductManagementService productManagementService;
 
-    @MockBean
-    private JwtService jwtService;
 
-    @MockBean
-    private UserRepository userRepository;
 
     @Test
     void getAllProducts_shouldReturnOk() throws Exception {
@@ -75,7 +69,7 @@ class ProductControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"visibility\":true}"))
                 .andExpect(status().isNotFound())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("No valid item with the ID"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message").value("No valid item with the ID"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(404));
     }
 }

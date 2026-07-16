@@ -1,8 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.services.AuditTrailManagementService;
-import com.indivaragroup.jdt17wms.services.JwtService;
-import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -30,18 +28,12 @@ class AdminControllerTest extends BaseControllerTest {
     @MockBean
     private AuditTrailManagementService auditTrailManagementService;
 
-    @MockBean
-    private JwtService jwtService;
-
-    @MockBean
-    private UserRepository userRepository;
-
     @Test
     void getAuditLogs_shouldReturnOk() throws Exception {
         when(auditTrailManagementService.getAuditLogs(eq(false), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
 
-        mockMvc.perform(get("/api/v1/audit"))
+        mockMvc.perform(get("/api/v1/admin/audit"))
                 .andExpect(status().isOk());
     }
 
@@ -50,7 +42,7 @@ class AdminControllerTest extends BaseControllerTest {
         when(auditTrailManagementService.getAuditLogs(eq(true), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
 
-        mockMvc.perform(get("/api/v1/audit").param("headView", "true"))
+        mockMvc.perform(get("/api/v1/admin/audit").param("headView", "true"))
                 .andExpect(status().isOk());
     }
 }

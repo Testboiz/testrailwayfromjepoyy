@@ -12,9 +12,6 @@ import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -33,13 +30,7 @@ public class ProductManagementService {
     }
 
     private boolean isNonAdminUser(User user) {
-        if (user == null || user.getRole() == UserRole.ADMIN) {
-            return false;
-        }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof UserDTO principal
-                && principal.getId().equals(user.getId())
-                && !Boolean.TRUE.equals(principal.getIsAdmin());
+        return user != null && user.getRole() != UserRole.ADMIN;
     }
 
     public Page<Product> getAllProducts(Pageable pageable) {
