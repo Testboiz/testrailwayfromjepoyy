@@ -153,17 +153,7 @@ class GoalsProjectionServiceTest {
         assertEquals(60, res.getTimeSeries().size());
     }
 
-    @Test
-    void getProjectionsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> goalsProjectionService.getProjectionsForUser());
-    }
 
     @Test
     void getProjectionsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {

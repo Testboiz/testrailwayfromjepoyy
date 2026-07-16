@@ -85,23 +85,7 @@ class ProductManagementServiceTest {
         });
     }
 
-    @Test
-    void getProductsForUser_shouldThrowMissingRiskProfileException_whenUserQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        ProductQueryDTO query = new ProductQueryDTO();
-        Pageable pageRequest = PageRequest.of(0, 10);
-
-        assertThrows(CoreThrowHandler.class, () -> {
-          productManagementService.getProductsForUser(query, pageRequest);
-        });
-    }
 
     @Test
     void getProductsForUser_shouldFilterByVisibilityAndRiskProfile_forStandardUser() {

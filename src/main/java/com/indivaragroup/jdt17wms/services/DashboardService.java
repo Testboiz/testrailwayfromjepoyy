@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.*;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -100,12 +101,10 @@ public class DashboardService {
     return trend;
   }
 
+  @RiskProfileAssessmentRequired
   public UserDashboardDTO getUserDashboard() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-    if (user.getQuestionnaireCompleted() == null || !user.getQuestionnaireCompleted()) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
 
     List<Asset> assetList = assetRepository.findAllByUserId(user.getId());
     BigDecimal totalValue = BigDecimal.ZERO;

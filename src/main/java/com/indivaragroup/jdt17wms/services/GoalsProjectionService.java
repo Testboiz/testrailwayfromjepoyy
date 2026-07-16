@@ -3,6 +3,7 @@ package com.indivaragroup.jdt17wms.services;
 import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
@@ -52,13 +53,10 @@ public class GoalsProjectionService {
         this.clock = clock;
     }
 
+  @RiskProfileAssessmentRequired
   public List<GoalProjectionDTO> getProjectionsForUser() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
 
     double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
 

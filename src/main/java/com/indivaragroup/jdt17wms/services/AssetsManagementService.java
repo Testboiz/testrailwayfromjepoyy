@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
@@ -52,31 +53,25 @@ public class AssetsManagementService {
         this.recommendationRepository = recommendationRepository;
     }
 
+    @RiskProfileAssessmentRequired
     public List<Asset> getAssetsForUser() {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
         return assetRepository.findAllByUserId(user.getId());
     }
 
+    @RiskProfileAssessmentRequired
     public List<TransactionHistory> getTransactionLogsForUser() {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-         throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
         return transactionHistoryRepository.findAllByUserId(user.getId());
     }
 
     @Transactional
+    @RiskProfileAssessmentRequired
     public Asset createAssetForUser(AssetRegistrationDTO dto) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
 
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.NOT_FOUND,"No valid item with the ID"));
@@ -123,12 +118,10 @@ public class AssetsManagementService {
     }
 
     @Transactional
+    @RiskProfileAssessmentRequired
     public Asset updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-          throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
 
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
@@ -149,12 +142,10 @@ public class AssetsManagementService {
     }
 
     @Transactional
+    @RiskProfileAssessmentRequired
     public void deleteAssetForUser(UUID assetId) {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
 
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));

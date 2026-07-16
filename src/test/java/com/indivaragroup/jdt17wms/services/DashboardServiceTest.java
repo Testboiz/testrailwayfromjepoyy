@@ -195,29 +195,7 @@ class DashboardServiceTest {
         result.getPerformance().forEach(p -> assertEquals(0, p.getValue().compareTo(BigDecimal.ZERO)));
     }
 
-    @Test
-    void getUserDashboard_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireCompletedIsFalse() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
-    }
-
-    @Test
-    void getUserDashboard_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireCompletedIsNull() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(null)
-                .build();
-
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
-    }
 
     @Test
     void getUserDashboard_shouldThrowNotFoundExceptionWhenUserNotFound() {

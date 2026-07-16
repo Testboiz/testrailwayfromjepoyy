@@ -92,16 +92,7 @@ class ActionRecommendationServiceTest {
         assertThrows(CoreThrowHandler.class, () -> actionRecommendationService.getHealthScore());
     }
 
-    @Test
-    void getHealthScore_QuestionnaireNotCompleted_ThrowsMissingRiskProfileException() {
-        // User exists but has NOT completed the risk profiler questionnaire
-        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(CoreThrowHandler.class,
-                () -> actionRecommendationService.getHealthScore(),
-                "Should throw MissingRiskProfileException when questionnaireCompleted is false");
-    }
 
     @Test
     void getHealthScore_HappyPath_ExcellentScore() {
@@ -270,16 +261,7 @@ class ActionRecommendationServiceTest {
         assertThrows(CoreThrowHandler.class, () -> actionRecommendationService.generateRecommendations());
     }
 
-    @Test
-    void generateRecommendations_QuestionnaireNotCompleted_ThrowsMissingRiskProfileException() {
-        // User exists but has NOT completed the risk profiler questionnaire
-        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(CoreThrowHandler.class,
-                () -> actionRecommendationService.generateRecommendations(),
-                "Should throw MissingRiskProfileException when questionnaireCompleted is false");
-    }
 
     @Test
     void generateRecommendations_AllRulesTriggered() {

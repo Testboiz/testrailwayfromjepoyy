@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Product;
@@ -37,6 +38,7 @@ public class ProductManagementService {
         return productRepository.findAll(pageable);
     }
 
+    @RiskProfileAssessmentRequired
     public Page<Product> getProductsForUser(
             ProductQueryDTO queryDTO,
             Pageable pageable) {
@@ -48,11 +50,6 @@ public class ProductManagementService {
         Boolean dashboardSummary = dto.getDashboardSummary();
 
         User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
-
-        // Check user risk profile questionnaire
-        if (isNonAdminUser(user) && !Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
 
         List<Product> products = productRepository.findAll();
 

@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import static com.indivaragroup.jdt17wms.constants.AppConstants.*;
 import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
@@ -63,14 +64,11 @@ public class ActionRecommendationService {
      * 3. Goal Coverage — goals with a matching product type in portfolio
      * 4. Risk Alignment — weighted avg portfolio risk vs. profile target
      */
+    @RiskProfileAssessmentRequired
     public HealthDTO getHealthScore() {
         // ── Fetch all required data ──
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-      if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-        throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-      }
 
         List<Asset> assets = assetRepository.findAllByUserId(user.getId());
         List<Product> products = productRepository.findAll();
@@ -262,14 +260,11 @@ public class ActionRecommendationService {
      * 7. Idle surplus
      */
     @Transactional
+    @RiskProfileAssessmentRequired
     public List<RecommendationDTO> generateRecommendations() {
         // ── Fetch all required data ──
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-          throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
 
         UUID userId = user.getId();
 

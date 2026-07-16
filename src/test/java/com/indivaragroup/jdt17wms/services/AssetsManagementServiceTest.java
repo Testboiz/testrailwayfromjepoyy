@@ -91,19 +91,7 @@ class AssetsManagementServiceTest {
         assertEquals(asset, result.getFirst());
     }
 
-    @Test
-    void getAssetsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> {
-            assetsManagementService.getAssetsForUser();
-        });
-    }
 
     @Test
     void getAssetsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
@@ -133,19 +121,7 @@ class AssetsManagementServiceTest {
         assertEquals(log, result.getFirst());
     }
 
-    @Test
-    void getTransactionLogsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> {
-            assetsManagementService.getTransactionLogsForUser();
-        });
-    }
 
     @Test
     void getTransactionLogsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
