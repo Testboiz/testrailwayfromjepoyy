@@ -340,7 +340,7 @@ public class ActionRecommendationService {
 
           // Find the most concentrated product
           Map.Entry<UUID, BigDecimal> top = byProduct.entrySet().stream()
-            .max(Map.Entry.comparingByValue()).orElseThrow(() -> new NotFoundException("Item not found"));
+            .max(Map.Entry.comparingByValue()).orElseThrow(() -> new CoreThrowHandler(ApiError.NOT_FOUND));
 
           double concentration = top.getValue().doubleValue() / totalValue.doubleValue();
           if (concentration > 0.65) {

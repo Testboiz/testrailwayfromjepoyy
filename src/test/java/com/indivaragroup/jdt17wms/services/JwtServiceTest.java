@@ -42,7 +42,7 @@ class JwtServiceTest {
         assertTrue(jwtService.isAccessToken(token));
         assertFalse(jwtService.isRefreshToken(token));
         assertEquals("john@example.com", jwtService.getEmailFromToken(token));
-        assertEquals("ROLE_USER", jwtService.getRoleFromToken(token));
+        assertEquals("USER", jwtService.getRoleFromToken(token));
         assertEquals(userId.toString(), jwtService.getUserIdFromToken(token));
         assertTrue(jwtService.isTokenValid(token, user));
     }
@@ -61,7 +61,7 @@ class JwtServiceTest {
         assertFalse(jwtService.isAccessToken(token));
         assertTrue(jwtService.isRefreshToken(token));
         assertEquals("admin@example.com", jwtService.getEmailFromToken(token));
-        assertEquals("ROLE_ADMIN", jwtService.getRoleFromToken(token));
+        assertEquals("ADMIN", jwtService.getRoleFromToken(token));
         assertEquals(userId.toString(), jwtService.getUserIdFromToken(token));
     }
 
@@ -74,7 +74,7 @@ class JwtServiceTest {
                 .subject("expired@example.com")
                 .claim("email", "expired@example.com")
                 .claim("userId", UUID.randomUUID().toString())
-                .claim("role", "ROLE_USER")
+                .claim("role", "USER")
                 .claim("token_type", "access")
                 .claim("iat", now.minusSeconds(20).getEpochSecond())
                 .claim("exp", now.minusSeconds(10).getEpochSecond())
@@ -93,7 +93,7 @@ class JwtServiceTest {
                 .subject("user@example.com")
                 .claim("email", "user@example.com")
                 .claim("userId", uid.toString())
-                .claim("role", "ROLE_USER")
+                .claim("role", "USER")
                 .claim("token_type", "access")
                 .claim("iat", now.minusSeconds(20).getEpochSecond())
                 .claim("exp", now.minusSeconds(10).getEpochSecond())
@@ -152,7 +152,7 @@ class JwtServiceTest {
                 .subject(user.getEmail())
                 .claim("email", user.getEmail())
                 .claim("userId", user.getId().toString())
-                .claim("role", "ROLE_USER")
+                .claim("role", "USER")
                 .claim("token_type", "access")
                 .claim("iat", now.minusSeconds(20).getEpochSecond())
                 .claim("exp", now.minusSeconds(10).getEpochSecond())

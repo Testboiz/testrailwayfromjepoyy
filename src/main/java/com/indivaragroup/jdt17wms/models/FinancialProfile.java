@@ -25,10 +25,10 @@ public class FinancialProfile {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "monthly_income", precision = 18, scale = 4)
+    @Column(name = "monthly_income", precision = 18, scale = 4,  nullable = false)
     private BigDecimal monthlyIncome;
 
-    @Column(name = "default_return", precision = 18, scale = 4)
+    @Column(name = "default_return", precision = 18, scale = 4,  nullable = false)
     private BigDecimal defaultReturn;
 
     @UpdateTimestamp

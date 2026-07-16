@@ -143,7 +143,7 @@ class GoalsProjectionServiceTest {
                 .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
+//        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(profile));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -247,13 +247,13 @@ class GoalsProjectionServiceTest {
     @Test
     void getProjectionsForUser_whenGrowthTooSmall_returnsMaxSimulationMonths() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         UUID goalId = UUID.randomUUID();
         Goal goal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Slow Growth Goal")
                 .type("property")
                 .targetAmount(new BigDecimal("100000.00")) // target 100k
@@ -276,8 +276,8 @@ class GoalsProjectionServiceTest {
                 .annualReturn(new BigDecimal("0.00001"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -294,13 +294,13 @@ class GoalsProjectionServiceTest {
     @Test
     void getProjectionsForUser_whenBalanceAlreadyExceedsTarget_returnsZeroMonths() {
         User user = User.builder()
-                .id(AppConstants.USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
         UUID goalId = UUID.randomUUID();
         Goal goal = Goal.builder()
                 .id(goalId)
-                .userId(AppConstants.USER_ID)
+                .userId(SecurityUtils.STATIC_USER_ID)
                 .name("Achieved Goal")
                 .type("property")
                 .targetAmount(new BigDecimal("10000.00")) // target 10k
@@ -322,8 +322,8 @@ class GoalsProjectionServiceTest {
                 .annualReturn(new BigDecimal("5.00"))
                 .build();
 
-        when(userRepository.findById(AppConstants.USER_ID)).thenReturn(Optional.of(user));
-        when(goalRepository.findAllByUserId(AppConstants.USER_ID)).thenReturn(List.of(goal));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(goal));
         when(assetRepository.findAllByGoalId(goalId)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 

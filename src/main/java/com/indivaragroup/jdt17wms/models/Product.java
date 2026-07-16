@@ -29,28 +29,28 @@ public class Product {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "issuer")
+    @Column(name = "issuer", nullable = false)
     private String issuer;
 
-    @Column(name = "type")
+    @Column(name = "type", nullable = false)
     private String type;
 
-    @Column(name = "risk_level")
+    @Column(name = "risk_level", nullable = false)
     private Integer riskLevel;
 
-    @Column(name = "annual_return", precision = 18, scale = 4)
+    @Column(name = "annual_return", precision = 18, scale = 4, nullable = false)
     private BigDecimal annualReturn;
 
-    @Column(name = "min_investment", precision = 18, scale = 4)
+    @Column(name = "min_investment", precision = 18, scale = 4, nullable = false)
     private BigDecimal minInvestment;
 
-    @Column(name = "current_price", precision = 18, scale = 4)
+    @Column(name = "current_price", precision = 18, scale = 4, nullable = false)
     private BigDecimal currentPrice;
 
-    @Column(name = "visible")
+    @Column(name = "visible", nullable = false)
     private Boolean visible;
 
-    @Column(name = "description", columnDefinition = "text")
+    @Column(name = "description", columnDefinition = "text", nullable = false)
     private String description;
 
     @Column(name = "tenor")

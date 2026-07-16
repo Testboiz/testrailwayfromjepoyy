@@ -37,7 +37,7 @@ public class Asset {
     @Column(name = "amount", nullable = false, precision = 18, scale = 4)
     private BigDecimal amount;
 
-    @Column(name = "current_value", precision = 18, scale = 4)
+    @Column(name = "current_value", nullable = false, precision = 18, scale = 4)
     private BigDecimal currentValue;
 
     @Column(name = "purchase_date", nullable = false)

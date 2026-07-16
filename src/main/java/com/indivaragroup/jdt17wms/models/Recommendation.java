@@ -29,16 +29,16 @@ public class Recommendation {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "priority")
+    @Column(name = "priority", nullable = false)
     private String priority;
 
-    @Column(name = "category")
+    @Column(name = "category", nullable = false)
     private String category;
 
     @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "reason", columnDefinition = "text")
+    @Column(name = "reason", columnDefinition = "text", nullable = false)
     private String reason;
 
     @Column(name = "product_id")
@@ -55,7 +55,7 @@ public class Recommendation {
     private String recommendedAllocation;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "status", columnDefinition = "recommendation_status")
+    @Column(name = "status", columnDefinition = "recommendation_status", nullable = false)
     private RecommendationStatus status;
 
     @CreationTimestamp

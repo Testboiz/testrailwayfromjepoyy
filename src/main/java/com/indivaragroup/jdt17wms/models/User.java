@@ -41,7 +41,7 @@ public class User {
     @ColumnTransformer(write = "?::user_role")
     private UserRole role;
 
-    @Column(name = "status")
+    @Column(name = "status", nullable = false)
     private String status;
 
     @Column(name = "risk_profile")
