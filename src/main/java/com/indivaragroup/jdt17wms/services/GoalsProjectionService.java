@@ -119,7 +119,6 @@ public class GoalsProjectionService {
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         if (product.getAnnualReturn() == null) {
-          // TODO : think about this is it necessary to have "default annual return"??????
           throw new IllegalStateException("Missing Annual Return");
         }
         rates[j] = product.getAnnualReturn().doubleValue() / 100.0 / 12.0;
