@@ -46,8 +46,8 @@ public class SecurityConfig {
         .requestMatchers(
                 BASE_AUTH_PATH + LOGIN_PATH,
                 BASE_AUTH_PATH + REGISTER_PATH,
-                BASE_AUTH_PATH + REFRESH_TOKEN_PATH
-//                         "/auth/login", "/auth/register", "/auth/refresh", "/error"
+                BASE_AUTH_PATH + REFRESH_TOKEN_PATH,
+                "/error"
         ).permitAll()
         .requestMatchers(HttpMethod.GET, BASE_PRODUCTS_PATH).hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
         .requestMatchers(HttpMethod.PUT, BASE_PRODUCTS_PATH + "/**").hasRole(UserRole.ADMIN.name())
