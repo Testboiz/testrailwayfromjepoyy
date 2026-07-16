@@ -6,7 +6,6 @@ import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
 import com.indivaragroup.jdt17wms.exceptions.MissingRiskProfileException;
 import com.indivaragroup.jdt17wms.exceptions.NotFoundException;
-import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -37,7 +36,7 @@ public class GoalsProjectionService {
     private final ProductRepository productRepository;
     private final Clock clock;
 
-  private static final int MAX_SIMULATION_MONTHS = 12_000;
+  private static final int MAX_SIMULATION_MONTHS = 1_200;
   private static final int PROJECTION_WINDOW_MONTHS = 60;
 
     public GoalsProjectionService(GoalRepository goalRepository,
@@ -61,13 +60,6 @@ public class GoalsProjectionService {
     if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
       throw new MissingRiskProfileException("Risk Profiler Assessment Required");
     }
-
-    // NOTE: intentionally left as-is pending discussion with team — not currently
-    // wired into any calculation below.
-    BigDecimal defaultReturn = financialProfileRepository.findByUserId(user.getId())
-      .map(FinancialProfile::getDefaultReturn)
-      .orElse(BigDecimal.valueOf(7.50));
-    double annualRate = defaultReturn.doubleValue();
 
     double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
 
@@ -118,10 +110,6 @@ public class GoalsProjectionService {
         Product product = productRepository.findById(asset.getProductId())
           .orElseThrow(() -> new NotFoundException("Item Not Found"));
 
-        if (product.getAnnualReturn() == null) {
-          // TODO : think about this is it necessary to have "default annual return"??????
-          throw new IllegalStateException("Missing Annual Return");
-        }
         rates[j] = product.getAnnualReturn().doubleValue() / 100.0 / 12.0;
       }
 
@@ -233,7 +221,7 @@ public class GoalsProjectionService {
       return true;
     }
     for (int j = 0; j < balances.length; j++) {
-      if (rates[j] > 0 && balances[j] > 0) {
+      if (rates[j] > 0 && balances[j] > 0) { // testme
         return true;
       }
     }
