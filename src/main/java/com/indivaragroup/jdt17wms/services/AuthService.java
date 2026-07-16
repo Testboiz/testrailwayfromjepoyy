@@ -21,7 +21,6 @@ import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,18 +54,7 @@ public class AuthService {
     }
 
     // Login
-    public AuthSuccessDTO login(LoginDTO dto) {
-//        List<ValidationErrorDetailDTO> errors = new ArrayList<>();
-//        if (dto.getLoginRequestEmail() == null || dto.getLoginRequestEmail().trim().isEmpty()) {
-//            errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
-//        }
-//        if (dto.getLoginRequestPassword() == null || dto.getLoginRequestPassword().trim().isEmpty()) {
-//            errors.add(new ValidationErrorDetailDTO("password","Password is Required", "ERR-001"));
-//        }
-//
-//        if (!errors.isEmpty()) {
-//            throw new CoreThrowHandler(ApiError.VALIDATION,  errors);
-//        }
+    public AuthSuccessDTO login( LoginDTO dto) {
 
         User user = userRepository.findByEmail(dto.getLoginRequestEmail())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST,"Email Or Password Invalid"));
@@ -99,6 +87,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .questionnaireCompleted(user.getQuestionnaireCompleted())
                 .isAdmin(user.getRole() == UserRole.ADMIN)
+                .risk_profile(user.getRiskProfile())
                 .build();
 
         return AuthSuccessDTO.builder()
@@ -135,34 +124,23 @@ public class AuthService {
     @Transactional
     public void register(RegisterDTO dto) {
         List<ValidationErrorDetailDTO> errors = new ArrayList<>();
-        if (dto.getRegisterRequestEmail() == null || dto.getRegisterRequestEmail().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("email", "Email is required", "ERR-001"));
-        } else if (!Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matcher(dto.getRegisterRequestEmail()).matches()) {
-            errors.add(new ValidationErrorDetailDTO("email", "Invalid email format", "ERR-002"));
+         if (!Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matcher(dto.getRegisterRequestEmail()).matches()) {
+            errors.add(new ValidationErrorDetailDTO("email", "Invalid email format", "ERR-001"));
         }
-
-        if (dto.getRegisterRequestPassword() == null || dto.getRegisterRequestPassword().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("password", "Password is required", "ERR-001"));
-        } else {
             if (dto.getRegisterRequestPassword().length() < 8) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must be at least 8 characters", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO("password", "Must be at least 8 characters", "ERR-001"));
             }
             if (dto.getRegisterRequestPassword().length() > 72) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must not exceed 72 characters", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO("password", "Must not exceed 72 characters", "ERR-001"));
             }
             if (!Pattern.compile("[a-z]").matcher(dto.getRegisterRequestPassword()).find()) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must contain lowercase letter", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO("password", "Must contain lowercase letter", "ERR-001"));
             }
             if (!Pattern.compile("[A-Z]").matcher(dto.getRegisterRequestPassword()).find()) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must contain uppercase letter", "ERR-003"));
+                errors.add(new ValidationErrorDetailDTO("password", "Must contain uppercase letter", "ERR-001"));
             }
             if (!Pattern.compile("[^a-zA-Z0-9]").matcher(dto.getRegisterRequestPassword()).find()) {
-                errors.add(new ValidationErrorDetailDTO("password", "Must contain symbol", "ERR-003"));
-            }
-        }
-
-        if (dto.getRegisterRequestName() == null || dto.getRegisterRequestName().trim().isEmpty()) {
-            errors.add(new ValidationErrorDetailDTO("name", "Name is required", "ERR-001"));
+                errors.add(new ValidationErrorDetailDTO("password", "Must contain symbol", "ERR-001"));
         }
 
         if (!errors.isEmpty()) {
@@ -178,14 +156,11 @@ public class AuthService {
                 .email(dto.getRegisterRequestEmail())
                 .passwordHash(passwordEncoder.encode(dto.getRegisterRequestPassword()))
                 .role(UserRole.USER)
-                .status("ACTIVE")
+                .status(ActiveStatus.ACTIVE.name())
                 .questionnaireCompleted(false)
                 .build();
 
         User savedUser = userRepository.save(user);
-
-        String accessToken = jwtService.generateAccessToken(savedUser);
-        String refreshToken = jwtService.generateRefreshToken(savedUser);
 
         // Audit Log
         AuditLog auditLog = AuditLog.builder()
@@ -197,14 +172,6 @@ public class AuthService {
                 .timestamp(Instant.now())
                 .build();
         auditLogRepository.save(auditLog);
-
-        UserDTO userDto = UserDTO.builder()
-                .id(savedUser.getId())
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .questionnaireCompleted(user.getQuestionnaireCompleted())
-                .isAdmin(savedUser.getRole() == UserRole.ADMIN)
-                .build();
     }
 
     // Refresh Token
