@@ -3,6 +3,7 @@ package com.indivaragroup.jdt17wms.services;
 import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
@@ -47,14 +48,10 @@ public class GoalsManagementService {
         this.clock = clock;
     }
 
+    @RiskProfileAssessmentRequired
     public List<GoalDTO> getGoalsForUser() {
         User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-      if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
-
         List<Goal> goals = goalRepository.findAllByUserId(user.getId());
 
         return goals.stream()
@@ -75,13 +72,10 @@ public class GoalsManagementService {
                 .toList();
     }
 
+  @RiskProfileAssessmentRequired
   public GoalDTO createGoalForUser(GoalRegistrationDTO dto) {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
 
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
     String type = dto.getType(); // Enforced non-blank and lowercase by DTO @Pattern
@@ -146,16 +140,17 @@ public class GoalsManagementService {
       .build();
   }
 
+  @RiskProfileAssessmentRequired
   public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
-    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
-
     Goal goal = goalRepository.findById(goalId)
       .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+    if (!goal.getUserId().equals(user.getId())) {
+      throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+    }
 
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
 
@@ -233,16 +228,17 @@ public class GoalsManagementService {
       .build();
   }
     @Transactional
+    @RiskProfileAssessmentRequired
     public void deleteGoalForUser(UUID goalId) {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
+      User user = userRepository.findById(SecurityUtils.getCurrentUserId())
+        .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
 
-      if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted()))  {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
-
-        Goal goal = goalRepository.findById(goalId)
+      Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+      if (!goal.getUserId().equals(user.getId())) {
+          throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+      }
 
         List<Asset> assets = assetRepository.findAllByGoalId(goalId);
         for (Asset asset : assets) {
