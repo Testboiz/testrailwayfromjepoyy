@@ -29,7 +29,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Service
-public class AssetsManagementService {
+public class AssetsManagementService implements VerifiedUserProvider {
 
     private final AssetRepository assetRepository;
     private final UserRepository userRepository;
@@ -53,30 +53,18 @@ public class AssetsManagementService {
     }
 
     public List<Asset> getAssetsForUser() {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
         return assetRepository.findAllByUserId(user.getId());
     }
 
     public List<TransactionHistory> getTransactionLogsForUser() {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-         throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
         return transactionHistoryRepository.findAllByUserId(user.getId());
     }
 
     @Transactional
     public Asset createAssetForUser(AssetRegistrationDTO dto) {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
 
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.NOT_FOUND,"No valid item with the ID"));
@@ -126,11 +114,7 @@ public class AssetsManagementService {
 
     @Transactional
     public Asset updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-          throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
 
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
@@ -152,11 +136,7 @@ public class AssetsManagementService {
 
     @Transactional
     public void deleteAssetForUser(UUID assetId) {
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-        if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
+        User user = getVerifiedUser();
 
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));

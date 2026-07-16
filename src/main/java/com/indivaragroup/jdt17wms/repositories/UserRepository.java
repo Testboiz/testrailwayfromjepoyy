@@ -18,6 +18,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   boolean existsByEmail(String email);
   Optional<User> findByEmail(String email);
 
+  @Query("SELECT u.riskProfile as riskProfile, COUNT(u) as count FROM User u GROUP BY u.riskProfile")
+  List<RiskProfileCount> countByRiskProfile();
+
+  interface RiskProfileCount {
+    String getRiskProfile();
+    Long getCount();
+  }
+
   @Query("SELECT u.id as id, u.name as name, u.email as email, u.role as role, (SELECT COUNT(o) FROM User o WHERE o.createdAt < u.createdAt) as priorCount FROM User u WHERE u.email = :email")
   Optional<UserSecurityProjection> findUserSecurityProjectionByEmail(@Param("email") String email);
 }
