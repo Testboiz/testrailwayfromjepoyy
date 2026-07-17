@@ -38,4 +38,12 @@ public class ProductController {
         return ApiResponse.success(ApiSuccess.PRODUCT_UPDATED,
                 productManagementService.updateProductVisibility(id, adminChangeVisibilityDTO.getVisibility()));
     }
+
+    @GetMapping("/{id}")
+    public ApiResponse<Product> getProductById(
+            @PathVariable UUID id
+    ) {
+        return ApiResponse.success(ApiSuccess.PRODUCT_FETCHED,
+                productManagementService.getProductById(id));
+    }
 }

@@ -47,6 +47,7 @@ public enum ApiSuccess {
     // Products
     PRODUCTS_FETCHED(HttpStatus.OK.value(), "Products retrieved successfully"),
     PRODUCT_UPDATED(HttpStatus.OK.value(), "Product updated successfully"),
+    PRODUCT_FETCHED(HttpStatus.OK.value(), "Product retreived successfully"),
 
     // Risk Profiler
     PROFILER_FETCHED(HttpStatus.OK.value(), "Risk profile retrieved successfully"),
