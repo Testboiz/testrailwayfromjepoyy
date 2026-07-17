@@ -30,13 +30,13 @@ class SecurityUtilsTest {
     }
 
     @Test
-    void getCurrentUserId_whenAuthenticationIsNull_shouldThrowUnauthorized() {
+    void getCurrentUserId_whenAuthenticationIsNull_shouldThrowCoreThrowHandler() {
         SecurityContextHolder.clearContext();
         assertThrows(CoreThrowHandler.class, SecurityUtils::getCurrentUserId);
     }
 
     @Test
-    void getCurrentUserId_whenPrincipalIsNotUserDTO_shouldThrowUnauthorized() {
+    void getCurrentUserId_whenPrincipalIsNotUserDTO_shouldThrowCoreThrowHandler() {
         Authentication auth = new UsernamePasswordAuthenticationToken("anonymous", null);
         SecurityContextHolder.getContext().setAuthentication(auth);
 

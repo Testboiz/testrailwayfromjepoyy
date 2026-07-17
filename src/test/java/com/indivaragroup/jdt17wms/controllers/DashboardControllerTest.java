@@ -4,8 +4,6 @@ import com.indivaragroup.jdt17wms.dto.response.*;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.services.DashboardService;
-import com.indivaragroup.jdt17wms.services.JwtService;
-import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,15 +30,9 @@ class DashboardControllerTest extends BaseControllerTest {
     @MockBean
     private DashboardService dashboardService;
 
-    @MockBean
-    private JwtService jwtService;
-
-    @MockBean
-    private UserRepository userRepository;
-
     @Test
     void getAdminDashboard_shouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/admin-dashboard"))
+        mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk());
     }
 
@@ -60,10 +52,10 @@ class DashboardControllerTest extends BaseControllerTest {
 
         mockMvc.perform(get("/api/v1/me/dashboard"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.portofolio.value").value("1000.00"))
-                .andExpect(jsonPath("$.portofolio.invested").value("800.00"))
-                .andExpect(jsonPath("$.performance[0].month").value(1))
-                .andExpect(jsonPath("$.performance[0].value").value(1000.00));
+                .andExpect(jsonPath("$.result.portofolio.value").value("1000.00"))
+                .andExpect(jsonPath("$.result.portofolio.invested").value("800.00"))
+                .andExpect(jsonPath("$.result.performance[0].month").value(1))
+                .andExpect(jsonPath("$.result.performance[0].value").value(1000.00));
     }
 
     @Test
@@ -72,8 +64,8 @@ class DashboardControllerTest extends BaseControllerTest {
                 .when(dashboardService).getUserDashboard();
 
         mockMvc.perform(get("/api/v1/me/dashboard"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(403));
     }
 }

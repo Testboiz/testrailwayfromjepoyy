@@ -4,7 +4,6 @@ import com.indivaragroup.jdt17wms.dto.response.ComponentDTO;
 import com.indivaragroup.jdt17wms.dto.response.HealthDTO;
 import com.indivaragroup.jdt17wms.dto.response.RecommendationDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.*;
 import com.indivaragroup.jdt17wms.models.enums.RecommendationStatus;
 import com.indivaragroup.jdt17wms.repositories.*;
@@ -93,16 +92,7 @@ class ActionRecommendationServiceTest {
         assertThrows(CoreThrowHandler.class, () -> actionRecommendationService.getHealthScore());
     }
 
-    @Test
-    void getHealthScore_QuestionnaireNotCompleted_ThrowsMissingRiskProfileException() {
-        // User exists but has NOT completed the risk profiler questionnaire
-        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(CoreThrowHandler.class,
-                () -> actionRecommendationService.getHealthScore(),
-                "Should throw MissingRiskProfileException when questionnaireCompleted is false");
-    }
 
     @Test
     void getHealthScore_HappyPath_ExcellentScore() {
@@ -271,16 +261,7 @@ class ActionRecommendationServiceTest {
         assertThrows(CoreThrowHandler.class, () -> actionRecommendationService.generateRecommendations());
     }
 
-    @Test
-    void generateRecommendations_QuestionnaireNotCompleted_ThrowsMissingRiskProfileException() {
-        // User exists but has NOT completed the risk profiler questionnaire
-        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(false).build();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(CoreThrowHandler.class,
-                () -> actionRecommendationService.generateRecommendations(),
-                "Should throw MissingRiskProfileException when questionnaireCompleted is false");
-    }
 
     @Test
     void generateRecommendations_AllRulesTriggered() {
@@ -859,6 +840,429 @@ class ActionRecommendationServiceTest {
         // Assert: no "growth" recommendation because the only unowned product exceeds user's risk tolerance
         boolean hasGrowthRec = recs.stream().anyMatch(r -> "growth".equals(r.getCategory()));
         assertFalse(hasGrowthRec, "Rule 6: Should NOT recommend a product that exceeds the user's risk profile");
+    }
+
+    @Test
+    void generateRecommendations_WithDelistedProducts_BestOfReturnsNull() {
+        // Arrange
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // Create a single stock product that the user owns. All other potential products are delisted (visible = false).
+        UUID ownedStockId = UUID.randomUUID();
+        Product pStockOwned = Product.builder()
+                .id(ownedStockId)
+                .name("Owned Stock")
+                .type("stock")
+                .riskLevel(3)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(10.0))
+                .minInvestment(BigDecimal.valueOf(5000))
+                .build();
+
+        // Delisted products that match the other rules
+        Product pDepositDelisted = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Delisted Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(false) // delisted
+                .annualReturn(BigDecimal.valueOf(3.0))
+                .minInvestment(BigDecimal.valueOf(1000))
+                .build();
+
+        Product pBondDelisted = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Delisted Bond")
+                .type("bond")
+                .riskLevel(2)
+                .visible(false) // delisted
+                .annualReturn(BigDecimal.valueOf(5.0))
+                .minInvestment(BigDecimal.valueOf(2000))
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(pStockOwned, pDepositDelisted, pBondDelisted));
+
+        // Asset causing concentration risk (100% stock)
+        Asset aStock = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(ownedStockId)
+                .currentValue(BigDecimal.valueOf(100000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aStock));
+
+        // Priority and other goals
+        Goal priorityGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Priority House")
+                .type("vehicle_purchase") // Vehicle purchase needs money_market, deposit, balanced_fund, bond, sukuk. None is stock.
+                .targetAmount(BigDecimal.valueOf(50000))
+                .monthlyContribution(BigDecimal.valueOf(1000))
+                .targetDate(LocalDate.now(clock).plusYears(3))
+                .isPriority(true)
+                .build();
+
+        Goal otherGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Other Vacation")
+                .type("vacation") // Vacation needs money_market, deposit, balanced_fund. None is stock.
+                .targetAmount(BigDecimal.valueOf(10000))
+                .monthlyContribution(BigDecimal.valueOf(500))
+                .isPriority(false)
+                .build();
+
+        when(goalRepository.findAllByUserId(userId)).thenReturn(List.of(priorityGoal, otherGoal));
+
+        // Income/Expense to trigger emergency fund shortfall and idle surplus
+        FinancialProfile fp = FinancialProfile.builder()
+                .id(UUID.randomUUID())
+                .monthlyIncome(BigDecimal.valueOf(200000))
+                .build();
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.of(fp));
+
+        Expense exp = Expense.builder()
+                .totalExpenses(BigDecimal.valueOf(10000)) // emergency target = 60,000 > 0 liquid assets → shortfall triggers
+                .build();
+        when(expenseRepository.findByFinancialProfileId(fp.getId())).thenReturn(Optional.of(exp));
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert
+        assertNotNull(recs);
+        assertFalse(recs.isEmpty());
+
+        // 1. Emergency recommendation is generated (Rule 1 triggers), but productId and suggestedAmount are null
+        RecommendationDTO emergencyRec = recs.stream()
+                .filter(r -> "emergency".equals(r.getCategory()))
+                .findFirst().orElse(null);
+        assertNotNull(emergencyRec, "Rule 1: Expected emergency recommendation");
+        assertNull(emergencyRec.getProductId(), "Rule 1: Recommended product should be null because it was delisted");
+        assertNull(emergencyRec.getSuggestedAmount(), "Rule 1: Suggested amount should be null");
+
+        // 2. Rebalance recommendation is generated (Rule 2 triggers), but productId and suggestedAmount are null
+        RecommendationDTO rebalanceRec = recs.stream()
+                .filter(r -> "rebalance".equals(r.getCategory()))
+                .findFirst().orElse(null);
+        assertNotNull(rebalanceRec, "Rule 2: Expected rebalance recommendation");
+        assertNull(rebalanceRec.getProductId(), "Rule 2: Complement product should be null because all complements are delisted");
+        assertNull(rebalanceRec.getSuggestedAmount(), "Rule 2: Suggested amount should be null");
+
+        // 3. Priority goal (Rule 3) should NOT generate a recommendation because product is null
+        boolean hasPriorityGoalRec = recs.stream()
+                .anyMatch(r -> "goal".equals(r.getCategory()) && priorityGoal.getId().equals(r.getGoalId()));
+        assertFalse(hasPriorityGoalRec, "Rule 3: Should NOT generate a recommendation when the best product is delisted");
+
+        // 4. Other goal (Rule 4) should NOT generate a recommendation because product is null
+        boolean hasOtherGoalRec = recs.stream()
+                .anyMatch(r -> "goal".equals(r.getCategory()) && otherGoal.getId().equals(r.getGoalId()));
+        assertFalse(hasOtherGoalRec, "Rule 4: Should NOT generate a recommendation when the best product is delisted");
+
+        // 5. Diversification gaps (Rule 5) should NOT generate a recommendation because product is delisted
+        boolean hasDivRec = recs.stream()
+                .anyMatch(r -> "diversification".equals(r.getCategory()));
+        assertFalse(hasDivRec, "Rule 5: Should NOT generate a diversification gap recommendation when product is delisted");
+
+        // 6. Growth recommendation (Rule 6) should NOT generate a recommendation because unowned products are delisted
+        boolean hasGrowthRec = recs.stream()
+                .anyMatch(r -> "growth".equals(r.getCategory()));
+        assertFalse(hasGrowthRec, "Rule 6: Should NOT generate growth recommendation when unowned products are delisted");
+
+        // 7. Surplus recommendation (Rule 7) should generate a recommendation
+        RecommendationDTO surplusRec = recs.stream()
+                .filter(r -> "surplus".equals(r.getCategory()))
+                .findFirst().orElse(null);
+        assertNotNull(surplusRec, "Rule 7: Expected surplus recommendation");
+    }
+
+    @Test
+    void generateRecommendations_Rule2_NoAssets_SkipsConcentrationCheck() {
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // Return empty assets list
+        when(assetRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+        when(productRepository.findAll()).thenReturn(Collections.emptyList());
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(goalRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: No concentration/rebalance recommendation since assets are empty
+        boolean hasRebalanceRec = recs.stream().anyMatch(r -> "rebalance".equals(r.getCategory()));
+        assertFalse(hasRebalanceRec, "Rule 2: Should NOT generate rebalance recommendation when assets are empty");
+    }
+
+    @Test
+    void generateRecommendations_Rule2_TopProductNotFoundInProductMap_HandlesSafely() {
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID unknownProductId = UUID.randomUUID();
+        // Asset references unknownProductId which won't be returned by productRepository.findAll()
+        Asset aStock = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(unknownProductId)
+                .currentValue(BigDecimal.valueOf(100000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aStock));
+
+        // Create one other visible product (deposit) that can be recommended as complement
+        UUID depositProductId = UUID.randomUUID();
+        Product pDeposit = Product.builder()
+                .id(depositProductId)
+                .name("Safe Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(3.5))
+                .minInvestment(BigDecimal.valueOf(500))
+                .build();
+        // Notice that unknownProductId is NOT in the products list returned
+        when(productRepository.findAll()).thenReturn(List.of(pDeposit));
+
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(goalRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: Recommendation is generated, title is "One position is 100% of your portfolio"
+        RecommendationDTO rebalanceRec = recs.stream()
+                .filter(r -> "rebalance".equals(r.getCategory()))
+                .findFirst().orElse(null);
+        assertNotNull(rebalanceRec, "Rule 2: Expected rebalance recommendation even if top product is not found in product map");
+        assertEquals("One position is 100% of your portfolio", rebalanceRec.getTitle());
+        assertEquals(depositProductId, rebalanceRec.getProductId(), "Should recommend the deposit product as complement");
+    }
+
+    @Test
+    void generateRecommendations_Rule3_PriorityGoalAlreadyCovered_DoesNotTrigger() {
+        User user = User.builder().id(userId).riskProfile("moderate").questionnaireCompleted(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID depositProductId = UUID.randomUUID();
+        Product pDeposit = Product.builder()
+                .id(depositProductId)
+                .name("Safe Deposit")
+                .type("deposit")
+                .riskLevel(1)
+                .visible(true)
+                .annualReturn(BigDecimal.valueOf(3.5))
+                .minInvestment(BigDecimal.valueOf(500))
+                .build();
+        when(productRepository.findAll()).thenReturn(List.of(pDeposit));
+
+        // User owns the deposit asset -> ownedTypes contains "deposit"
+        Asset aDeposit = Asset.builder()
+                .id(UUID.randomUUID())
+                .productId(depositProductId)
+                .currentValue(BigDecimal.valueOf(10000))
+                .build();
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(aDeposit));
+
+        // Priority goal of type "vacation" (which accepts money_market, deposit, balanced_fund)
+        // Since user owns deposit, the type is already covered (hasMatchingType is true)
+        Goal priorityGoal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Summer Trip")
+                .type("vacation")
+                .targetAmount(BigDecimal.valueOf(5000))
+                .monthlyContribution(BigDecimal.valueOf(500))
+                .targetDate(LocalDate.now(clock).plusYears(1))
+                .isPriority(true)
+                .build();
+        when(goalRepository.findAllByUserId(userId)).thenReturn(List.of(priorityGoal));
+
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: No goal recommendation since priority goal is already covered by owned deposit asset
+        boolean hasGoalRec = recs.stream().anyMatch(r -> "goal".equals(r.getCategory()));
+        assertFalse(hasGoalRec, "Rule 3: Should NOT generate goal recommendation when priority goal is already covered by owned types");
+    }
+
+    @Test
+    void testGenerateRecommendations_IdleSurplus_freshRecsIsEmpty() {
+        User user = User.builder()
+                .id(userId)
+                .riskProfile("moderate")
+                .questionnaireCompleted(true)
+                .build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        FinancialProfile fp = FinancialProfile.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .monthlyIncome(BigDecimal.valueOf(500000))
+                .build();
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.of(fp));
+
+        Expense exp = Expense.builder()
+                .id(UUID.randomUUID())
+                .financialProfileId(fp.getId())
+                .totalExpenses(BigDecimal.valueOf(100000))
+                .build();
+        when(expenseRepository.findByFinancialProfileId(fp.getId())).thenReturn(Optional.of(exp));
+
+        Product prodA = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Deposit Product")
+                .type("deposit")
+                .riskLevel(1)
+                .annualReturn(BigDecimal.valueOf(5))
+                .minInvestment(BigDecimal.valueOf(10000))
+                .visible(true)
+                .build();
+        Product prodB = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Stock Product")
+                .type("stock")
+                .riskLevel(3)
+                .annualReturn(BigDecimal.valueOf(10))
+                .minInvestment(BigDecimal.valueOf(20000))
+                .visible(true)
+                .build();
+        Product prodC = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Bond Product")
+                .type("bond")
+                .riskLevel(2)
+                .annualReturn(BigDecimal.valueOf(7))
+                .minInvestment(BigDecimal.valueOf(15000))
+                .visible(true)
+                .build();
+
+        when(productRepository.findAll()).thenReturn(List.of(prodA, prodB, prodC));
+
+        Asset assetA = Asset.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .productId(prodA.getId())
+                .currentValue(BigDecimal.valueOf(600000))
+                .units(BigDecimal.ONE)
+                .amount(BigDecimal.valueOf(600000))
+                .purchaseDate(Instant.now(clock))
+                .build();
+        Asset assetB = Asset.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .productId(prodB.getId())
+                .currentValue(BigDecimal.valueOf(300000))
+                .units(BigDecimal.ONE)
+                .amount(BigDecimal.valueOf(300000))
+                .purchaseDate(Instant.now(clock))
+                .build();
+        Asset assetC = Asset.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .productId(prodC.getId())
+                .currentValue(BigDecimal.valueOf(300000))
+                .units(BigDecimal.ONE)
+                .amount(BigDecimal.valueOf(300000))
+                .purchaseDate(Instant.now(clock))
+                .build();
+
+        when(assetRepository.findAllByUserId(userId)).thenReturn(List.of(assetA, assetB, assetC));
+
+        Goal goal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Summer Trip")
+                .type("vacation")
+                .targetAmount(BigDecimal.valueOf(500000))
+                .monthlyContribution(BigDecimal.valueOf(50000))
+                .targetDate(LocalDate.now(clock).plusYears(1))
+                .isPriority(true)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .notes("Fun trip")
+                .build();
+        when(goalRepository.findAllByUserId(userId)).thenReturn(List.of(goal));
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert that freshRecs is empty, meaning Rule 7's check passed and skipped adding because freshRecs is empty
+        assertTrue(recs.isEmpty());
+    }
+
+    @Test
+    void testGenerateRecommendations_IdleSurplus_undeployedSurplusLessThanThreshold() {
+        User user = User.builder()
+                .id(userId)
+                .riskProfile("moderate")
+                .questionnaireCompleted(true)
+                .build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        FinancialProfile fp = FinancialProfile.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .monthlyIncome(BigDecimal.valueOf(250000))
+                .build();
+        when(financialProfileRepository.findByUserId(userId)).thenReturn(Optional.of(fp));
+
+        Expense exp = Expense.builder()
+                .id(UUID.randomUUID())
+                .financialProfileId(fp.getId())
+                .totalExpenses(BigDecimal.valueOf(50000))
+                .build();
+        when(expenseRepository.findByFinancialProfileId(fp.getId())).thenReturn(Optional.of(exp));
+
+        when(productRepository.findAll()).thenReturn(Collections.emptyList());
+        when(assetRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        Goal goal = Goal.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .name("Summer Trip")
+                .type("vacation")
+                .targetAmount(BigDecimal.valueOf(500000))
+                .monthlyContribution(BigDecimal.valueOf(120000))
+                .targetDate(LocalDate.now(clock).plusYears(1))
+                .isPriority(true)
+                .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
+                .notes("Fun trip")
+                .build();
+        when(goalRepository.findAllByUserId(userId)).thenReturn(List.of(goal));
+
+        when(recommendationRepository.findAllByUserIdAndStatus(userId, RecommendationStatus.PENDING))
+                .thenReturn(Collections.emptyList());
+        when(recommendationRepository.saveAllAndFlush(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<RecommendationDTO> recs = actionRecommendationService.generateRecommendations();
+
+        // Assert: Rule 1 emergency fund triggers, but Rule 7 surplus check skips adding the surplus recommendation since undeployed (30,000) <= 100,000
+        assertEquals(1, recs.size());
+        assertEquals("emergency", recs.get(0).getCategory());
     }
 }
 

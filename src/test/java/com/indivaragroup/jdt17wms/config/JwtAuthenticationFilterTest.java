@@ -3,8 +3,6 @@ package com.indivaragroup.jdt17wms.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
-import com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection;
-import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.services.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -23,7 +21,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -195,31 +192,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_UserNotFound_Returns401() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer valid-token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = mock(FilterChain.class);
-
-        when(jwtService.isAccessToken("valid-token")).thenReturn(true);
-        when(jwtService.getEmailFromToken("valid-token")).thenReturn("notfound@example.com");
-        when(userRepository.findUserSecurityProjectionByEmail("notfound@example.com"))
-                .thenReturn(Optional.empty());
-
-        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain, never()).doFilter(any(), any());
-        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
-
-        ErrorResponseDTO expectedResponse = ErrorResponseDTO.builder()
-                .error("Authentication failed")
-                .code(401)
-                .build();
-        assertEquals(objectMapper.writeValueAsString(expectedResponse), response.getContentAsString());
-    }
-
-    @Test
-    void testDoFilterInternal_Success_IsEarliest_UserRoleAdmin_SetsRoleAdmin() throws Exception {
+    void testDoFilterInternal_Success_UserRoleAdmin_SetsRoleAdmin() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer valid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -227,18 +200,10 @@ class JwtAuthenticationFilterTest {
 
         when(jwtService.isAccessToken("valid-token")).thenReturn(true);
         when(jwtService.getEmailFromToken("valid-token")).thenReturn("admin@example.com");
-        when(jwtService.getRoleFromToken("valid-token")).thenReturn("ROLE_ADMIN");
-
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
+        when(jwtService.getRoleFromToken("valid-token")).thenReturn("ADMIN");
         UUID userId = UUID.randomUUID();
-        when(projection.getId()).thenReturn(userId);
-        when(projection.getName()).thenReturn("Admin User");
-        when(projection.getEmail()).thenReturn("admin@example.com");
-        when(projection.getRole()).thenReturn(UserRole.ADMIN);
-        when(projection.getPriorCount()).thenReturn(0L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("admin@example.com"))
-                .thenReturn(Optional.of(projection));
+        when(jwtService.getUserIdFromToken("valid-token")).thenReturn(userId);
+        when(jwtService.getNameFromToken("valid-token")).thenReturn("Admin User");
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
@@ -258,42 +223,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_Success_NotEarliest_ClaimAdmin_DowngradesToUser() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer valid-token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = mock(FilterChain.class);
-
-        when(jwtService.isAccessToken("valid-token")).thenReturn(true);
-        when(jwtService.getEmailFromToken("valid-token")).thenReturn("admin@example.com");
-        when(jwtService.getRoleFromToken("valid-token")).thenReturn("ROLE_ADMIN");
-
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
-        UUID userId = UUID.randomUUID();
-        when(projection.getId()).thenReturn(userId);
-        when(projection.getName()).thenReturn("Admin User");
-        when(projection.getEmail()).thenReturn("admin@example.com");
-        when(projection.getRole()).thenReturn(UserRole.ADMIN);
-        when(projection.getPriorCount()).thenReturn(1L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("admin@example.com"))
-                .thenReturn(Optional.of(projection));
-
-        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain, times(1)).doFilter(request, response);
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        assertNotNull(auth);
-        UserDTO principal = (UserDTO) auth.getPrincipal();
-        assertFalse(principal.getIsAdmin());
-
-        assertEquals(1, auth.getAuthorities().size());
-        assertEquals("ROLE_USER", auth.getAuthorities().iterator().next().getAuthority());
-    }
-
-    @Test
-    void testDoFilterInternal_Success_NotEarliest_NoClaimRole_RoleUser_StaysUser() throws Exception {
+    void testDoFilterInternal_Success_UserRoleUser_SetsRoleUser() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer valid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -301,18 +231,10 @@ class JwtAuthenticationFilterTest {
 
         when(jwtService.isAccessToken("valid-token")).thenReturn(true);
         when(jwtService.getEmailFromToken("valid-token")).thenReturn("user@example.com");
-        when(jwtService.getRoleFromToken("valid-token")).thenReturn(null);
-
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
+        when(jwtService.getRoleFromToken("valid-token")).thenReturn("USER");
         UUID userId = UUID.randomUUID();
-        when(projection.getId()).thenReturn(userId);
-        when(projection.getName()).thenReturn("Normal User");
-        when(projection.getEmail()).thenReturn("user@example.com");
-        when(projection.getRole()).thenReturn(UserRole.USER);
-        when(projection.getPriorCount()).thenReturn(2L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
-                .thenReturn(Optional.of(projection));
+        when(jwtService.getUserIdFromToken("valid-token")).thenReturn(userId);
+        when(jwtService.getNameFromToken("valid-token")).thenReturn("Normal User");
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
@@ -320,42 +242,11 @@ class JwtAuthenticationFilterTest {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assertNotNull(auth);
+        assertTrue(auth.getPrincipal() instanceof UserDTO);
         UserDTO principal = (UserDTO) auth.getPrincipal();
-        assertFalse(principal.getIsAdmin());
-
-        assertEquals(1, auth.getAuthorities().size());
-        assertEquals("ROLE_USER", auth.getAuthorities().iterator().next().getAuthority());
-    }
-
-    @Test
-    void testDoFilterInternal_Success_NotEarliest_NoClaimRole_RoleAdmin_DowngradesToUser() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer valid-token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = mock(FilterChain.class);
-
-        when(jwtService.isAccessToken("valid-token")).thenReturn(true);
-        when(jwtService.getEmailFromToken("valid-token")).thenReturn("user@example.com");
-        when(jwtService.getRoleFromToken("valid-token")).thenReturn(null);
-
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
-        UUID userId = UUID.randomUUID();
-        when(projection.getId()).thenReturn(userId);
-        when(projection.getName()).thenReturn("Admin User");
-        when(projection.getEmail()).thenReturn("user@example.com");
-        when(projection.getRole()).thenReturn(UserRole.ADMIN);
-        when(projection.getPriorCount()).thenReturn(1L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
-                .thenReturn(Optional.of(projection));
-
-        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain, times(1)).doFilter(request, response);
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        assertNotNull(auth);
-        UserDTO principal = (UserDTO) auth.getPrincipal();
+        assertEquals(userId, principal.getId());
+        assertEquals("Normal User", principal.getName());
+        assertEquals("user@example.com", principal.getEmail());
         assertFalse(principal.getIsAdmin());
 
         assertEquals(1, auth.getAuthorities().size());

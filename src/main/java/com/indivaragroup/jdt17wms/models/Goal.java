@@ -33,7 +33,7 @@ public class Goal {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "type")
+    @Column(name = "type", nullable = false)
     private String type;
 
     @Column(name = "target_amount", nullable = false, precision = 18, scale = 4)
@@ -42,20 +42,20 @@ public class Goal {
     @Column(name = "current_amount", nullable = false, precision = 18, scale = 4)
     private BigDecimal currentAmount;
 
-    @Column(name = "monthly_contribution", precision = 18, scale = 4)
+    @Column(name = "monthly_contribution",nullable = false, precision = 18, scale = 4)
     private BigDecimal monthlyContribution;
 
-    @Column(name = "target_date")
+    @Column(name = "target_date", nullable = false)
     private LocalDate targetDate;
 
-    @Column(name = "is_priority")
+    @Column(name = "is_priority", nullable = false)
     private Boolean isPriority;
 
-    @Column(name = "notes", columnDefinition = "text")
+    @Column(name = "notes", columnDefinition = "text", nullable = false)
     private String notes;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "status", columnDefinition = "goal_status")
+    @Column(name = "status", columnDefinition = "goal_status", nullable = false)
     private GoalStatus status;
 
     @CreationTimestamp

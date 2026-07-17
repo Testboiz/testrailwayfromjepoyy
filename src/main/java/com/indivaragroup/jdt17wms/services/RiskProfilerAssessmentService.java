@@ -5,7 +5,7 @@ import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.Answer;
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
-import com.indivaragroup.jdt17wms.dto.utils.OptionDTO;
+import com.indivaragroup.jdt17wms.dto.response.OptionDTO;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
 import com.indivaragroup.jdt17wms.dto.response.RiskProfilerResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.QuestionnaireDataDTO;
@@ -66,11 +66,11 @@ public class RiskProfilerAssessmentService {
 
         String riskProfile;
         if (rawScore <= RiskConstants.RISK_AVERSE_THRESHOLD) {
-            riskProfile = "risk_averse";
+            riskProfile = RiskConstants.RISK_AVERSE;
         } else if (rawScore <= RiskConstants.RISK_MODERATE_THRESHOLD) {
-            riskProfile = "moderate";
+            riskProfile = RiskConstants.MODERATE;
         } else {
-            riskProfile = "risk_taker";
+            riskProfile = RiskConstants.RISK_TAKER;
         }
 
         int outputScore = rawScore * RiskConstants.RISK_SCALING_FACTOR;

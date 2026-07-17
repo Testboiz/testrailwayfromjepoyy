@@ -15,7 +15,6 @@ import lombok.Setter;
 public class ComponentDTO {
     @JsonProperty("componentName")
     private String componentName;
-    
     private String label;
     private Integer score;
     private Integer maxScore;

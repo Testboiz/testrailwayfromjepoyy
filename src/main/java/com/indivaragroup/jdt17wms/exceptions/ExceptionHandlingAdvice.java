@@ -9,8 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -22,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ExceptionHandlingAdvice {
@@ -51,7 +48,7 @@ public class ExceptionHandlingAdvice {
         String errorMsg;
 
         if (message != null && message.contains("UnrecognizedPropertyException")) {
-            String field = message.replaceAll(".*\\[\"([^\"]+)\"\\].*", "$1");
+            String field = message.replaceAll(".*\\[\"([^\"]+)\"].*", "$1");
             errorMsg = "Unrecognized field: " + field;
         } else {
             errorMsg = "Malformed JSON request body";
@@ -78,7 +75,7 @@ public class ExceptionHandlingAdvice {
                         .reason(error.getDefaultMessage())
                         .type("ERR-001")
                         .build())
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, Serializable> errorMap = new HashMap<>();
         errorMap.put("fields", (Serializable) details);
@@ -101,7 +98,7 @@ public class ExceptionHandlingAdvice {
                         .reason(v.getMessage())
                         .type("ERR-001")
                         .build())
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, Serializable> errorMap = new HashMap<>();
         errorMap.put("fields", (Serializable) details);
@@ -127,6 +124,18 @@ public class ExceptionHandlingAdvice {
                 .restApiResponseMessage(ApiError.NOT_FOUND.getMessage())
                 .restApiResponseResult(null)
                 .restApiResponseError(errorMap)
+                .build();
+
+        return ResponseEntity.status(404).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        ApiResponse<?> body = ApiResponse.builder()
+                .restApiResponseHttpCode(404)
+                .restApiResponseMessage(ApiError.NOT_FOUND.getMessage())
+                .restApiResponseResult(null)
+                .restApiResponseError(null)
                 .build();
 
         return ResponseEntity.status(404).body(body);

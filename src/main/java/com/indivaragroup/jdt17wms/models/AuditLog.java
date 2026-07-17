@@ -23,19 +23,19 @@ public class AuditLog {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = true)
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "user_name")
+    @Column(name = "user_name", nullable = false)
     private String userName;
 
     @Column(name = "action", nullable = false)
     private String action;
 
-    @Column(name = "details", columnDefinition = "text")
+    @Column(name = "details", columnDefinition = "text", nullable = false)
     private String details;
 
-    @Column(name = "category")
+    @Column(name = "category", nullable = false)
     private String category;
 
     @CreationTimestamp

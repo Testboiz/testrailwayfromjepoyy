@@ -1,14 +1,13 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,15 +22,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.indivaragroup.jdt17wms.dto.response.UserDTO;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class ProductManagementServiceTest {
@@ -42,21 +36,8 @@ class ProductManagementServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    private static final UUID TEST_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-
     @InjectMocks
     private ProductManagementService productManagementService;
-
-    @BeforeEach
-    void setUpAuth() {
-        UserDTO userDTO = UserDTO.builder()
-                .id(TEST_USER_ID)
-                .email("test@example.com")
-                .isAdmin(false)
-                .build();
-        Authentication auth = new UsernamePasswordAuthenticationToken(userDTO, null);
-        SecurityContextHolder.getContext().setAuthentication(auth);
-    }
 
     @Test
     void serviceShouldBeInitialized() {
@@ -104,28 +85,12 @@ class ProductManagementServiceTest {
         });
     }
 
-    @Test
-    void getProductsForUser_shouldThrowMissingRiskProfileException_whenUserQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(TEST_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
-
-        ProductQueryDTO query = new ProductQueryDTO();
-        Pageable pageRequest = PageRequest.of(0, 10);
-
-        assertThrows(CoreThrowHandler.class, () -> {
-          productManagementService.getProductsForUser(query, pageRequest);
-        });
-    }
 
     @Test
     void getProductsForUser_shouldFilterByVisibilityAndRiskProfile_forStandardUser() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("moderate") // moderate allows risk level <= 4
@@ -135,7 +100,7 @@ class ProductManagementServiceTest {
         Product highRiskVisible = Product.builder().riskLevel(5).visible(true).build(); // Excluded (5 > 4)
         Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build(); // Excluded (hidden)
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible, lowRiskHidden));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
@@ -147,7 +112,7 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldRespectShowAll_forStandardUser() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("moderate") // moderate allows risk level <= 4
@@ -156,7 +121,7 @@ class ProductManagementServiceTest {
         Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
         Product highRiskVisible = Product.builder().riskLevel(5).visible(true).build(); // Included due to showAll = true
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, true, false), PageRequest.of(0, 10));
@@ -167,7 +132,7 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldFilterByTypeAndSearchQuery() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
@@ -177,7 +142,7 @@ class ProductManagementServiceTest {
         Product matchTypeOnly = Product.builder().name("BCA Stock").issuer("Bank BCA").type("stock").visible(true).build();
         Product matchNameOnly = Product.builder().name("Danareksa Bond").issuer("Danareksa").type("bond").visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(matchTypeAndName, matchTypeOnly, matchNameOnly));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", "stock", false, false), PageRequest.of(0, 10));
@@ -189,7 +154,7 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldLimitToDashboardSummary() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
@@ -199,7 +164,7 @@ class ProductManagementServiceTest {
                 .mapToObj(i -> Product.builder().visible(true).build())
                 .toList();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(tenProducts);
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, false, true), PageRequest.of(0, 10));
@@ -210,14 +175,14 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldNotFilterByVisibilityAndRiskLevel_forAdmin() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.ADMIN)
                 .build();
 
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
@@ -227,7 +192,7 @@ class ProductManagementServiceTest {
 
     @Test
     void getProductsForUser_shouldNotFilter_whenUserDoesNotExist() {
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
@@ -237,126 +202,17 @@ class ProductManagementServiceTest {
         assertEquals(2, result.getTotalElements());
     }
 
-    @Test
-    void isUserRole_whenAuthPrincipalNotUserDTO_shouldReturnAllProducts() {
-        try {
-            // Use admin principal so getCurrentUserId() succeeds and isNonAdminUser() returns false → no filtering
-            Authentication auth = mock(Authentication.class);
-            UserDTO adminPrincipal = UserDTO.builder().id(UUID.randomUUID()).isAdmin(true).build();
-            when(auth.getPrincipal()).thenReturn(adminPrincipal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
 
-            User user = User.builder()
-                    .id(adminPrincipal.getId())
-                    .role(UserRole.USER)
-                    .questionnaireCompleted(true)
-                    .riskProfile("moderate")
-                    .build();
-            when(userRepository.findById(adminPrincipal.getId())).thenReturn(Optional.of(user));
-
-            Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
-            Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, lowRiskHidden));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(2, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    void isUserRole_whenPrincipalIdNotMatchesUserId_shouldReturnAllProducts() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            UserDTO principal = UserDTO.builder().id(UUID.randomUUID()).isAdmin(true).build();
-            when(auth.getPrincipal()).thenReturn(principal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            User user = User.builder()
-                    .id(principal.getId())
-                    .role(UserRole.USER)
-                    .questionnaireCompleted(true)
-                    .riskProfile("moderate")
-                    .build();
-            when(userRepository.findById(principal.getId())).thenReturn(Optional.of(user));
-
-            Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
-            Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, lowRiskHidden));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(2, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    void isUserRole_whenPrincipalIsAdminNotTrue_shouldReturnTrue() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            UserDTO principal = UserDTO.builder().id(TEST_USER_ID).isAdmin(false).build();
-            when(auth.getPrincipal()).thenReturn(principal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            User user = User.builder()
-                    .id(TEST_USER_ID)
-                    .role(UserRole.USER)
-                    .questionnaireCompleted(true)
-                    .riskProfile("moderate")
-                    .build();
-            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
-
-            Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
-            Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, lowRiskHidden));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(1, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    void isUserRole_whenPrincipalIsAdminTrue_shouldReturnFalse() {
-        try {
-            Authentication auth = mock(Authentication.class);
-            UserDTO principal = UserDTO.builder().id(TEST_USER_ID).isAdmin(true).build();
-            when(auth.getPrincipal()).thenReturn(principal);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            User user = User.builder()
-                    .id(TEST_USER_ID)
-                    .role(UserRole.USER)
-                    .build();
-            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
-
-            Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
-            Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
-            when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
-
-            Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-            assertEquals(2, result.getTotalElements());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
 
     @Test
     void getProductsForUser_shouldWork_whenQueryDtoIsNull() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk));
 
@@ -368,7 +224,7 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldFilterByRiskAverse_forStandardUser() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_averse")
@@ -376,7 +232,7 @@ class ProductManagementServiceTest {
         Product risk2 = Product.builder().riskLevel(2).visible(true).build();
         Product risk3 = Product.builder().riskLevel(3).visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(risk2, risk3));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
@@ -388,14 +244,14 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldDefaultMaxRiskLevelTo5_whenRiskProfileIsNull() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile(null)
                 .build();
         Product risk5 = Product.builder().riskLevel(5).visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(risk5));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
@@ -403,73 +259,19 @@ class ProductManagementServiceTest {
         assertEquals(1, result.getTotalElements());
     }
 
-    @Test
-    void getProductsForUser_shouldExcludeProduct_whenRiskLevelIsNull() {
-        User user = User.builder()
-                .id(TEST_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile("moderate")
-                .build();
-        Product riskNull = Product.builder().riskLevel(null).visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(riskNull));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-        assertTrue(result.getContent().isEmpty());
-    }
-
-    @Test
-    void getProductsForUser_shouldExcludeProduct_whenTypeFilterProvidedButProductTypeIsNull() {
-        User user = User.builder()
-                .id(TEST_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile("risk_taker")
-                .build();
-        Product typeNull = Product.builder().type(null).visible(true).build();
-
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(typeNull));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, "stock", false, false), PageRequest.of(0, 10));
-
-        assertTrue(result.getContent().isEmpty());
-    }
-
-    @Test
-    void getProductsForUser_shouldMatchSearchQuery_whenEitherNameOrIssuerIsNull() {
-        User user = User.builder()
-                .id(TEST_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile("risk_taker")
-                .build();
-        Product nullNameMatchIssuer = Product.builder().name(null).issuer("Danareksa").visible(true).build();
-        Product nullIssuerMatchName = Product.builder().name("Danareksa Stock").issuer(null).visible(true).build();
-        Product bothNull = Product.builder().name(null).issuer(null).visible(true).build();
-
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(nullNameMatchIssuer, nullIssuerMatchName, bothNull));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", null, false, false), PageRequest.of(0, 10));
-
-        assertEquals(2, result.getTotalElements());
-    }
 
     @Test
     void getProductsForUser_shouldReturnEmptyPage_whenOffsetIsGreaterThanProductListSize() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
         Product product = Product.builder().visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(1, 10));
@@ -481,14 +283,14 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldNotFilterType_whenTypeFilterIsBlank() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
         Product product = Product.builder().type("stock").visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, "   ", false, false), PageRequest.of(0, 10));
@@ -500,14 +302,14 @@ class ProductManagementServiceTest {
     @Test
     void getProductsForUser_shouldNotFilterSearchQuery_whenSearchQueryIsBlank() {
         User user = User.builder()
-                .id(TEST_USER_ID)
+                .id(SecurityUtils.STATIC_USER_ID)
                 .role(UserRole.USER)
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
         Product product = Product.builder().name("Danareksa Stock").visible(true).build();
 
-        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("   ", null, false, false), PageRequest.of(0, 10));

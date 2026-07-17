@@ -51,9 +51,9 @@ class GoalControllerTest extends BaseControllerTest {
 
         mockMvc.perform(get("/api/v1/me/goals"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Retirement Fund"))
-                .andExpect(jsonPath("$[0].target_amount").value(500000.00))
-                .andExpect(jsonPath("$[0].status").value("IN_PROGRESS"));
+                .andExpect(jsonPath("$.result[0].name").value("Retirement Fund"))
+                .andExpect(jsonPath("$.result[0].target_amount").value(500000.00))
+                .andExpect(jsonPath("$.result[0].status").value("IN_PROGRESS"));
     }
 
     @Test
@@ -70,9 +70,9 @@ class GoalControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"type\":\"retirement\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Retirement Fund"))
-                .andExpect(jsonPath("$.target_amount").value(500000.00))
-                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+                .andExpect(jsonPath("$.result.name").value("Retirement Fund"))
+                .andExpect(jsonPath("$.result.target_amount").value(500000.00))
+                .andExpect(jsonPath("$.result.status").value("IN_PROGRESS"));
     }
 
     @Test
@@ -81,24 +81,23 @@ class GoalControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"type\":\"retirement\",\"target_amount\":-100.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid field values"))
-                .andExpect(jsonPath("$.type").value("ERR-001"))
-                .andExpect(jsonPath("$.details[0].field").value("target_amount"))
-                .andExpect(jsonPath("$.details[0].reason").value("Must not be negative"));
+                .andExpect(jsonPath("$.message").value("INVALID FIELD VALUES"))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.error.fields[0].field").value("targetAmount"))
+                .andExpect(jsonPath("$.error.fields[0].reason").value("Must not be negative"));
     }
 
     @Test
-    void createGoal_shouldReturn422WhenMultiplePriority() throws Exception {
+    void createGoal_shouldReturn409WhenMultiplePriority() throws Exception {
         when(goalsManagementService.createGoalForUser(any(GoalRegistrationDTO.class)))
                 .thenThrow(new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS, "Can’t set more than 1 priority"));
 
         mockMvc.perform(post("/api/v1/me/goals")
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"type\":\"retirement\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Can’t set more than 1 priority"))
-                .andExpect(jsonPath("$.type").value("ERR-002"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Can’t set more than 1 priority"))
+                .andExpect(jsonPath("$.code").value(409));
     }
 
     @Test
@@ -116,9 +115,9 @@ class GoalControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Retirement Fund"))
-                .andExpect(jsonPath("$.target_amount").value(500000.00))
-                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+                .andExpect(jsonPath("$.result.name").value("Retirement Fund"))
+                .andExpect(jsonPath("$.result.target_amount").value(500000.00))
+                .andExpect(jsonPath("$.result.status").value("IN_PROGRESS"));
     }
 
     @Test
@@ -128,14 +127,14 @@ class GoalControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"target_amount\":-100.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid field values"))
-                .andExpect(jsonPath("$.type").value("ERR-001"))
-                .andExpect(jsonPath("$.details[0].field").value("target_amount"))
-                .andExpect(jsonPath("$.details[0].reason").value("Must not be negative"));
+                .andExpect(jsonPath("$.message").value("INVALID FIELD VALUES"))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.error.fields[0].field").value("targetAmount"))
+                .andExpect(jsonPath("$.error.fields[0].reason").value("Must not be negative"));
     }
 
     @Test
-    void updateGoal_shouldReturn422WhenMultiplePriority() throws Exception {
+    void updateGoal_shouldReturn409WhenMultiplePriority() throws Exception {
         UUID id = UUID.randomUUID();
         when(goalsManagementService.updateGoalForUser(any(UUID.class), any(GoalEditingDTO.class)))
                 .thenThrow(new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS, "Can’t set more than 1 priority"));
@@ -143,14 +142,13 @@ class GoalControllerTest extends BaseControllerTest {
         mockMvc.perform(put("/api/v1/me/goals/" + id)
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Can’t set more than 1 priority"))
-                .andExpect(jsonPath("$.type").value("ERR-002"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Can’t set more than 1 priority"))
+                .andExpect(jsonPath("$.code").value(409));
     }
 
     @Test
-    void updateGoal_shouldReturn422WhenInsufficientIncome() throws Exception {
+    void updateGoal_shouldReturn403WhenInsufficientIncome() throws Exception {
         UUID id = UUID.randomUUID();
         when(goalsManagementService.updateGoalForUser(any(UUID.class), any(GoalEditingDTO.class)))
                 .thenThrow(new CoreThrowHandler(ApiError.INSUFFICIENT_INCOME, "Can’t set more allocation than income"));
@@ -158,10 +156,9 @@ class GoalControllerTest extends BaseControllerTest {
         mockMvc.perform(put("/api/v1/me/goals/" + id)
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Can’t set more allocation than income"))
-                .andExpect(jsonPath("$.type").value("ERR-003"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Can’t set more allocation than income"))
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test
@@ -174,15 +171,15 @@ class GoalControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content("{\"name\":\"Retirement Fund\",\"target_amount\":500000.0,\"monthly_contribution\":1000.0,\"target_date\":\"2040-01-01\",\"is_priority\":true}"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("No valid item with the ID"))
+                .andExpect(jsonPath("$.message").value("No valid item with the ID"))
                 .andExpect(jsonPath("$.code").value(404));
     }
 
     @Test
-    void deleteGoal_shouldReturnNoContent() throws Exception {
+    void deleteGoal_shouldReturnOk() throws Exception {
         UUID id = UUID.randomUUID();
         mockMvc.perform(delete("/api/v1/me/goals/" + id))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -193,20 +190,20 @@ class GoalControllerTest extends BaseControllerTest {
 
         mockMvc.perform(delete("/api/v1/me/goals/" + id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("No valid item with the ID"))
+                .andExpect(jsonPath("$.message").value("No valid item with the ID"))
                 .andExpect(jsonPath("$.code").value(404));
     }
 
     @Test
-    void deleteGoal_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
+    void deleteGoal_shouldReturn403WhenQuestionnaireNotCompleted() throws Exception {
         UUID id = UUID.randomUUID();
         doThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER, "Risk Profiler Assessment Required"))
                 .when(goalsManagementService).deleteGoalForUser(any(UUID.class));
 
         mockMvc.perform(delete("/api/v1/me/goals/" + id))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test
@@ -229,21 +226,21 @@ class GoalControllerTest extends BaseControllerTest {
 
         mockMvc.perform(get("/api/v1/me/goals/projections"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Retirement Fund"))
-                .andExpect(jsonPath("$[0].projected-date").value("2050-10-02"))
-                .andExpect(jsonPath("$[0].recommended-contribution").value(2000.00))
-                .andExpect(jsonPath("$[0].time-series[0].month").value(1))
-                .andExpect(jsonPath("$[0].time-series[0].value").value(1000.00));
+                .andExpect(jsonPath("$.result[0].name").value("Retirement Fund"))
+                .andExpect(jsonPath("$.result[0].projected-date").value("2050-10-02"))
+                .andExpect(jsonPath("$.result[0].recommended-contribution").value(2000.00))
+                .andExpect(jsonPath("$.result[0].time-series[0].month").value(1))
+                .andExpect(jsonPath("$.result[0].time-series[0].value").value(1000.00));
     }
 
     @Test
-    void getGoalProjections_shouldReturn422WhenQuestionnaireNotCompleted() throws Exception {
+    void getGoalProjections_shouldReturn403WhenQuestionnaireNotCompleted() throws Exception {
         when(goalsProjectionService.getProjectionsForUser())
                 .thenThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER, "Risk Profiler Assessment Required"));
 
         mockMvc.perform(get("/api/v1/me/goals/projections"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("Risk Profiler Assessment Required"))
-                .andExpect(jsonPath("$.code").value(422));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Risk Profiler Assessment Required"))
+                .andExpect(jsonPath("$.code").value(403));
     }
 }

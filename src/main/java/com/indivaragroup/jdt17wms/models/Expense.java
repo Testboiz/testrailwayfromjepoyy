@@ -26,31 +26,31 @@ public class Expense {
     @Column(name = "financial_profile_id", nullable = false)
     private UUID financialProfileId;
 
-    @Column(name = "housing", precision = 18, scale = 4)
+    @Column(name = "housing", precision = 18, scale = 4,  nullable = false)
     private BigDecimal housing;
 
-    @Column(name = "food", precision = 18, scale = 4)
+    @Column(name = "food", precision = 18, scale = 4,   nullable = false)
     private BigDecimal food;
 
-    @Column(name = "transport", precision = 18, scale = 4)
+    @Column(name = "transport", precision = 18, scale = 4,   nullable = false)
     private BigDecimal transport;
 
-    @Column(name = "utilities", precision = 18, scale = 4)
+    @Column(name = "utilities", precision = 18, scale = 4,   nullable = false)
     private BigDecimal utilities;
 
-    @Column(name = "healthcare", precision = 18, scale = 4)
+    @Column(name = "healthcare", precision = 18, scale = 4,   nullable = false)
     private BigDecimal healthcare;
 
-    @Column(name = "entertainment", precision = 18, scale = 4)
+    @Column(name = "entertainment", precision = 18, scale = 4,   nullable = false)
     private BigDecimal entertainment;
 
-    @Column(name = "insurance", precision = 18, scale = 4)
+    @Column(name = "insurance", precision = 18, scale = 4,   nullable = false)
     private BigDecimal insurance;
 
-    @Column(name = "other", precision = 18, scale = 4)
+    @Column(name = "other", precision = 18, scale = 4,   nullable = false)
     private BigDecimal other;
 
-    @Column(name = "total_expenses", precision = 18, scale = 4)
+    @Column(name = "total_expenses", precision = 18, scale = 4,   nullable = false)
     private BigDecimal totalExpenses;
 
     @CreationTimestamp

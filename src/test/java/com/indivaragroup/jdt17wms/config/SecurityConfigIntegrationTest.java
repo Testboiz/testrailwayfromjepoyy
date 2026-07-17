@@ -1,7 +1,5 @@
 package com.indivaragroup.jdt17wms.config;
 
-import com.indivaragroup.jdt17wms.dto.utils.UserSecurityProjection;
-import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.*;
 import com.indivaragroup.jdt17wms.services.AuthService;
 import com.indivaragroup.jdt17wms.services.DashboardService;
@@ -15,7 +13,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -125,17 +122,11 @@ class SecurityConfigIntegrationTest {
 
         when(jwtService.isAccessToken(token)).thenReturn(true);
         when(jwtService.getEmailFromToken(token)).thenReturn("user@example.com");
-        when(jwtService.getRoleFromToken(token)).thenReturn("ROLE_USER");
+        when(jwtService.getRoleFromToken(token)).thenReturn("USER");
+        when(jwtService.getUserIdFromToken(token)).thenReturn(UUID.randomUUID());
+        when(jwtService.getNameFromToken(token)).thenReturn("Test User");
 
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
-        when(projection.getEmail()).thenReturn("user@example.com");
-        when(projection.getRole()).thenReturn(UserRole.USER);
-        when(projection.getPriorCount()).thenReturn(1L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
-                .thenReturn(java.util.Optional.of(projection));
-
-        mockMvc.perform(get("/api/v1/admin-dashboard")
+        mockMvc.perform(get("/api/v1/admin/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("Forbidden"))
@@ -148,15 +139,9 @@ class SecurityConfigIntegrationTest {
 
         when(jwtService.isAccessToken(token)).thenReturn(true);
         when(jwtService.getEmailFromToken(token)).thenReturn("user@example.com");
-        when(jwtService.getRoleFromToken(token)).thenReturn("ROLE_USER");
-
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
-        when(projection.getEmail()).thenReturn("user@example.com");
-        when(projection.getRole()).thenReturn(UserRole.USER);
-        when(projection.getPriorCount()).thenReturn(1L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
-                .thenReturn(java.util.Optional.of(projection));
+        when(jwtService.getRoleFromToken(token)).thenReturn("USER");
+        when(jwtService.getUserIdFromToken(token)).thenReturn(UUID.randomUUID());
+        when(jwtService.getNameFromToken(token)).thenReturn("Test User");
 
         mockMvc.perform(get("/api/v1/me/dashboard")
                         .header("Authorization", "Bearer " + token))
@@ -169,15 +154,9 @@ class SecurityConfigIntegrationTest {
 
         when(jwtService.isAccessToken(token)).thenReturn(true);
         when(jwtService.getEmailFromToken(token)).thenReturn("user@example.com");
-        when(jwtService.getRoleFromToken(token)).thenReturn("ROLE_USER");
-
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
-        when(projection.getEmail()).thenReturn("user@example.com");
-        when(projection.getRole()).thenReturn(UserRole.USER);
-        when(projection.getPriorCount()).thenReturn(1L);
-
-        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
-                .thenReturn(java.util.Optional.of(projection));
+        when(jwtService.getRoleFromToken(token)).thenReturn("USER");
+        when(jwtService.getUserIdFromToken(token)).thenReturn(UUID.randomUUID());
+        when(jwtService.getNameFromToken(token)).thenReturn("Test User");
 
         mockMvc.perform(get("/me/dashboard")
                         .header("Authorization", "Bearer " + token))
@@ -196,20 +175,12 @@ class SecurityConfigIntegrationTest {
     void whenAuthenticatedAsUser_loggingOut_shouldReturn200Ok() throws Exception {
         String token = "valid-user-token";
         UUID mockUserId = UUID.randomUUID();
-        
+
         when(jwtService.isAccessToken(token)).thenReturn(true);
         when(jwtService.getEmailFromToken(token)).thenReturn("user@example.com");
-        when(jwtService.getRoleFromToken(token)).thenReturn("ROLE_USER");
-        
-        UserSecurityProjection projection = mock(UserSecurityProjection.class);
-        when(projection.getId()).thenReturn(mockUserId);
-        when(projection.getName()).thenReturn("Test User");
-        when(projection.getEmail()).thenReturn("user@example.com");
-        when(projection.getRole()).thenReturn(UserRole.USER);
-        when(projection.getPriorCount()).thenReturn(1L);
-        
-        when(userRepository.findUserSecurityProjectionByEmail("user@example.com"))
-                .thenReturn(java.util.Optional.of(projection));
+        when(jwtService.getRoleFromToken(token)).thenReturn("USER");
+        when(jwtService.getUserIdFromToken(token)).thenReturn(mockUserId);
+        when(jwtService.getNameFromToken(token)).thenReturn("Test User");
 
         com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO mockResponse =
                 com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO.builder()

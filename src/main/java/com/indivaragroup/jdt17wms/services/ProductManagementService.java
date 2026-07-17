@@ -1,7 +1,10 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.constants.ProductConstants;
+import com.indivaragroup.jdt17wms.constants.RiskConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Product;
@@ -12,9 +15,6 @@ import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -33,19 +33,14 @@ public class ProductManagementService {
     }
 
     private boolean isNonAdminUser(User user) {
-        if (user == null || user.getRole() == UserRole.ADMIN) {
-            return false;
-        }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof UserDTO principal
-                && principal.getId().equals(user.getId())
-                && !Boolean.TRUE.equals(principal.getIsAdmin());
+        return user != null && user.getRole() != UserRole.ADMIN;
     }
 
     public Page<Product> getAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable);
     }
 
+    @RiskProfileAssessmentRequired
     public Page<Product> getProductsForUser(
             ProductQueryDTO queryDTO,
             Pageable pageable) {
@@ -57,11 +52,6 @@ public class ProductManagementService {
         Boolean dashboardSummary = dto.getDashboardSummary();
 
         User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
-
-        // Check user risk profile questionnaire
-        if (isNonAdminUser(user) && !Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-        }
 
         List<Product> products = productRepository.findAll();
 
@@ -76,18 +66,13 @@ public class ProductManagementService {
         if (isNonAdminUser(user)) {
             boolean shouldShowAll = Boolean.TRUE.equals(showAll);
             String riskProfile = user.getRiskProfile();
-            boolean isRiskTaker = "risk_taker".equalsIgnoreCase(riskProfile);
+            boolean isRiskTaker = RiskConstants.RISK_TAKER.equalsIgnoreCase(riskProfile);
 
             if (!shouldShowAll && !isRiskTaker) {
-                int maxRiskLevel = 5;
-                if ("risk_averse".equalsIgnoreCase(riskProfile)) {
-                    maxRiskLevel = 2;
-                } else if ("moderate".equalsIgnoreCase(riskProfile)) {
-                    maxRiskLevel = 4;
-                }
-                final int limitRisk = maxRiskLevel;
+                final int limitRisk = RiskConstants.MAX_RISK_LEVELS.getOrDefault(
+                  riskProfile.toLowerCase(), RiskConstants.MAX_RISK_LEVELS.get(RiskConstants.RISK_TAKER));
                 products = products.stream()
-                        .filter(p -> p.getRiskLevel() != null && p.getRiskLevel() <= limitRisk)
+                        .filter(p -> p.getRiskLevel() <= limitRisk)
                         .toList();
             }
         }
@@ -110,7 +95,7 @@ public class ProductManagementService {
         // 5. Dashboard Summary limit
         if (Boolean.TRUE.equals(dashboardSummary)) {
             products = products.stream()
-                    .limit(5)
+                    .limit(ProductConstants.SUMMARY_COUNT)
                     .toList();
         }
 
@@ -127,7 +112,7 @@ public class ProductManagementService {
     }
 
     private static boolean containsIgnoreCase(String source, String query) {
-        return source != null && source.toLowerCase().contains(query);
+        return source.toLowerCase().contains(query);
     }
 
     public Product updateProductVisibility(UUID id, Boolean visibility) {
@@ -135,6 +120,17 @@ public class ProductManagementService {
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
         product.setVisible(visibility);
         return productRepository.save(product);
+    }
+
+    public Product getProductById(UUID id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+        if (!Boolean.TRUE.equals(product.getVisible())) {
+            throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+        }
+
+        return product;
     }
 }
 

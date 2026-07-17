@@ -85,12 +85,28 @@ class ActionRecommendationServiceHelperTest {
                 .visible(true)
                 .annualReturn(new BigDecimal("10"))
                 .build();
-        List<Product> products = List.of(p1, p2, p3);
-        // Choose type "stock", maxRisk 4, no exclusions → should pick p1 (risk within limit, highest return among allowed)
+        Product p4 = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Prod4")
+                .type("stock")
+                .riskLevel(2)
+                .visible(false) // delisted/disabled
+                .annualReturn(new BigDecimal("12"))
+                .build();
+        Product p5 = Product.builder()
+                .id(UUID.randomUUID())
+                .name("Prod5")
+                .type("stock")
+                .riskLevel(2)
+                .visible(null) // delisted/disabled (null check)
+                .annualReturn(new BigDecimal("15"))
+                .build();
+        List<Product> products = List.of(p1, p2, p3, p4, p5);
+        // Choose type "stock", maxRisk 4, no exclusions → should pick p1 (risk within limit, highest return among allowed visible products)
         Product result = (Product) method.invoke(service, products, List.of("stock"), 4, null);
         assertNotNull(result);
         assertEquals(p1.getId(), result.getId());
-        // Exclude p1 → no eligible stock product because p3 exceeds maxRisk 4
+        // Exclude p1 → no eligible stock product because p3 exceeds maxRisk 4, and p4/p5 are delisted
         result = (Product) method.invoke(service, products, List.of("stock"), 4, Set.of(p1.getId()));
         assertNull(result);
         // Type "bond" with maxRisk 3 → should pick p2

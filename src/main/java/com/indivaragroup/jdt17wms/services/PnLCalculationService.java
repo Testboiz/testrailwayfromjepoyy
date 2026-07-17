@@ -51,7 +51,7 @@ public class PnLCalculationService {
         Product product = productRepository.findById(asset.getProductId())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
-        BigDecimal currentPrice = product.getCurrentPrice() != null ? product.getCurrentPrice() : BigDecimal.ZERO;
+        BigDecimal currentPrice = product.getCurrentPrice();
 
         List<TransactionHistory> buyTransactions = transactionHistoryRepository
                 .findAllByAssetIdAndActionOrderByTransactionDateAsc(asset.getId(), TransactionAction.BUY);
