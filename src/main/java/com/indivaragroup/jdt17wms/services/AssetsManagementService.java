@@ -1,9 +1,11 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
-import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.AssetTransactionDTO;
+import com.indivaragroup.jdt17wms.dto.request.AssetValueUpdateDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
+import com.indivaragroup.jdt17wms.dto.response.AssetUpdateResponseDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
@@ -37,19 +39,22 @@ public class AssetsManagementService implements VerifiedUserProvider {
     private final ProductRepository productRepository;
     private final GoalRepository goalRepository;
     private final RecommendationRepository recommendationRepository;
+    private final AssetTransactionService assetTransactionService;
 
     public AssetsManagementService(AssetRepository assetRepository,
                                    UserRepository userRepository,
                                    TransactionHistoryRepository transactionHistoryRepository,
                                    ProductRepository productRepository,
                                    GoalRepository goalRepository,
-                                   RecommendationRepository recommendationRepository) {
+                                   RecommendationRepository recommendationRepository,
+                                   AssetTransactionService assetTransactionService) {
         this.assetRepository = assetRepository;
         this.userRepository = userRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.productRepository = productRepository;
         this.goalRepository = goalRepository;
         this.recommendationRepository = recommendationRepository;
+        this.assetTransactionService = assetTransactionService;
     }
 
     public List<Asset> getAssetsForUser() {
@@ -175,9 +180,57 @@ public class AssetsManagementService implements VerifiedUserProvider {
         assetRepository.delete(asset);
     }
 
+    @Transactional
+    public AssetUpdateResponseDTO executeTransaction(UUID assetId, AssetTransactionDTO dto) {
+        User user = getVerifiedUser();
+
+        if (dto.getAction() == TransactionAction.BUY) {
+            return assetTransactionService.executeBuyTransaction(assetId, dto, user);
+        } else if (dto.getAction() == TransactionAction.SELL) {
+            return assetTransactionService.executeSellTransaction(assetId, dto, user);
+        }
+
+        throw new CoreThrowHandler(ApiError.BAD_REQUEST, "Invalid transaction action");
+    }
+
+    @Transactional
+    public Asset updateAssetGoal(UUID assetId, UUID goalId) {
+        User user = getVerifiedUser();
+        Asset asset = assetRepository.findById(assetId)
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+        if (!asset.getUserId().equals(user.getId())) {
+            throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+        }
+
+        if (goalId != null) {
+            goalRepository.findById(goalId)
+                    .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+        }
+
+        asset.setGoalId(goalId);
+        return assetRepository.save(asset);
+    }
+
+    @Transactional
+    public Asset updateAssetValue(UUID assetId, AssetValueUpdateDTO dto) {
+        User user = getVerifiedUser();
+        return assetTransactionService.updateAssetCurrentValue(assetId, dto.getCurrentValue(), dto.getNotes(), user);
+    }
+
+    public Asset findAssetByIdAndUser(UUID assetId) {
+        User user = getVerifiedUser();
+        Asset asset = assetRepository.findById(assetId)
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+        if (!asset.getUserId().equals(user.getId())) {
+            throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+        }
+        return asset;
+    }
+
     @Override
     public UserRepository userRepository() {
-        return null;
+        return this.userRepository;
     }
 
     @Override

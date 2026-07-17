@@ -1,9 +1,12 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.AssetTransactionDTO;
+import com.indivaragroup.jdt17wms.dto.request.AssetValueUpdateDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.dto.response.ApiPath;
 import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
+import com.indivaragroup.jdt17wms.dto.response.AssetUpdateResponseDTO;
 import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -64,5 +67,38 @@ public class AssetController {
     public ApiResponse<Void> deleteAsset(@PathVariable UUID id) {
         assetsManagementService.deleteAssetForUser(id);
         return ApiResponse.success(ApiSuccess.ASSET_DELETED, null);
+    }
+
+    // --- New endpoints ---
+
+    @PostMapping("/{assetId}/transactions")
+    public ApiResponse<AssetUpdateResponseDTO> executeTransaction(
+            @PathVariable UUID assetId,
+            @Valid @RequestBody AssetTransactionDTO dto) {
+        return ApiResponse.success(ApiSuccess.EXECUTED,
+                assetsManagementService.executeTransaction(assetId, dto));
+    }
+
+    @PatchMapping("/{assetId}/value")
+    public ApiResponse<Asset> updateAssetValue(
+            @PathVariable UUID assetId,
+            @Valid @RequestBody AssetValueUpdateDTO dto) {
+        return ApiResponse.success(ApiSuccess.ASSET_UPDATED,
+                assetsManagementService.updateAssetValue(assetId, dto));
+    }
+
+    @PatchMapping("/{assetId}/goal")
+    public ApiResponse<Asset> updateAssetGoal(
+            @PathVariable UUID assetId,
+            @RequestParam(required = false) UUID goalId) {
+        return ApiResponse.success(ApiSuccess.ASSET_UPDATED,
+                assetsManagementService.updateAssetGoal(assetId, goalId));
+    }
+
+    @GetMapping("/{assetId}/pnl")
+    public ApiResponse<AssetsPnLResponseDTO> getAssetPnL(@PathVariable UUID assetId) {
+        Asset asset = assetsManagementService.findAssetByIdAndUser(assetId);
+        return ApiResponse.success(ApiSuccess.ASSETS_FETCHED,
+                pnLCalculationService.computePnLForAsset(asset));
     }
 }

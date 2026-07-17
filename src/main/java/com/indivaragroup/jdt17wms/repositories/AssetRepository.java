@@ -18,4 +18,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     List<Asset> findAllByPurchaseDateGreaterThanEqual(Instant purchaseDate);
     List<Asset> findAllByUserId(UUID id);
     List<Asset> findAllByGoalId(UUID goalId);
+
+    @Query("SELECT a FROM Asset a JOIN Product p ON a.productId = p.id WHERE p.type IN ('Bond', 'Sukuk', 'Deposit') AND p.visible = true")
+    List<Asset> findAllInterestBearingAssets();
 }
