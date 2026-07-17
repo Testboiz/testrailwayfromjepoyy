@@ -13,6 +13,8 @@ import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
+import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
+import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +58,12 @@ class AuditLogAspectTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private FinancialProfileRepository financialProfileRepository;
+
+    @Mock
+    private ExpenseRepository expenseRepository;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper()

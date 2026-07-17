@@ -7,11 +7,15 @@ import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.models.AuditLog;
 import com.indivaragroup.jdt17wms.models.User;
+import com.indivaragroup.jdt17wms.models.FinancialProfile;
+import com.indivaragroup.jdt17wms.models.Expense;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
+import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
+import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -33,6 +37,8 @@ public class AuditLogAspect {
     private final AssetRepository assetRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final FinancialProfileRepository financialProfileRepository;
+    private final ExpenseRepository expenseRepository;
     private final ObjectMapper objectMapper;
 
     public AuditLogAspect(AuditLogRepository auditLogRepository,
@@ -40,12 +46,16 @@ public class AuditLogAspect {
                           AssetRepository assetRepository,
                           ProductRepository productRepository,
                           UserRepository userRepository,
+                          FinancialProfileRepository financialProfileRepository,
+                          ExpenseRepository expenseRepository,
                           ObjectMapper objectMapper) {
         this.auditLogRepository = auditLogRepository;
         this.goalRepository = goalRepository;
         this.assetRepository = assetRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.financialProfileRepository = financialProfileRepository;
+        this.expenseRepository = expenseRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -86,7 +96,32 @@ public class AuditLogAspect {
             }
         }
 
-        Map<String, Object> oldEntitySnapshot = snapshotEntity(oldEntity);
+        Map<String, Object> oldEntitySnapshot = null;
+        if ("FINANCES".equalsIgnoreCase(category)) {
+            try {
+                UUID currentUserId = SecurityUtils.getCurrentUserId();
+                FinancialProfile fp = financialProfileRepository.findByUserId(currentUserId).orElse(null);
+                if (fp != null) {
+                    oldEntitySnapshot = new HashMap<>();
+                    oldEntitySnapshot.put("monthly_income", fp.getMonthlyIncome());
+                    Expense exp = expenseRepository.findByFinancialProfileId(fp.getId()).orElse(null);
+                    if (exp != null) {
+                        oldEntitySnapshot.put("housing", exp.getHousing());
+                        oldEntitySnapshot.put("food", exp.getFood());
+                        oldEntitySnapshot.put("transport", exp.getTransport());
+                        oldEntitySnapshot.put("utilities", exp.getUtilities());
+                        oldEntitySnapshot.put("healthcare", exp.getHealthcare());
+                        oldEntitySnapshot.put("entertainment", exp.getEntertainment());
+                        oldEntitySnapshot.put("insurance", exp.getInsurance());
+                        oldEntitySnapshot.put("other", exp.getOther());
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore
+            }
+        } else {
+            oldEntitySnapshot = snapshotEntity(oldEntity);
+        }
 
         Object result = joinPoint.proceed();
 
@@ -126,6 +161,30 @@ public class AuditLogAspect {
                             }
                             if (isChanged(oldQuestionnaireCompleted, updatedUser.getQuestionnaireCompleted())) {
                                 changes.add(new FieldChange("questionnaire_completed", oldQuestionnaireCompleted, updatedUser.getQuestionnaireCompleted()));
+                            }
+                        }
+                    }
+                } else if ("FINANCES".equalsIgnoreCase(category) && oldEntitySnapshot != null) {
+                    if (userId != null) {
+                        FinancialProfile updatedFp = financialProfileRepository.findByUserId(userId).orElse(null);
+                        Expense updatedExpense = null;
+                        if (updatedFp != null) {
+                            updatedExpense = expenseRepository.findByFinancialProfileId(updatedFp.getId()).orElse(null);
+                        }
+
+                        Object oldIncome = oldEntitySnapshot.get("monthly_income");
+                        if (updatedFp != null && isChanged(oldIncome, updatedFp.getMonthlyIncome())) {
+                            changes.add(new FieldChange("monthly_income", oldIncome, updatedFp.getMonthlyIncome()));
+                        }
+
+                        String[] expenseFields = {"housing", "food", "transport", "utilities", "healthcare", "entertainment", "insurance", "other"};
+                        if (updatedExpense != null) {
+                            for (String fieldName : expenseFields) {
+                                Object oldVal = oldEntitySnapshot.get(fieldName);
+                                Object newVal = getPropertyValue(updatedExpense, fieldName);
+                                if (isChanged(oldVal, newVal)) {
+                                    changes.add(new FieldChange(fieldName, oldVal, newVal));
+                                }
                             }
                         }
                     }
@@ -345,6 +404,7 @@ public class AuditLogAspect {
         case "UPDATE_PRODUCT" -> "Updated Product Visibility" + (entityId != null ? " (ID: " + entityId + ")" : "");
         case "UPDATE_RISK_PROFILE" -> "Updated Risk Profile Questionnaire";
         case "UPDATE_USER_STATUS" -> "Updated User Status" + (entityId != null ? " (ID: " + entityId + ")" : "");
+        case "UPDATE_FINANCES" -> "Updated Financial Profile and Expenses";
         default -> action + " action performed";
       };
     }
