@@ -174,4 +174,14 @@ public class AssetsManagementService implements VerifiedUserProvider {
 
         assetRepository.delete(asset);
     }
+
+    @Override
+    public UserRepository userRepository() {
+        return null;
+    }
+
+    @Override
+    public User getVerifiedUser() {
+        return VerifiedUserProvider.super.getVerifiedUser();
+    }
 }

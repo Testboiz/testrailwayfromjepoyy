@@ -233,4 +233,14 @@ public class GoalsManagementService implements VerifiedUserProvider {
 
         goalRepository.delete(goal);
     }
+
+    @Override
+    public UserRepository userRepository() {
+        return null;
+    }
+
+    @Override
+    public User getVerifiedUser() {
+        return VerifiedUserProvider.super.getVerifiedUser();
+    }
 }
