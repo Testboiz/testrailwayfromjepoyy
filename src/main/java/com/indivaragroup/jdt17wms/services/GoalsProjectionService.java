@@ -38,6 +38,9 @@ public class GoalsProjectionService {
 
   private static final int MAX_SIMULATION_MONTHS = 1_200;
   private static final int PROJECTION_WINDOW_MONTHS = 60;
+  private static final Double MONTHS_COUNT = 12.0;
+  private static final Double ONE_HUNDRED_PERCENT = 100.0;
+
 
     public GoalsProjectionService(GoalRepository goalRepository,
                                   UserRepository userRepository,
@@ -105,7 +108,7 @@ public class GoalsProjectionService {
         Product product = productRepository.findById(asset.getProductId())
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
-        rates[j] = product.getAnnualReturn().doubleValue() / 100.0 / 12.0;
+        rates[j] = product.getAnnualReturn().doubleValue() / ONE_HUNDRED_PERCENT / MONTHS_COUNT;
       }
 
       int monthsToTarget = simulateMonthsToTarget(balances, rates, contributionPerAsset, target);

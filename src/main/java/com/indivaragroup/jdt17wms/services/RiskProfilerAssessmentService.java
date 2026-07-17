@@ -66,11 +66,11 @@ public class RiskProfilerAssessmentService {
 
         String riskProfile;
         if (rawScore <= AppConstants.RISK_AVERSE_THRESHOLD) {
-            riskProfile = "risk_averse";
+            riskProfile = AppConstants.RISK_AVERSE;
         } else if (rawScore <= AppConstants.RISK_MODERATE_THRESHOLD) {
-            riskProfile = "moderate";
+            riskProfile = AppConstants.MODERATE;
         } else {
-            riskProfile = "risk_taker";
+            riskProfile = AppConstants.RISK_TAKER;
         }
 
         int outputScore = rawScore * AppConstants.RISK_SCALING_FACTOR;

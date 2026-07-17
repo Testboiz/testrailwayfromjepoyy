@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
@@ -49,9 +50,9 @@ public class DashboardService {
     public AdminDashboardDTO getAdminDashboard() {
         AdminDashboardDTO adminDashboardDTO = new AdminDashboardDTO();
         RiskProfilesDTO riskProfilesDTO = new RiskProfilesDTO();
-        riskProfilesDTO.setRiskAverse(userRepository.findByRiskProfile("risk_averse").size());
-        riskProfilesDTO.setModerate(userRepository.findByRiskProfile("moderate").size());
-        riskProfilesDTO.setRiskTaker(userRepository.findByRiskProfile("risk_taker").size());
+        riskProfilesDTO.setRiskAverse(userRepository.findByRiskProfile(AppConstants.RISK_AVERSE).size());
+        riskProfilesDTO.setModerate(userRepository.findByRiskProfile(AppConstants.MODERATE).size());
+        riskProfilesDTO.setRiskTaker(userRepository.findByRiskProfile(AppConstants.RISK_TAKER).size());
         adminDashboardDTO.setAum(assetRepository.sumTotalAmount());
         adminDashboardDTO.setUserCount(userRepository.count());
         adminDashboardDTO.setProductCount(productRepository.count());

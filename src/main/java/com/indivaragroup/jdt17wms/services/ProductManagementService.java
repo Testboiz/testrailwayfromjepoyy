@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.constants.AppConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
@@ -64,16 +65,11 @@ public class ProductManagementService {
         if (isNonAdminUser(user)) {
             boolean shouldShowAll = Boolean.TRUE.equals(showAll);
             String riskProfile = user.getRiskProfile();
-            boolean isRiskTaker = "risk_taker".equalsIgnoreCase(riskProfile);
+            boolean isRiskTaker = AppConstants.RISK_TAKER.equalsIgnoreCase(riskProfile);
 
             if (!shouldShowAll && !isRiskTaker) {
-                int maxRiskLevel = 5;
-                if ("risk_averse".equalsIgnoreCase(riskProfile)) {
-                    maxRiskLevel = 2;
-                } else if ("moderate".equalsIgnoreCase(riskProfile)) {
-                    maxRiskLevel = 4;
-                }
-                final int limitRisk = maxRiskLevel;
+                final int limitRisk = AppConstants.MAX_RISK_LEVELS.getOrDefault(
+                  riskProfile.toLowerCase(), AppConstants.MAX_RISK_LEVELS.get(AppConstants.RISK_TAKER));
                 products = products.stream()
                         .filter(p -> p.getRiskLevel() <= limitRisk)
                         .toList();

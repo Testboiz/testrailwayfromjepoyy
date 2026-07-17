@@ -5,17 +5,20 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 public final class AppConstants {
     private AppConstants() {
         // Prevent instantiation
     }
 
-  public static final String CUSTOM_GOAL = "custom";
-  public static final String MEDIUM_PRIORITY = "medium";
-  public static final String HIGH_PRIORITY = "high";
-  public static final String LOW_PRIORITY = "low";
+    public static final String CUSTOM_GOAL = "custom";
+    public static final String MEDIUM_PRIORITY = "medium";
+    public static final String HIGH_PRIORITY = "high";
+    public static final String LOW_PRIORITY = "low";
+
+    public static final String RISK_AVERSE = "risk_averse";
+    public static final String MODERATE = "moderate";
+    public static final String RISK_TAKER = "risk_taker";
 
     public static final int DEFAULT_QUESTIONNAIRE_SIZE = 5;
     public static final int RISK_AVERSE_THRESHOLD = 3;
@@ -23,6 +26,8 @@ public final class AppConstants {
     public static final int RISK_SCALING_FACTOR = 10;
     public static final int MIN_ANSWER_SCORE = 0;
     public static final int MAX_ANSWER_SCORE = 2;
+
+    public static final int ADMIN_SUMMARY_AUDIT_LOG_LIMIT = 5;
 
     // Asset/Product Type Constants;typeLabels
     public static final String MONEY_MARKET = "money_market";
@@ -47,14 +52,14 @@ public final class AppConstants {
             CUSTOM_GOAL, List.of(STOCK, MONEY_MARKET, BALANCED_FUND, BOND, SUKUK, DEPOSIT)
     );
     public static final Map<String, Integer> MAX_RISK_LEVELS = Map.of(
-            "risk_averse", 2,
-            "moderate", 4,
-            "risk_taker", 5
+            RISK_AVERSE, 2,
+            MODERATE, 4,
+            RISK_TAKER, 5
     );
     public static final Map<String, Double> RISK_TARGETS = Map.of(
-            "risk_averse", 1.5,
-            "moderate", 2.5,
-            "risk_taker", 4.0
+            RISK_AVERSE, 1.5,
+            MODERATE, 2.5,
+            RISK_TAKER, 4.0
     );
     public static final Map<String, String> TYPE_LABELS = Map.of(
             MONEY_MARKET, "Money Market",

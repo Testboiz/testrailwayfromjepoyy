@@ -161,9 +161,8 @@ public class GoalsManagementService {
     if (targetDate.isBefore(now)) {
       errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date must be in the future").build());
     } else {
-      // goal.getType() is already sanitized/normalized when the goal was created
-      String type = goal.getType() != null ? goal.getType() : "custom";
-      int maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
+      String type = goal.getType();
+      int maxMonths = AppConstants.GOAL_MAX_MONTHS.get(type.toLowerCase());
       long months = ChronoUnit.MONTHS.between(now, targetDate);
       if (months > maxMonths) {
         errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date exceeds maximum limit of " + maxMonths + " months").build());
