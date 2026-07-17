@@ -38,6 +38,9 @@ public class AssetsManagementService implements VerifiedUserProvider {
     private final GoalRepository goalRepository;
     private final RecommendationRepository recommendationRepository;
 
+    @Override
+    public UserRepository userRepository() { return userRepository; }
+
     public AssetsManagementService(AssetRepository assetRepository,
                                    UserRepository userRepository,
                                    TransactionHistoryRepository transactionHistoryRepository,
