@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.constants.ProductConstants;
 import com.indivaragroup.jdt17wms.constants.RiskConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
@@ -94,7 +95,7 @@ public class ProductManagementService {
         // 5. Dashboard Summary limit
         if (Boolean.TRUE.equals(dashboardSummary)) {
             products = products.stream()
-                    .limit(5)
+                    .limit(ProductConstants.SUMMARY_COUNT)
                     .toList();
         }
 

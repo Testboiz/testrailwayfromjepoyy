@@ -12,6 +12,8 @@ public final class ProductConstants {
       // Prevent Instantiation
     }
 
+    public static final int SUMMARY_COUNT = 5;
+
     public static final String MONEY_MARKET = "money_market";
     public static final String DEPOSIT = "deposit";
     public static final String BOND = "bond";

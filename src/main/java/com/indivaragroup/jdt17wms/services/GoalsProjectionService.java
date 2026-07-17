@@ -1,12 +1,12 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.constants.GoalConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
-import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -25,7 +25,6 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class GoalsProjectionService {
@@ -41,6 +40,7 @@ public class GoalsProjectionService {
   private static final int PROJECTION_WINDOW_MONTHS = 60;
   private static final Double MONTHS_COUNT = 12.0;
   private static final Double ONE_HUNDRED_PERCENT = 100.0;
+  private static final int DOUBLE_DECIMAL_DIGITS = 2;
 
 
     public GoalsProjectionService(GoalRepository goalRepository,
@@ -65,13 +65,6 @@ public class GoalsProjectionService {
     if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
       throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
     }
-
-    // NOTE: intentionally left as-is pending discussion with team — not currently
-    // wired into any calculation below.
-    BigDecimal defaultReturn = financialProfileRepository.findByUserId(user.getId())
-      .map(FinancialProfile::getDefaultReturn)
-      .orElse(BigDecimal.valueOf(7.50));
-    double annualRate = defaultReturn.doubleValue();
 
     double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
 
@@ -121,7 +114,7 @@ public class GoalsProjectionService {
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         if (product.getAnnualReturn() == null) {
-          throw new IllegalStateException("Missing Annual Return");
+          throw new CoreThrowHandler(ApiError.BAD_REQUEST,"Missing Annual Return");
         }
         rates[j] = product.getAnnualReturn().doubleValue() / ONE_HUNDRED_PERCENT / MONTHS_COUNT;
       }
@@ -226,7 +219,7 @@ public class GoalsProjectionService {
   }
 
   private BigDecimal toScaledBigDecimal(double value) {
-    return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+    return BigDecimal.valueOf(value).setScale(DOUBLE_DECIMAL_DIGITS, RoundingMode.HALF_UP);
   }
 
   private boolean hasGrowthPotential(double[] balances, double[] rates, double contributionPerBucket) {
