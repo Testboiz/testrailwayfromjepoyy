@@ -124,6 +124,17 @@ public class ProductManagementService {
         product.setVisible(visibility);
         return productRepository.save(product);
     }
+
+    public Product getProductById(UUID id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+        if (!Boolean.TRUE.equals(product.getVisible())) {
+            throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+        }
+
+        return product;
+    }
 }
 
 
