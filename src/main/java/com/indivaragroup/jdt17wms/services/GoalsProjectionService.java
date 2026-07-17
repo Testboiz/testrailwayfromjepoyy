@@ -37,8 +37,11 @@ public class GoalsProjectionService {
     private final ProductRepository productRepository;
     private final Clock clock;
 
-  private static final int MAX_SIMULATION_MONTHS = 12_000;
+  private static final int MAX_SIMULATION_MONTHS = 1_200;
   private static final int PROJECTION_WINDOW_MONTHS = 60;
+  private static final Double MONTHS_COUNT = 12.0;
+  private static final Double ONE_HUNDRED_PERCENT = 100.0;
+
 
     public GoalsProjectionService(GoalRepository goalRepository,
                                   UserRepository userRepository,
@@ -54,6 +57,7 @@ public class GoalsProjectionService {
         this.clock = clock;
     }
 
+  @RiskProfileAssessmentRequired
   public List<GoalProjectionDTO> getProjectionsForUser() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
@@ -91,8 +95,7 @@ public class GoalsProjectionService {
 
     if (assets.isEmpty()) {
       // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
-      double balance = Optional.ofNullable(goal.getCurrentAmount())
-        .map(BigDecimal::doubleValue).orElse(0.0);
+      double balance = goal.getCurrentAmount().doubleValue();
 
       int monthsToTarget = simulateMonthsToTarget(
         new double[]{balance}, new double[]{defaultMonthlyRate}, totalContribution, target);
@@ -112,8 +115,7 @@ public class GoalsProjectionService {
 
       for (int j = 0; j < kValue; j++) {
         Asset asset = assets.get(j);
-        balances[j] = Optional.ofNullable(asset.getCurrentValue())
-          .map(Number::doubleValue).orElse(0.0);
+        balances[j] = asset.getCurrentValue().doubleValue();
 
         Product product = productRepository.findById(asset.getProductId())
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
@@ -121,7 +123,7 @@ public class GoalsProjectionService {
         if (product.getAnnualReturn() == null) {
           throw new IllegalStateException("Missing Annual Return");
         }
-        rates[j] = product.getAnnualReturn().doubleValue() / 100.0 / 12.0;
+        rates[j] = product.getAnnualReturn().doubleValue() / ONE_HUNDRED_PERCENT / MONTHS_COUNT;
       }
 
       int monthsToTarget = simulateMonthsToTarget(balances, rates, contributionPerAsset, target);

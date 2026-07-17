@@ -70,7 +70,7 @@ public class RiskProfilerAssessmentService {
         } else if (rawScore <= RiskConstants.RISK_MODERATE_THRESHOLD) {
             riskProfile = "moderate";
         } else {
-            riskProfile = "risk_taker";
+            riskProfile = AppConstants.RISK_TAKER;
         }
 
         int outputScore = rawScore * RiskConstants.RISK_SCALING_FACTOR;
