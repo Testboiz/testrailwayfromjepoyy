@@ -24,6 +24,9 @@ import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class DashboardService {
@@ -47,19 +50,25 @@ public class DashboardService {
     }
 
     public AdminDashboardDTO getAdminDashboard() {
-        AdminDashboardDTO adminDashboardDTO = new AdminDashboardDTO();
-        RiskProfilesDTO riskProfilesDTO = new RiskProfilesDTO();
-        riskProfilesDTO.setRiskAverse(userRepository.findByRiskProfile("risk_averse").size());
-        riskProfilesDTO.setModerate(userRepository.findByRiskProfile("moderate").size());
-        riskProfilesDTO.setRiskTaker(userRepository.findByRiskProfile("risk_taker").size());
-        adminDashboardDTO.setAum(assetRepository.sumTotalAmount());
-        adminDashboardDTO.setUserCount(userRepository.count());
-        adminDashboardDTO.setProductCount(productRepository.count());
-        adminDashboardDTO.setTotalAuditEvents(auditLogRepository.count());
-        adminDashboardDTO.setRiskProfiles(riskProfilesDTO);
-        adminDashboardDTO.setAumTrend(createAumTrend());
+        Map<String, Long> riskMap = userRepository.countByRiskProfile().stream()
+                .collect(Collectors.toMap(
+                        UserRepository.RiskProfileCount::getRiskProfile,
+                        UserRepository.RiskProfileCount::getCount));
 
-        return adminDashboardDTO;
+        RiskProfilesDTO riskProfiles = RiskProfilesDTO.builder()
+                .riskAverse(riskMap.getOrDefault("risk_averse", 0L).intValue())
+                .moderate(riskMap.getOrDefault("moderate", 0L).intValue())
+                .riskTaker(riskMap.getOrDefault("risk_taker", 0L).intValue())
+                .build();
+
+        return AdminDashboardDTO.builder()
+                .aum(assetRepository.sumTotalAmount())
+                .userCount(userRepository.count())
+                .productCount(productRepository.count())
+                .totalAuditEvents(auditLogRepository.count())
+                .riskProfiles(riskProfiles)
+                .aumTrend(createAumTrend())
+                .build();
     }
 
   public List<AumTrendDTO> createAumTrend() {
@@ -115,7 +124,11 @@ public class DashboardService {
       Product product = productRepository.findById(asset.getProductId())
         .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
-      BigDecimal assetValue = asset.getUnits().multiply(product.getCurrentPrice());
+      BigDecimal units = Optional.ofNullable(asset.getUnits())
+        .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST, "Asset " + asset.getId() + " has null units — data corrupt"));
+      BigDecimal currentPrice = Optional.ofNullable(product.getCurrentPrice())
+        .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST, "Product " + product.getId() + " has null currentPrice — data corrupt"));
+      BigDecimal assetValue = units.multiply(currentPrice);
       totalValue = totalValue.add(assetValue);
       totalInvested = totalInvested.add(asset.getAmount());
 

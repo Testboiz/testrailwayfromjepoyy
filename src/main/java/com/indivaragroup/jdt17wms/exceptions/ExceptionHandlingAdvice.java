@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import jakarta.validation.ConstraintViolationException;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
@@ -74,6 +76,29 @@ public class ExceptionHandlingAdvice {
                         .type("ERR-001")
                         .build())
                 .toList();
+
+        Map<String, Serializable> errorMap = new HashMap<>();
+        errorMap.put("fields", (Serializable) details);
+
+        ApiResponse<?> body = ApiResponse.builder()
+                .restApiResponseHttpCode(ApiError.VALIDATION.getCode())
+                .restApiResponseMessage(ApiError.VALIDATION.getMessage())
+                .restApiResponseResult(null)
+                .restApiResponseError(errorMap)
+                .build();
+
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ValidationErrorDetailDTO> details = ex.getConstraintViolations().stream()
+                .map(v -> ValidationErrorDetailDTO.builder()
+                        .field(v.getPropertyPath().toString())
+                        .reason(v.getMessage())
+                        .type("ERR-001")
+                        .build())
+                .collect(Collectors.toList());
 
         Map<String, Serializable> errorMap = new HashMap<>();
         errorMap.put("fields", (Serializable) details);

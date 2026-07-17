@@ -1,7 +1,8 @@
 package com.indivaragroup.jdt17wms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.constants.ErrorConstants;
+import com.indivaragroup.jdt17wms.dto.response.ApiPath;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,7 +47,7 @@ public class SecurityConfig {
                 BASE_AUTH_PATH + LOGIN_PATH,
                 BASE_AUTH_PATH + REGISTER_PATH,
                 BASE_AUTH_PATH + REFRESH_TOKEN_PATH,
-                "/auth/login", "/auth/register", "/auth/refresh", "/error"
+                "/error"
         ).permitAll()
         .requestMatchers(HttpMethod.GET, BASE_PRODUCTS_PATH).hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
         .requestMatchers(HttpMethod.PUT, BASE_PRODUCTS_PATH + "/**").hasRole(UserRole.ADMIN.name())
@@ -60,12 +61,12 @@ public class SecurityConfig {
         .authenticationEntryPoint((request, response, authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write(objectMapper.writeValueAsString(AppConstants.ERROR_UNAUTHORIZED));
+            response.getWriter().write(objectMapper.writeValueAsString(ErrorConstants.ERROR_UNAUTHORIZED));
         })
         .accessDeniedHandler((request, response, accessDeniedException) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");
-            response.getWriter().write(objectMapper.writeValueAsString(AppConstants.ERROR_FORBIDDEN));
+            response.getWriter().write(objectMapper.writeValueAsString(ErrorConstants.ERROR_FORBIDDEN));
         })
       )
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

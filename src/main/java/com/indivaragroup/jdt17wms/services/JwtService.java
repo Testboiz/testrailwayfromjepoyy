@@ -38,8 +38,6 @@ public class JwtService {
     private static final String USER_ROLE_CLAIM = "role";
     private static final String USER_NAME_CLAIM = "name";
 
-    // Minimum 256-bit key for HS256
-    private static final String DEFAULT_SECRET = "indivaragroupwmsjsonwebtokensecretkey2026supersecretkey";
 
     private final Clock clock;
 

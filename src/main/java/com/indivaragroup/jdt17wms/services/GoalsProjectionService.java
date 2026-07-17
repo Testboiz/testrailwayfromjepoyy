@@ -1,12 +1,12 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.constants.GoalConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
-import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO;
 import com.indivaragroup.jdt17wms.dto.response.GoalProjectionDTO.TimeSeriesPointDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
+import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GoalsProjectionService {
@@ -36,7 +37,7 @@ public class GoalsProjectionService {
     private final ProductRepository productRepository;
     private final Clock clock;
 
-  private static final int MAX_SIMULATION_MONTHS = 1_200;
+  private static final int MAX_SIMULATION_MONTHS = 12_000;
   private static final int PROJECTION_WINDOW_MONTHS = 60;
 
     public GoalsProjectionService(GoalRepository goalRepository,
@@ -53,10 +54,20 @@ public class GoalsProjectionService {
         this.clock = clock;
     }
 
-  @RiskProfileAssessmentRequired
   public List<GoalProjectionDTO> getProjectionsForUser() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
+
+    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
+      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
+    }
+
+    // NOTE: intentionally left as-is pending discussion with team — not currently
+    // wired into any calculation below.
+    BigDecimal defaultReturn = financialProfileRepository.findByUserId(user.getId())
+      .map(FinancialProfile::getDefaultReturn)
+      .orElse(BigDecimal.valueOf(7.50));
+    double annualRate = defaultReturn.doubleValue();
 
     double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
 
@@ -80,7 +91,8 @@ public class GoalsProjectionService {
 
     if (assets.isEmpty()) {
       // Scenario A: No assets tied to the goal. Savings do not grow (0% return rate).
-      double balance = goal.getCurrentAmount().doubleValue();
+      double balance = Optional.ofNullable(goal.getCurrentAmount())
+        .map(BigDecimal::doubleValue).orElse(0.0);
 
       int monthsToTarget = simulateMonthsToTarget(
         new double[]{balance}, new double[]{defaultMonthlyRate}, totalContribution, target);
@@ -100,11 +112,15 @@ public class GoalsProjectionService {
 
       for (int j = 0; j < kValue; j++) {
         Asset asset = assets.get(j);
-        balances[j] = asset.getCurrentValue().doubleValue();
+        balances[j] = Optional.ofNullable(asset.getCurrentValue())
+          .map(Number::doubleValue).orElse(0.0);
 
         Product product = productRepository.findById(asset.getProductId())
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
+        if (product.getAnnualReturn() == null) {
+          throw new IllegalStateException("Missing Annual Return");
+        }
         rates[j] = product.getAnnualReturn().doubleValue() / 100.0 / 12.0;
       }
 
@@ -136,7 +152,7 @@ public class GoalsProjectionService {
    * goal type's default horizon, but shortened if the target date arrives sooner.
    */
   private double calculateMonthsToUse(String type, LocalDate targetDate) {
-    double maxMonths = AppConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
+    double maxMonths = GoalConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
     long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), targetDate);
     return (actualMonths > 0 && actualMonths < maxMonths) ? actualMonths : maxMonths;
   }

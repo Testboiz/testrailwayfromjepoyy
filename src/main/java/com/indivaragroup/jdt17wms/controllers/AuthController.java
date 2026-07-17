@@ -9,14 +9,14 @@ import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.auth.AuthSuccessDTO;
 import com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO;
 import com.indivaragroup.jdt17wms.dto.response.auth.RefreshTokenSuccessDTO;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
-import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.services.AuthService;
 import com.indivaragroup.jdt17wms.services.JwtService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -39,24 +39,19 @@ public class AuthController {
     }
 
     @PostMapping(ApiPath.LOGIN_PATH)
-    public ApiResponse<AuthSuccessDTO> login(@Valid @RequestBody(required = false) LoginDTO dto) {
-        if (dto == null) {
-            throw new CoreThrowHandler(ApiError.INVALID_REQUEST_BODY);
-        }
+    public ApiResponse<AuthSuccessDTO> login(@Valid @RequestBody LoginDTO dto) {
         return ApiResponse.success(ApiSuccess.LOGIN, authService.login(dto));
     }
 
     @PostMapping(ApiPath.REGISTER_PATH)
-    public ApiResponse<AuthSuccessDTO> register(@Valid @RequestBody(required = false) RegisterDTO dto) {
-        if (dto == null) {
-            throw new CoreThrowHandler(ApiError.INVALID_REQUEST_BODY);
-        }
-        return ApiResponse.created(ApiSuccess.REGISTER, authService.register(dto));
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterDTO dto) {
+        authService.register(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(ApiSuccess.REGISTER, null));
     }
 
     @PostMapping(ApiPath.LOGOUT_PATH)
-    public ApiResponse<LogoutSuccessDTO> logout(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public ApiResponse<LogoutSuccessDTO> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         String email = null;
         UUID userId = null;
@@ -73,11 +68,7 @@ public class AuthController {
     }
 
     @PostMapping(ApiPath.REFRESH_TOKEN_PATH)
-    public ApiResponse<RefreshTokenSuccessDTO> refresh(
-            @RequestBody(required = false) RefreshTokenDTO dto) {
-        if (dto == null || dto.getRefreshToken() == null || dto.getRefreshToken().trim().isEmpty()) {
-            throw new CoreThrowHandler(ApiError.REQUIRED_REFRESH_TOKEN);
-        }
+    public ApiResponse<RefreshTokenSuccessDTO> refresh(@Valid @RequestBody RefreshTokenDTO dto) {
         return ApiResponse.success(ApiSuccess.REFRESH_TOKEN,
                 authService.refreshToken(dto.getRefreshToken()));
     }

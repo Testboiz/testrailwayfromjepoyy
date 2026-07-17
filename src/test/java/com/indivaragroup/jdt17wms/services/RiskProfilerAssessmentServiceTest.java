@@ -1,6 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
-import com.indivaragroup.jdt17wms.constants.AppConstants;
+import com.indivaragroup.jdt17wms.constants.RiskConstants;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.RiskProfilerDTO;
 import com.indivaragroup.jdt17wms.dto.response.QuestionnaireDTO;
@@ -194,7 +194,7 @@ class RiskProfilerAssessmentServiceTest {
     @Test
     void updateProfilerAssessment_nullDataUsesDefaultSize() {
         when(questionnaireDataDTO.getData()).thenReturn(null);
-        List<com.indivaragroup.jdt17wms.dto.request.Answer> answers = java.util.Collections.nCopies(AppConstants.DEFAULT_QUESTIONNAIRE_SIZE,
+        List<com.indivaragroup.jdt17wms.dto.request.Answer> answers = java.util.Collections.nCopies(RiskConstants.DEFAULT_QUESTIONNAIRE_SIZE,
                 com.indivaragroup.jdt17wms.dto.request.Answer.builder().score(0).build());
         RiskProfilerDTO request = new RiskProfilerDTO(answers);
 

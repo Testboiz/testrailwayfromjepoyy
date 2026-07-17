@@ -37,7 +37,6 @@ public class TransactionHistory {
     @Column(name = "asset_id")
     private UUID assetId;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "action", nullable = false, columnDefinition = "transaction_action")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private TransactionAction action;

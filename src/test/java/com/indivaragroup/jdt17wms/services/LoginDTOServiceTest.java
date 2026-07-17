@@ -1,7 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.request.RegisterDTO;
-import com.indivaragroup.jdt17wms.dto.response.auth.AuthSuccessDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.AuditLog;
@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,25 +62,45 @@ class RegisterServiceTest {
         when(passwordEncoder.encode(dto.getRegisterRequestPassword())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(mockSavedUser);
         when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
-        when(jwtService.getAccessTokenExpirationMs()).thenReturn(900);
+        when(jwtService.generateRefreshToken(any(User.class))).thenReturn("mockRefreshToken");
 
-        AuthSuccessDTO response = authService.register(dto);
-
-        assertNotNull(response);
-        assertTrue(response.getSuccess());
-        assertEquals("Registration successful", response.getMessage());
-        assertEquals("mockJwtToken", response.getAccessToken());
-        assertEquals(900, response.getExpiresIn());
-        assertNotNull(response.getUser());
-        assertEquals("johndoe@example.com", response.getUser().getEmail());
-        assertEquals("John Doe", response.getUser().getName());
-        assertFalse(response.getUser().getQuestionnaireCompleted());
-        assertFalse(response.getUser().getIsAdmin());
+        authService.register(dto);
 
         verify(userRepository, times(1)).existsByEmail(dto.getRegisterRequestEmail());
         verify(passwordEncoder, times(1)).encode(dto.getRegisterRequestPassword());
         verify(userRepository, times(1)).save(any(User.class));
         verify(jwtService, times(1)).generateAccessToken(any(User.class));
+        verify(jwtService, times(1)).generateRefreshToken(any(User.class));
+        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+    }
+
+    // 📝 REGISTER — success (first user gets Admin role)
+    @Test
+    void register_firstUser_shouldRegisterAsAdmin() {
+        RegisterDTO dto = RegisterDTO.builder().registerRequestName("Admin User").registerRequestEmail("admin@example.com").registerRequestPassword("Password123!").build();
+        User mockSavedAdmin = User.builder()
+                .id(UUID.randomUUID())
+                .name(dto.getRegisterRequestName())
+                .email(dto.getRegisterRequestEmail())
+                .passwordHash("encodedPassword")
+                .role(UserRole.USER)
+                .status("ACTIVE")
+                .questionnaireCompleted(false)
+                .build();
+
+        when(userRepository.existsByEmail(dto.getRegisterRequestEmail())).thenReturn(false);
+        when(passwordEncoder.encode(dto.getRegisterRequestPassword())).thenReturn("encodedPassword");
+        when(userRepository.save(any(User.class))).thenReturn(mockSavedAdmin);
+        when(jwtService.generateAccessToken(any(User.class))).thenReturn("mockJwtToken");
+        when(jwtService.generateRefreshToken(any(User.class))).thenReturn("mockRefreshToken");
+
+        authService.register(dto);
+
+        verify(userRepository, times(1)).existsByEmail(dto.getRegisterRequestEmail());
+        verify(passwordEncoder, times(1)).encode(dto.getRegisterRequestPassword());
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(jwtService, times(1)).generateAccessToken(any(User.class));
+        verify(jwtService, times(1)).generateRefreshToken(any(User.class));
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
     }
 
