@@ -24,9 +24,16 @@ public enum ApiError {
     REQUIRED_REFRESH_TOKEN(HttpStatus.BAD_REQUEST.value(), "Refresh Token Required"),
     NOT_UNIQUE_EMAIL(HttpStatus.CONFLICT.value(), "Email Already Used"),
     ITEM_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "Item Not Found"),
-    DUPLICATE_PRIORITY_GOALS(HttpStatus.CONFLICT.value(), "Can’t set more than 1 priority"),
-    INSUFFICIENT_INCOME(HttpStatus.FORBIDDEN.value(), "Can’t set more allocation than income"),
+    DUPLICATE_PRIORITY_GOALS(HttpStatus.CONFLICT.value(), "Can't set more than 1 priority"),
+    INSUFFICIENT_INCOME(HttpStatus.FORBIDDEN.value(), "Can't set more allocation than income"),
 
+    // Transaction errors
+    INSUFFICIENT_UNITS(HttpStatus.BAD_REQUEST.value(), "Insufficient units available for sale"),
+    STOCK_AMOUNT_SELL_NOT_ALLOWED(HttpStatus.BAD_REQUEST.value(), "Stocks can only be sold by units"),
+    INVALID_LOT_SIZE(HttpStatus.BAD_REQUEST.value(), "Transaction must be in lot multiples"),
+    FRACTIONAL_NOT_ALLOWED(HttpStatus.BAD_REQUEST.value(), "Fractional units not allowed for this product"),
+    TRANSACTION_TYPE_REQUIRED(HttpStatus.BAD_REQUEST.value(), "Must specify either units or amount"),
+    BOTH_UNITS_AND_AMOUNT(HttpStatus.BAD_REQUEST.value(), "Cannot specify both units and amount"),
     ;
     private final int code;
     private final String message;

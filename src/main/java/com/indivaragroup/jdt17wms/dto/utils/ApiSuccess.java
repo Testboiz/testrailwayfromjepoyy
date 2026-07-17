@@ -57,7 +57,10 @@ public enum ApiSuccess {
     RECOMMENDATIONS_FETCHED(HttpStatus.OK.value(), "Recommendations retrieved successfully"),
 
     // Health
-    HEALTH_OK(HttpStatus.OK.value(), "Service is healthy");
+    HEALTH_OK(HttpStatus.OK.value(), "Service is healthy"),
+
+    // Transactions
+    EXECUTED(HttpStatus.OK.value(), "Transaction executed successfully");
 
     private final int code;
     private final String message;
