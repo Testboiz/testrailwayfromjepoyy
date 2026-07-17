@@ -246,7 +246,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
 
     @Override
     public UserRepository userRepository() {
-        return null;
+        return userRepository;
     }
 
     @Override
