@@ -69,7 +69,6 @@ public class AssetController {
         return ApiResponse.success(ApiSuccess.ASSET_DELETED, null);
     }
 
-    // --- New endpoints ---
 
     @PostMapping("/{assetId}/transactions")
     public ApiResponse<AssetUpdateResponseDTO> executeTransaction(
