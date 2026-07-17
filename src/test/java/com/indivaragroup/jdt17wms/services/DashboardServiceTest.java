@@ -4,7 +4,7 @@ import com.indivaragroup.jdt17wms.dto.response.AdminDashboardDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDashboardDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
-import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.ProductPrice;
@@ -56,13 +56,15 @@ class DashboardServiceTest {
     @Mock
     private ProductPriceRepository productPriceRepository;
 
+    private static final UUID TEST_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
     @InjectMocks
     private DashboardService dashboardService;
 
     @BeforeEach
     void setUp() {
         UserDTO userDTO = UserDTO.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .email("test@example.com")
                 .isAdmin(false)
                 .build();
@@ -85,13 +87,13 @@ class DashboardServiceTest {
     @Test
     void getUserDashboard_shouldReturnDashboardWhenQuestionnaireCompletedIsTrue() {
         User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
         UUID productId = UUID.randomUUID();
         Asset asset = Asset.builder()
-                .userId(SecurityUtils.STATIC_USER_ID)
+                .userId(TEST_USER_ID)
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
@@ -109,8 +111,8 @@ class DashboardServiceTest {
                 .price(new BigDecimal("11.50"))
                 .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(TEST_USER_ID)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productPriceRepository.findFirstByProductIdAndRecordedDateLessThanEqualOrderByRecordedDateDesc(
                 eq(productId), any(LocalDate.class)))
@@ -130,13 +132,13 @@ class DashboardServiceTest {
     @Test
     void getUserDashboard_withFuturePurchaseDate_shouldSkipInPerformanceTrend() {
         User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
         UUID productId = UUID.randomUUID();
         Asset assetFuture = Asset.builder()
-                .userId(SecurityUtils.STATIC_USER_ID)
+                .userId(TEST_USER_ID)
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
@@ -149,8 +151,8 @@ class DashboardServiceTest {
                 .currentPrice(new BigDecimal("12.00"))
                 .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(assetFuture));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(TEST_USER_ID)).thenReturn(List.of(assetFuture));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         UserDashboardDTO result = dashboardService.getUserDashboard();
@@ -163,13 +165,13 @@ class DashboardServiceTest {
     @Test
     void getUserDashboard_withPriceMissing_shouldDefaultToZeroValue() {
         User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
         UUID productId = UUID.randomUUID();
         Asset asset = Asset.builder()
-                .userId(SecurityUtils.STATIC_USER_ID)
+                .userId(TEST_USER_ID)
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
@@ -182,8 +184,8 @@ class DashboardServiceTest {
                 .currentPrice(new BigDecimal("12.00"))
                 .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(TEST_USER_ID)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productPriceRepository.findFirstByProductIdAndRecordedDateLessThanEqualOrderByRecordedDateDesc(
                 eq(productId), any(LocalDate.class)))
@@ -198,11 +200,11 @@ class DashboardServiceTest {
     @Test
     void getUserDashboard_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireCompletedIsFalse() {
         User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .questionnaireCompleted(false)
                 .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
 
         assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
     }
@@ -210,18 +212,18 @@ class DashboardServiceTest {
     @Test
     void getUserDashboard_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireCompletedIsNull() {
         User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .questionnaireCompleted(null)
                 .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
 
         assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
     }
 
     @Test
     void getUserDashboard_shouldThrowNotFoundExceptionWhenUserNotFound() {
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.empty());
 
         assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
     }
@@ -229,21 +231,21 @@ class DashboardServiceTest {
     @Test
     void getUserDashboard_shouldThrowNotFoundExceptionWhenProductNotFound() {
         User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
+                .id(TEST_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
 
         UUID productId = UUID.randomUUID();
         Asset asset = Asset.builder()
-                .userId(SecurityUtils.STATIC_USER_ID)
+                .userId(TEST_USER_ID)
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
                 .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
                 .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(TEST_USER_ID)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
         assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
@@ -253,9 +255,20 @@ class DashboardServiceTest {
 
     @Test
     void getAdminDashboard_shouldReturnDashboardStats() {
-        when(userRepository.findByRiskProfile("risk_averse")).thenReturn(List.of(new User(), new User()));
-        when(userRepository.findByRiskProfile("moderate")).thenReturn(List.of(new User()));
-        when(userRepository.findByRiskProfile("risk_taker")).thenReturn(List.of(new User(), new User(), new User()));
+        when(userRepository.countByRiskProfile()).thenReturn(List.of(
+                new UserRepository.RiskProfileCount() {
+                    @Override public String getRiskProfile() { return "risk_averse"; }
+                    @Override public Long getCount() { return 2L; }
+                },
+                new UserRepository.RiskProfileCount() {
+                    @Override public String getRiskProfile() { return "moderate"; }
+                    @Override public Long getCount() { return 1L; }
+                },
+                new UserRepository.RiskProfileCount() {
+                    @Override public String getRiskProfile() { return "risk_taker"; }
+                    @Override public Long getCount() { return 3L; }
+                }
+        ));
         when(assetRepository.sumTotalAmount()).thenReturn(new BigDecimal("10000.00"));
         when(userRepository.count()).thenReturn(6L);
         when(productRepository.count()).thenReturn(10L);
