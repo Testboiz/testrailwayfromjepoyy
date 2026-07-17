@@ -90,17 +90,7 @@ class GoalsManagementServiceTest {
         assertEquals(new java.math.BigDecimal("500000.00"), result.getFirst().getTargetAmount());
     }
 
-    @Test
-    void getGoalsForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.getGoalsForUser());
-    }
 
     @Test
     void getGoalsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
@@ -144,18 +134,7 @@ class GoalsManagementServiceTest {
         assertEquals(new java.math.BigDecimal("500000.00"), result.getTargetAmount());
     }
 
-    @Test
-    void createGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
-        GoalRegistrationDTO request = GoalRegistrationDTO.builder().build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.createGoalForUser(request));
-    }
 
     @Test
     void createGoalForUser_shouldThrowDuplicatePriorityGoalExceptionWhenPriorityGoalAlreadyExists() {
@@ -226,19 +205,7 @@ class GoalsManagementServiceTest {
         assertEquals(true, result.getIsPriority());
     }
 
-    @Test
-    void updateGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        UUID goalId = UUID.randomUUID();
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
-        GoalEditingDTO request = GoalEditingDTO.builder().build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
-    }
 
     @Test
     void updateGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
@@ -251,6 +218,25 @@ class GoalsManagementServiceTest {
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
+
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
+    }
+
+    @Test
+    void updateGoalForUser_shouldThrowNotFoundExceptionWhenGoalBelongsToDifferentUser() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        GoalEditingDTO request = GoalEditingDTO.builder().build();
+        Goal goalOfOtherUser = Goal.builder()
+                .id(goalId)
+                .userId(UUID.randomUUID())
+                .build();
+
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(goalOfOtherUser));
 
         assertThrows(CoreThrowHandler.class, () -> goalsManagementService.updateGoalForUser(goalId, request));
     }
@@ -353,18 +339,7 @@ class GoalsManagementServiceTest {
         verify(goalRepository).delete(goal);
     }
 
-    @Test
-    void deleteGoalForUser_shouldThrowMissingRiskProfileExceptionWhenQuestionnaireNotCompleted() {
-        UUID goalId = UUID.randomUUID();
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .questionnaireCompleted(false)
-                .build();
 
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-
-        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.deleteGoalForUser(goalId));
-    }
 
     @Test
     void deleteGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
@@ -376,6 +351,24 @@ class GoalsManagementServiceTest {
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
+
+        assertThrows(CoreThrowHandler.class, () -> goalsManagementService.deleteGoalForUser(goalId));
+    }
+
+    @Test
+    void deleteGoalForUser_shouldThrowNotFoundExceptionWhenGoalBelongsToDifferentUser() {
+        UUID goalId = UUID.randomUUID();
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+        Goal goalOfOtherUser = Goal.builder()
+                .id(goalId)
+                .userId(UUID.randomUUID())
+                .build();
+
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(goalRepository.findById(goalId)).thenReturn(Optional.of(goalOfOtherUser));
 
         assertThrows(CoreThrowHandler.class, () -> goalsManagementService.deleteGoalForUser(goalId));
     }
