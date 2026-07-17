@@ -248,11 +248,6 @@ public class GoalsManagementService implements VerifiedUserProvider {
     }
 
     @Override
-    public UserRepository userRepository() {
-        return null;
-    }
-
-    @Override
     public User getVerifiedUser() {
         return VerifiedUserProvider.super.getVerifiedUser();
     }

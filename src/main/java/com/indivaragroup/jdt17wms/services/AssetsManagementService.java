@@ -1,7 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
-import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
@@ -180,10 +179,6 @@ public class AssetsManagementService implements VerifiedUserProvider {
         assetRepository.delete(asset);
     }
 
-    @Override
-    public UserRepository userRepository() {
-        return null;
-    }
 
     @Override
     public User getVerifiedUser() {
