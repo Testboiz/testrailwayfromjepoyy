@@ -21,6 +21,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -86,8 +87,8 @@ public class AssetTransactionService {
         BigDecimal pricePerUnit = totalAmount.divide(unitsToBuy, 4, RoundingMode.HALF_UP);
 
         // Update asset
-        asset.setUnits(asset.getUnits().add(unitsToBuy));
-        asset.setAmount(asset.getAmount().add(totalAmount));
+        asset.setUnits(Objects.requireNonNullElse(asset.getUnits(), BigDecimal.ZERO).add(unitsToBuy));
+        asset.setAmount(Objects.requireNonNullElse(asset.getAmount(), BigDecimal.ZERO).add(totalAmount));
         asset.setCurrentValue(asset.getUnits().multiply(currentPrice).setScale(4, RoundingMode.HALF_UP));
         assetRepository.save(asset);
 
@@ -151,7 +152,7 @@ public class AssetTransactionService {
                 .map(TransactionHistory::getUnits)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal availableUnits = asset.getUnits().subtract(totalSoldUnits);
+        BigDecimal availableUnits = Objects.requireNonNullElse(asset.getUnits(), BigDecimal.ZERO).subtract(totalSoldUnits);
         if (availableUnits.compareTo(BigDecimal.ZERO) <= 0) {
             throw new CoreThrowHandler(ApiError.BAD_REQUEST, "No units available to sell");
         }
