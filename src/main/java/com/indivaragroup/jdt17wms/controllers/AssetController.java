@@ -58,7 +58,7 @@ public class AssetController {
 
     @PutMapping("/{id}")
     public ApiResponse<Asset> updateAsset(@PathVariable UUID id,
-                                           @RequestBody GoalSettingDTO goalSettingDTO) {
+                                           @Valid @RequestBody GoalSettingDTO goalSettingDTO) {
         return ApiResponse.success(ApiSuccess.ASSET_UPDATED,
                 assetsManagementService.updateAssetForUser(id, goalSettingDTO));
     }
