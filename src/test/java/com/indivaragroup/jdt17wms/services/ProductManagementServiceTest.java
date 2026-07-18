@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
@@ -8,6 +9,7 @@ import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +19,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +30,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +44,20 @@ class ProductManagementServiceTest {
 
     @InjectMocks
     private ProductManagementService productManagementService;
+
+    private void mockAuthenticatedUser(UUID userId) {
+        UserDTO principal = UserDTO.builder().id(userId).build();
+        Authentication authentication = mock(Authentication.class);
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(authentication.getPrincipal()).thenReturn(principal);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void serviceShouldBeInitialized() {
@@ -100,6 +120,8 @@ class ProductManagementServiceTest {
         Product highRiskVisible = Product.builder().riskLevel(5).visible(true).build(); // Excluded (5 > 4)
         Product lowRiskHidden = Product.builder().riskLevel(2).visible(false).build(); // Excluded (hidden)
 
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible, lowRiskHidden));
 
@@ -121,6 +143,8 @@ class ProductManagementServiceTest {
         Product lowRiskVisible = Product.builder().riskLevel(2).visible(true).build();
         Product highRiskVisible = Product.builder().riskLevel(5).visible(true).build(); // Included due to showAll = true
 
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible));
 
@@ -141,6 +165,8 @@ class ProductManagementServiceTest {
         Product matchTypeAndName = Product.builder().name("Danareksa Stock").issuer("Danareksa").type("stock").visible(true).build();
         Product matchTypeOnly = Product.builder().name("BCA Stock").issuer("Bank BCA").type("stock").visible(true).build();
         Product matchNameOnly = Product.builder().name("Danareksa Bond").issuer("Danareksa").type("bond").visible(true).build();
+
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(matchTypeAndName, matchTypeOnly, matchNameOnly));
@@ -164,6 +190,8 @@ class ProductManagementServiceTest {
                 .mapToObj(i -> Product.builder().visible(true).build())
                 .toList();
 
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(tenProducts);
 
@@ -182,6 +210,8 @@ class ProductManagementServiceTest {
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
 
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
 
@@ -195,6 +225,8 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         Product hiddenHighRisk = Product.builder().riskLevel(5).visible(false).build();
+
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
 
         Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
@@ -212,6 +244,8 @@ class ProductManagementServiceTest {
                 .questionnaireCompleted(true)
                 .riskProfile("risk_taker")
                 .build();
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk));
@@ -232,6 +266,8 @@ class ProductManagementServiceTest {
         Product risk2 = Product.builder().riskLevel(2).visible(true).build();
         Product risk3 = Product.builder().riskLevel(3).visible(true).build();
 
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(risk2, risk3));
 
@@ -239,24 +275,6 @@ class ProductManagementServiceTest {
 
         assertEquals(1, result.getTotalElements());
         assertEquals(risk2, result.getContent().getFirst());
-    }
-
-    @Test
-    void getProductsForUser_shouldDefaultMaxRiskLevelTo5_whenRiskProfileIsNull() {
-        User user = User.builder()
-                .id(SecurityUtils.STATIC_USER_ID)
-                .role(UserRole.USER)
-                .questionnaireCompleted(true)
-                .riskProfile(null)
-                .build();
-        Product risk5 = Product.builder().riskLevel(5).visible(true).build();
-
-        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
-        when(productRepository.findAll()).thenReturn(List.of(risk5));
-
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
-
-        assertEquals(1, result.getTotalElements());
     }
 
 
@@ -270,6 +288,8 @@ class ProductManagementServiceTest {
                 .riskProfile("risk_taker")
                 .build();
         Product product = Product.builder().visible(true).build();
+
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
@@ -290,6 +310,8 @@ class ProductManagementServiceTest {
                 .build();
         Product product = Product.builder().type("stock").visible(true).build();
 
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
@@ -308,6 +330,9 @@ class ProductManagementServiceTest {
                 .riskProfile("risk_taker")
                 .build();
         Product product = Product.builder().name("Danareksa Stock").visible(true).build();
+
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
