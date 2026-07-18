@@ -2,7 +2,6 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.GoalConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
-import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
@@ -104,6 +103,17 @@ public class GoalsManagementService implements VerifiedUserProvider {
       if (hasPriorityGoal) {
         throw new CoreThrowHandler(ApiError.DUPLICATE_PRIORITY_GOALS);
       }
+    }
+
+    // 4. Financial validation (same pattern as updateGoalForUser)
+    BigDecimal monthlyIncome = financialProfileRepository.findByUserId(user.getId())
+      .map(FinancialProfile::getMonthlyIncome)
+      .orElse(BigDecimal.ZERO);
+    BigDecimal totalContribution = goalRepository.findAllByUserId(user.getId()).stream()
+      .map(Goal::getMonthlyContribution)
+      .reduce(dto.getMonthlyContribution(), BigDecimal::add);
+    if (totalContribution.compareTo(monthlyIncome) > 0) {
+      throw new CoreThrowHandler(ApiError.INSUFFICIENT_INCOME);
     }
 
     Goal goal = Goal.builder()
