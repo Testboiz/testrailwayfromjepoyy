@@ -52,12 +52,12 @@ EXPOSE 8080
 ENV SPRING_PROFILES_ACTIVE=local
 
 # Database Connection (Defaulting directly to the Supabase URL configuration)
-ENV DB_URL=jdbc:postgresql://aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?prepareThreshold=0
+ENV DB_URL="jdbc:postgresql://aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?prepareThreshold=0"
 ENV DB_USERNAME=postgres.vhssovcozxdwpmsvrvhr
 ENV DB_PASSWORD=
 
 # JWT Config (Left blank for runtime injection)
-ENV JWT_SECRET=9ezm9+w5YmX0nHpA1iuOgvYiXKvr0Dw7FsQmkMZaEAVzOZ0AzQzIqu3kqKABNvBqtVZfyUCxTarobzXm8eSzjg==
+ENV JWT_SECRET="9ezm9+w5YmX0nHpA1iuOgvYiXKvr0Dw7FsQmkMZaEAVzOZ0AzQzIqu3kqKABNvBqtVZfyUCxTarobzXm8eSzjg=="
 ENV JWT_ACCESS_EXPIRATION_MS=9000000
 ENV JWT_REFRESH_EXPIRATION_MS=604800000
 
