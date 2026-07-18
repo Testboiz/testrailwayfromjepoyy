@@ -12,6 +12,7 @@ import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class ProductManagementService {
 
@@ -51,7 +53,8 @@ public class ProductManagementService {
         Boolean showAll = dto.getShowAll();
         Boolean dashboardSummary = dto.getDashboardSummary();
 
-        User user = userRepository.findById(SecurityUtils.getCurrentUserId()).orElse(null);
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
+                .orElse(null);
 
         List<Product> products = productRepository.findAll();
 
@@ -112,6 +115,10 @@ public class ProductManagementService {
     }
 
     private static boolean containsIgnoreCase(String source, String query) {
+        if (source == null) {
+            log.warn("Product has null name or issuer");
+            return false;
+        }
         return source.toLowerCase().contains(query);
     }
 
