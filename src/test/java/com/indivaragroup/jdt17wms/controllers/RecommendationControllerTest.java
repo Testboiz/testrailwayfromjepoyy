@@ -41,7 +41,7 @@ class RecommendationControllerTest extends BaseControllerTest {
         HealthDTO health = HealthDTO.builder()
                 .status("Excellent")
                 .totalScore(85)
-                .portofolioValue(BigDecimal.valueOf(1000000))
+                .portfolioValue(BigDecimal.valueOf(1000000))
                 .availableSurplus(BigDecimal.valueOf(500000))
                 .build();
 
@@ -51,7 +51,7 @@ class RecommendationControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.status").value("Excellent"))
                 .andExpect(jsonPath("$.result.totalScore").value(85))
-                .andExpect(jsonPath("$.result.portofolio-value").value(1000000))
+                .andExpect(jsonPath("$.result.portfolio-value").value(1000000))
                 .andExpect(jsonPath("$.result.available-surplus").value(500000));
     }
 

@@ -98,6 +98,7 @@ class DashboardServiceTest {
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
+                .currentValue(new BigDecimal("120.0000"))
                 .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
                 .build();
 
@@ -144,6 +145,7 @@ class DashboardServiceTest {
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
+                .currentValue(new BigDecimal("120.0000"))
                 .purchaseDate(Instant.parse("2026-12-10T10:00:00Z"))
                 .build();
 
@@ -177,6 +179,7 @@ class DashboardServiceTest {
                 .productId(productId)
                 .units(new BigDecimal("10.00"))
                 .amount(new BigDecimal("100.00"))
+                .currentValue(BigDecimal.ZERO)
                 .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
                 .build();
 

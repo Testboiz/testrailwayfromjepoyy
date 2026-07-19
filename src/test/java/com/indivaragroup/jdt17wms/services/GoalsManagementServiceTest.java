@@ -70,7 +70,7 @@ class GoalsManagementServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        goalsManagementService = new GoalsManagementService(goalRepository, userRepository, financialProfileRepository, assetRepository, clock);
+        goalsManagementService = new GoalsManagementService(goalRepository, userRepository, financialProfileRepository, assetRepository, expenseRepository,clock);
         mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
     }
 
@@ -288,12 +288,14 @@ class GoalsManagementServiceTest {
         Goal existingGoal = Goal.builder()
                 .id(goalId)
                 .userId(SecurityUtils.STATIC_USER_ID)
+                .type("savings")
                 .isPriority(false)
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
         Goal otherGoal = Goal.builder()
                 .id(UUID.randomUUID())
                 .userId(SecurityUtils.STATIC_USER_ID)
+                .type("savings")
                 .isPriority(true)
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)
                 .build();
@@ -325,6 +327,7 @@ class GoalsManagementServiceTest {
         Goal existingGoal = Goal.builder()
                 .id(goalId)
                 .userId(SecurityUtils.STATIC_USER_ID)
+                .type("savings")
                 .monthlyContribution(new BigDecimal("1000.00"))
                 .isPriority(false)
                 .status(com.indivaragroup.jdt17wms.models.enums.GoalStatus.IN_PROGRESS)

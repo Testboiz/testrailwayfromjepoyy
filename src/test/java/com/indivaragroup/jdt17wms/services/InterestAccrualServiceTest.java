@@ -43,6 +43,8 @@ class InterestAccrualServiceTest {
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(productId)
+                .amount(BigDecimal.valueOf(1000000))
+                .units(BigDecimal.valueOf(1010000))
                 .currentValue(BigDecimal.valueOf(1000000))
                 .build();
 
@@ -50,6 +52,7 @@ class InterestAccrualServiceTest {
                 .id(productId)
                 .type("Bond")
                 .annualReturn(BigDecimal.valueOf(12)) // 12% annual
+                .currentPrice(BigDecimal.ONE)
                 .visible(true)
                 .build();
 
@@ -64,8 +67,8 @@ class InterestAccrualServiceTest {
 
         // monthlyRate = 12 / 12 / 100 = 0.01
         // monthlyReturn = 1000000 * 0.01 = 10000
-        // newValue = 1000000 + 10000 = 1010000
-        BigDecimal expectedReturn = BigDecimal.valueOf(10000).setScale(4, RoundingMode.HALF_UP);
+        // newAmount = 1000000 + 10000 = 1010000
+        // currentValue = 1010000 units * 1 = 1010000
         assertEquals(BigDecimal.valueOf(1010000).setScale(4, RoundingMode.HALF_UP), saved.getCurrentValue());
     }
 
@@ -75,6 +78,8 @@ class InterestAccrualServiceTest {
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(productId)
+                .amount(BigDecimal.valueOf(500000))
+                .units(BigDecimal.valueOf(502500))
                 .currentValue(BigDecimal.valueOf(500000))
                 .build();
 
@@ -82,6 +87,7 @@ class InterestAccrualServiceTest {
                 .id(productId)
                 .type("Sukuk")
                 .annualReturn(BigDecimal.valueOf(6)) // 6% annual
+                .currentPrice(BigDecimal.ONE)
                 .visible(true)
                 .build();
 
@@ -96,7 +102,8 @@ class InterestAccrualServiceTest {
 
         // monthlyRate = 6 / 12 / 100 = 0.005
         // monthlyReturn = 500000 * 0.005 = 2500
-        // newValue = 500000 + 2500 = 502500
+        // newAmount = 500000 + 2500 = 502500
+        // currentValue = 502500 units * 1 = 502500
         assertEquals(BigDecimal.valueOf(502500).setScale(4, RoundingMode.HALF_UP), saved.getCurrentValue());
     }
 
@@ -106,6 +113,8 @@ class InterestAccrualServiceTest {
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(productId)
+                .amount(BigDecimal.valueOf(2000000))
+                .units(BigDecimal.valueOf(3000000))
                 .currentValue(BigDecimal.valueOf(2000000))
                 .build();
 
@@ -113,6 +122,7 @@ class InterestAccrualServiceTest {
                 .id(productId)
                 .type("Deposit")
                 .annualReturn(BigDecimal.valueOf(3.5)) // 3.5% annual
+                .currentPrice(BigDecimal.ONE)
                 .visible(true)
                 .build();
 
@@ -127,7 +137,7 @@ class InterestAccrualServiceTest {
 
         // monthlyRate = 3.5 / 12 / 100 = 0.002916... (6 decimal scale)
         // monthlyReturn = 2000000 * 0.002916... = 5833.3333...
-        // Expect some positive addition
+        // Expect currentValue > 2000000
         assertTrue(saved.getCurrentValue().compareTo(BigDecimal.valueOf(2000000)) > 0);
     }
 
@@ -139,12 +149,16 @@ class InterestAccrualServiceTest {
         Asset bondAsset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(bondProductId)
+                .amount(BigDecimal.valueOf(1000000))
+                .units(BigDecimal.valueOf(1000000))
                 .currentValue(BigDecimal.valueOf(1000000))
                 .build();
 
         Asset depositAsset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(depositProductId)
+                .amount(BigDecimal.valueOf(2000000))
+                .units(BigDecimal.valueOf(2000000))
                 .currentValue(BigDecimal.valueOf(2000000))
                 .build();
 
@@ -152,6 +166,7 @@ class InterestAccrualServiceTest {
                 .id(bondProductId)
                 .type("Bond")
                 .annualReturn(BigDecimal.valueOf(12))
+                .currentPrice(BigDecimal.ONE)
                 .visible(true)
                 .build();
 
@@ -159,6 +174,7 @@ class InterestAccrualServiceTest {
                 .id(depositProductId)
                 .type("Deposit")
                 .annualReturn(BigDecimal.valueOf(6))
+                .currentPrice(BigDecimal.ONE)
                 .visible(true)
                 .build();
 
@@ -232,6 +248,8 @@ class InterestAccrualServiceTest {
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(productId)
+                .amount(BigDecimal.ZERO)
+                .units(BigDecimal.ZERO)
                 .currentValue(BigDecimal.ZERO)
                 .build();
 
@@ -239,6 +257,7 @@ class InterestAccrualServiceTest {
                 .id(productId)
                 .type("Bond")
                 .annualReturn(BigDecimal.valueOf(12))
+                .currentPrice(BigDecimal.ZERO)
                 .visible(true)
                 .build();
 
@@ -258,6 +277,8 @@ class InterestAccrualServiceTest {
         Asset asset = Asset.builder()
                 .id(UUID.randomUUID())
                 .productId(productId)
+                .amount(BigDecimal.valueOf(1000000))
+                .units(BigDecimal.valueOf(1000000))
                 .currentValue(BigDecimal.valueOf(1000000))
                 .build();
 
@@ -265,6 +286,7 @@ class InterestAccrualServiceTest {
                 .id(productId)
                 .type("Bond")
                 .annualReturn(BigDecimal.ZERO)
+                .currentPrice(BigDecimal.ONE)
                 .visible(true)
                 .build();
 
