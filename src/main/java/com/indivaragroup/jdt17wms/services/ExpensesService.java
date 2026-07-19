@@ -19,17 +19,21 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Service
-public class ExpensesService {
+public class
+ExpensesService {
 
     private final FinancialProfileRepository financialProfileRepository;
     private final ExpenseRepository expenseRepository;
+    private final GoalsManagementService goalsManagementService;
     private final Clock clock;
 
     public ExpensesService(FinancialProfileRepository financialProfileRepository,
                            ExpenseRepository expenseRepository,
+                           GoalsManagementService goalsManagementService,
                            Clock clock) {
         this.financialProfileRepository = financialProfileRepository;
         this.expenseRepository = expenseRepository;
+        this.goalsManagementService = goalsManagementService;
         this.clock = clock;
     }
 
@@ -102,6 +106,10 @@ public class ExpensesService {
         expense.setUpdatedAt(Instant.now(clock));
 
         Expense savedExpense = expenseRepository.save(expense);
+
+        // Trigger auto-allocation if income or expenses changed
+        goalsManagementService.autoAllocateIfNeeded(userId);
+
         return mapToDTO(savedExpense);
     }
 

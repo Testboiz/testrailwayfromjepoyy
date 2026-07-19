@@ -324,7 +324,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
         return getGoalsForUser();
     }
 
-    private void autoAllocateIfNeeded(UUID userId) {
+    void autoAllocateIfNeeded(UUID userId) {
         // Check if auto-allocation is enabled
         FinancialProfile profile = financialProfileRepository.findByUserId(userId).orElse(null);
         if (profile == null || !Boolean.TRUE.equals(profile.getAutoAllocationEnabled())) {
