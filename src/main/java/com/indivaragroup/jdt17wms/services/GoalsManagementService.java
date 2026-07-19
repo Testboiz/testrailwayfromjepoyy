@@ -153,6 +153,10 @@ public class GoalsManagementService implements VerifiedUserProvider {
     Goal goal = goalRepository.findById(goalId)
       .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
+    if (!goal.getUserId().equals(user.getId())) {
+      throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+    }
+
     List<ValidationErrorDetailDTO> errors = new ArrayList<>();
 
     // 1. Validate Target Date logic (Enforced non-null by DTO @NotNull)
@@ -234,6 +238,10 @@ public class GoalsManagementService implements VerifiedUserProvider {
 
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+        if (!goal.getUserId().equals(user.getId())) {
+            throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+        }
 
         List<Asset> assets = assetRepository.findAllByGoalId(goalId);
         for (Asset asset : assets) {

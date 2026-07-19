@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
+import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
@@ -15,10 +16,15 @@ import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.models.FinancialProfile;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.models.Asset;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -35,10 +41,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = Strictness.LENIENT)
 class GoalsManagementServiceTest {
 
     @Mock
@@ -59,6 +67,21 @@ class GoalsManagementServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
         goalsManagementService = new GoalsManagementService(goalRepository, userRepository, financialProfileRepository, assetRepository, clock);
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+    }
+
+    private void mockAuthenticatedUser(UUID userId) {
+        UserDTO principal = UserDTO.builder().id(userId).build();
+        Authentication authentication = mock(Authentication.class);
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(authentication.getPrincipal()).thenReturn(principal);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -94,6 +117,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void getGoalsForUser_shouldThrowNotFoundExceptionWhenUserNotFound() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.empty());
 
         assertThrows(CoreThrowHandler.class, () -> goalsManagementService.getGoalsForUser());
@@ -124,6 +148,7 @@ class GoalsManagementServiceTest {
                 .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(FinancialProfile.builder().monthlyIncome(new BigDecimal("5000.00")).build()));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of());
         when(goalRepository.save(any(Goal.class))).thenReturn(goal);
 
@@ -161,6 +186,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void updateGoalForUser_shouldUpdateGoalSuccessfully() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -209,12 +235,15 @@ class GoalsManagementServiceTest {
 
     @Test
     void updateGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
-        GoalEditingDTO request = GoalEditingDTO.builder().build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .targetDate(LocalDate.of(2030, Month.JANUARY, 1))
+                .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findById(goalId)).thenReturn(Optional.empty());
@@ -224,12 +253,15 @@ class GoalsManagementServiceTest {
 
     @Test
     void updateGoalForUser_shouldThrowNotFoundExceptionWhenGoalBelongsToDifferentUser() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
                 .questionnaireCompleted(true)
                 .build();
-        GoalEditingDTO request = GoalEditingDTO.builder().build();
+        GoalEditingDTO request = GoalEditingDTO.builder()
+                .targetDate(LocalDate.of(2030, Month.JANUARY, 1))
+                .build();
         Goal goalOfOtherUser = Goal.builder()
                 .id(goalId)
                 .userId(UUID.randomUUID())
@@ -243,6 +275,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void updateGoalForUser_shouldThrowDuplicatePriorityGoalExceptionWhenPriorityGoalAlreadyExists() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -279,6 +312,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void updateGoalForUser_shouldThrowInsufficientIncomeExceptionWhenContributionExceedsIncome() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -315,6 +349,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void deleteGoalForUser_shouldDeleteGoalSuccessfully() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -343,6 +378,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void deleteGoalForUser_shouldThrowNotFoundExceptionWhenGoalNotFound() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -357,6 +393,7 @@ class GoalsManagementServiceTest {
 
     @Test
     void deleteGoalForUser_shouldThrowNotFoundExceptionWhenGoalBelongsToDifferentUser() {
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         UUID goalId = UUID.randomUUID();
         User user = User.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -480,6 +517,7 @@ class GoalsManagementServiceTest {
                 .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(FinancialProfile.builder().monthlyIncome(new BigDecimal("5000.00")).build()));
         when(goalRepository.save(any(Goal.class))).thenReturn(saved);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
@@ -664,6 +702,11 @@ class GoalsManagementServiceTest {
         Goal nonInProgressPriorityGoal = Goal.builder()
                 .id(UUID.randomUUID())
                 .userId(SecurityUtils.STATIC_USER_ID)
+                .name("My Priority Goal")
+                .type("savings")
+                .targetAmount(new BigDecimal("3000.00"))
+                .monthlyContribution(new BigDecimal("500.00"))
+                .targetDate(LocalDate.now(clock).plusMonths(6))
                 .isPriority(true)
                 .status(GoalStatus.ACHIEVED) // not IN_PROGRESS → predicate is false
                 .build();
@@ -674,11 +717,13 @@ class GoalsManagementServiceTest {
                 .name("My Priority Goal")
                 .type("savings")
                 .targetAmount(new BigDecimal("3000.00"))
+
                 .status(GoalStatus.IN_PROGRESS)
                 .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(nonInProgressPriorityGoal));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(FinancialProfile.builder().monthlyIncome(new BigDecimal("5000.00")).build()));
         when(goalRepository.save(any(Goal.class))).thenReturn(saved);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
@@ -812,6 +857,8 @@ class GoalsManagementServiceTest {
                 .id(UUID.randomUUID())
                 .userId(SecurityUtils.STATIC_USER_ID)
                 .isPriority(false)
+                .targetAmount(new BigDecimal("2000.00"))
+                .monthlyContribution(new BigDecimal("100.00"))
                 .status(GoalStatus.IN_PROGRESS)
                 .build();
 
@@ -826,6 +873,7 @@ class GoalsManagementServiceTest {
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(goalRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(nonPriorityGoal));
+        when(financialProfileRepository.findByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(FinancialProfile.builder().monthlyIncome(new BigDecimal("5000.00")).build()));
         when(goalRepository.save(any(Goal.class))).thenReturn(saved);
 
         GoalDTO result = goalsManagementService.createGoalForUser(request);
