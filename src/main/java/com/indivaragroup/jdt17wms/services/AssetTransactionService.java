@@ -250,7 +250,7 @@ public class AssetTransactionService {
         }
 
         // Stock-specific: sell by units only
-        if ("Stock".equals(type) && dto.getAction() == TransactionAction.SELL) {
+        if ("Stock".equalsIgnoreCase(type) && dto.getAction() == TransactionAction.SELL) {
             if (hasAmount && !hasUnits) {
                 throw new CoreThrowHandler(ApiError.BAD_REQUEST,
                         "Stocks can only be sold by units, not by amount");
