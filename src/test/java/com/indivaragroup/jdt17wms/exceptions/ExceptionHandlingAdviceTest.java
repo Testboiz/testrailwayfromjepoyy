@@ -3,9 +3,11 @@ package com.indivaragroup.jdt17wms.exceptions;
 import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
+import com.indivaragroup.jdt17wms.dto.request.LoginDTO;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
+import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -207,6 +209,35 @@ class ExceptionHandlingAdviceTest {
         @SuppressWarnings("unchecked")
         List<ValidationErrorDetailDTO> details = (List<ValidationErrorDetailDTO>) body.getRestApiResponseError().get("fields");
         assertEquals(2, details.size());
+    }
+
+    @Test
+    void handleConstraintViolation_withRealValidator_shouldReadAnnotationMessage() {
+        var validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+        LoginDTO dto = LoginDTO.builder()
+                .loginRequestEmail("")          // @NotBlank(message = "Email is Required")
+                .loginRequestPassword("abc")    // @Size(min = 8) → default message
+                .build();
+
+        Set<ConstraintViolation<LoginDTO>> violations = validator.validate(dto);
+        ConstraintViolationException ex = new ConstraintViolationException(violations);
+
+        ResponseEntity<ApiResponse<?>> response = advice.handleConstraintViolation(ex);
+
+        assertEquals(400, response.getStatusCode().value());
+
+        @SuppressWarnings("unchecked")
+        List<ValidationErrorDetailDTO> details =
+                (List<ValidationErrorDetailDTO>) response.getBody().getRestApiResponseError().get("fields");
+
+        // message dari annotation @NotBlank(message = "Email is Required")
+        assertTrue(details.stream().anyMatch(d -> "Email is Required".equals(d.getReason())),
+                "Should read custom message from @NotBlank annotation");
+
+        // message default @Size — tanpa message attribute
+        assertTrue(details.stream().anyMatch(d -> d.getReason().contains("size must be between")),
+                "Should read default interpolation message for @Size");
     }
 
     // --- NoHandlerFoundException ---

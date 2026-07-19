@@ -41,7 +41,7 @@ class UserControllerTest extends BaseControllerTest {
         Page<User> expectedPage = new PageImpl<>(List.of());
         when(userManagementService.getAllUsers(any(Pageable.class))).thenReturn(expectedPage);
 
-        mockMvc.perform(get("/api/v2/users"))
+        mockMvc.perform(get("/api/v1/users"))
                 .andExpect(status().isOk());
     }
 
@@ -52,7 +52,7 @@ class UserControllerTest extends BaseControllerTest {
         when(userManagementService.updateUserStatus(any(UUID.class), any(UserStatusUpdateDTO.class)))
                 .thenReturn(user);
 
-        mockMvc.perform(put("/api/v2/users/" + id)
+        mockMvc.perform(put("/api/v1/users/" + id)
                         .contentType("application/json")
                         .content("{\"status\":\"active\"}"))
                 .andExpect(status().isOk());
@@ -64,7 +64,7 @@ class UserControllerTest extends BaseControllerTest {
         when(userManagementService.updateUserStatus(any(UUID.class), any(UserStatusUpdateDTO.class)))
                 .thenThrow(new CoreThrowHandler(ApiError.NOT_FOUND, "No valid item with the ID"));
 
-        mockMvc.perform(put("/api/v2/users/" + id)
+        mockMvc.perform(put("/api/v1/users/" + id)
                         .contentType("application/json")
                         .content("{\"status\":\"active\"}"))
                 .andExpect(status().isNotFound())
@@ -76,7 +76,7 @@ class UserControllerTest extends BaseControllerTest {
     void updateUser_shouldReturnBadRequest_whenStatusIsInvalid() throws Exception {
         UUID id = UUID.randomUUID();
 
-        mockMvc.perform(put("/api/v2/users/" + id)
+        mockMvc.perform(put("/api/v1/users/" + id)
                         .contentType("application/json")
                         .content("{\"status\":\"invalid_status\"}"))
                 .andExpect(status().isBadRequest())
