@@ -195,7 +195,7 @@ public class ActionRecommendationService {
         final int finalMaxRiskLv = maxRiskLv;
 
         Set<String> eligibleTypes = products.stream()
-                .filter(p ->  p.getVisible()
+                .filter(p ->  Boolean.TRUE.equals(p.getVisible())
                         && p.getRiskLevel() <= finalMaxRiskLv)
                 .map(p ->  p.getType().toLowerCase())
                 .collect(Collectors.toSet());
@@ -553,7 +553,7 @@ public class ActionRecommendationService {
         // ─────────────────────────────────────────
         final int fMaxRisk = maxRiskLv;
         Optional<Product> topGrowth = products.stream()
-                .filter(p -> p.getVisible()
+                .filter(p -> Boolean.TRUE.equals(p.getVisible())
                         && !ownedIds.contains(p.getId())
                         && p.getRiskLevel() <= fMaxRisk
                         && !usedProductIds.contains(p.getId()))
@@ -694,7 +694,7 @@ public class ActionRecommendationService {
                 .collect(Collectors.toSet());
 
         return products.stream()
-                .filter(p ->  p.getVisible()
+                .filter(p ->  Boolean.TRUE.equals(p.getVisible())
                         && lowerTypes.contains(p.getType().toLowerCase())
                         && p.getRiskLevel() <= maxRisk
                         && (excludeIds == null || !excludeIds.contains(p.getId())))
