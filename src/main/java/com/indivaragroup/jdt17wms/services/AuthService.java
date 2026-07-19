@@ -18,6 +18,7 @@ import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
+import jakarta.validation.Valid;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
