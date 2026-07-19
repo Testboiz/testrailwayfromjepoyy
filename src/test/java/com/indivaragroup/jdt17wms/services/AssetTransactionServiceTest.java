@@ -124,7 +124,7 @@ class AssetTransactionServiceTest {
         verify(assetRepository).save(assetCaptor.capture());
         Asset saved = assetCaptor.getValue();
         assertEquals(BigDecimal.valueOf(110), saved.getUnits());
-        assertEquals(BigDecimal.valueOf(550000), saved.getAmount());
+        assertEquals(BigDecimal.valueOf(550000).setScale(4, RoundingMode.HALF_UP), saved.getAmount());
         assertEquals(BigDecimal.valueOf(550000).setScale(4, RoundingMode.HALF_UP), saved.getCurrentValue());
     }
 
