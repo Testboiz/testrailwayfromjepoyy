@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.response.ProductResponseDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.SecurityUtils;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
@@ -72,11 +73,11 @@ class ProductManagementServiceTest {
 
         when(productRepository.findAll(any(Pageable.class))).thenReturn(expectedPage);
 
-        Page<Product> actualPage = productManagementService.getAllProducts(pageable);
+        Page<ProductResponseDTO> actualPage = productManagementService.getAllProducts(pageable);
 
         assertNotNull(actualPage);
         assertEquals(1, actualPage.getTotalElements());
-        assertEquals(product, actualPage.getContent().getFirst());
+        assertEquals(ProductResponseDTO.fromEntity(product), actualPage.getContent().getFirst());
     }
 
     @Test
@@ -89,7 +90,7 @@ class ProductManagementServiceTest {
         when(productRepository.findById(id)).thenReturn(Optional.of(product));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Product updatedProduct = productManagementService.updateProductVisibility(id, true);
+        ProductResponseDTO updatedProduct = productManagementService.updateProductVisibility(id, true);
 
         assertNotNull(updatedProduct);
         assertTrue(updatedProduct.getVisible());
@@ -125,10 +126,10 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible, lowRiskHidden));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(lowRiskVisible, result.getContent().getFirst());
+        assertEquals(ProductResponseDTO.fromEntity(lowRiskVisible), result.getContent().getFirst());
     }
 
     @Test
@@ -148,7 +149,7 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(lowRiskVisible, highRiskVisible));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, true, false), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, true, false), PageRequest.of(0, 10));
 
         assertEquals(2, result.getTotalElements());
     }
@@ -171,10 +172,10 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(matchTypeAndName, matchTypeOnly, matchNameOnly));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", "stock", false, false), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO("Danareksa", "stock", false, false), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(matchTypeAndName, result.getContent().getFirst());
+        assertEquals(ProductResponseDTO.fromEntity(matchTypeAndName), result.getContent().getFirst());
     }
 
     @Test
@@ -195,7 +196,7 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(tenProducts);
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, false, true), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, null, false, true), PageRequest.of(0, 10));
 
         assertEquals(5, result.getTotalElements());
     }
@@ -215,7 +216,7 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
 
         assertEquals(2, result.getTotalElements());
     }
@@ -229,12 +230,10 @@ class ProductManagementServiceTest {
         mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk, hiddenHighRisk));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
 
         assertEquals(2, result.getTotalElements());
     }
-
-
 
     @Test
     void getProductsForUser_shouldWork_whenQueryDtoIsNull() {
@@ -250,7 +249,7 @@ class ProductManagementServiceTest {
         Product visibleLowRisk = Product.builder().riskLevel(2).visible(true).build();
         when(productRepository.findAll()).thenReturn(List.of(visibleLowRisk));
 
-        Page<Product> result = productManagementService.getProductsForUser(null, PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(null, PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
     }
@@ -271,13 +270,11 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(risk2, risk3));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(risk2, result.getContent().getFirst());
+        assertEquals(ProductResponseDTO.fromEntity(risk2), result.getContent().getFirst());
     }
-
-
 
     @Test
     void getProductsForUser_shouldReturnEmptyPage_whenOffsetIsGreaterThanProductListSize() {
@@ -294,7 +291,7 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(1, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(), PageRequest.of(1, 10));
 
         assertTrue(result.getContent().isEmpty());
         assertEquals(1, result.getTotalElements());
@@ -315,10 +312,10 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, "   ", false, false), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO(null, "   ", false, false), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(product, result.getContent().getFirst());
+        assertEquals(ProductResponseDTO.fromEntity(product), result.getContent().getFirst());
     }
 
     @Test
@@ -337,9 +334,9 @@ class ProductManagementServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(productRepository.findAll()).thenReturn(List.of(product));
 
-        Page<Product> result = productManagementService.getProductsForUser(new ProductQueryDTO("   ", null, false, false), PageRequest.of(0, 10));
+        Page<ProductResponseDTO> result = productManagementService.getProductsForUser(new ProductQueryDTO("   ", null, false, false), PageRequest.of(0, 10));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(product, result.getContent().getFirst());
+        assertEquals(ProductResponseDTO.fromEntity(product), result.getContent().getFirst());
     }
 }

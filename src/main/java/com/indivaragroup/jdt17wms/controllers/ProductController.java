@@ -4,6 +4,7 @@ import com.indivaragroup.jdt17wms.dto.request.AdminChangeVisibilityDTO;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.dto.response.ApiPath;
 import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
+import com.indivaragroup.jdt17wms.dto.response.ProductResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
@@ -24,7 +25,7 @@ public class ProductController {
     }
 
     @GetMapping
-    public ApiResponse<Page<Product>> getAllProducts(
+    public ApiResponse<Page<ProductResponseDTO>> getAllProducts(
             ProductQueryDTO queryDTO,
             Pageable pageable) {
         return ApiResponse.success(ApiSuccess.PRODUCTS_FETCHED,
@@ -32,7 +33,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<Product> updateProduct(
+    public ApiResponse<ProductResponseDTO> updateProduct(
             @PathVariable UUID id,
             @RequestBody AdminChangeVisibilityDTO adminChangeVisibilityDTO) {
         return ApiResponse.success(ApiSuccess.PRODUCT_UPDATED,
@@ -40,7 +41,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<Product> getProductById(
+    public ApiResponse<ProductResponseDTO> getProductById(
             @PathVariable UUID id
     ) {
         return ApiResponse.success(ApiSuccess.PRODUCT_FETCHED,
