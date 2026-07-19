@@ -34,6 +34,7 @@ public class AdminController {
         this.adminProductManagementService = adminProductManagementService;
     }
 
+
     @GetMapping("/audit")
     public ApiResponse<Page<AuditLog>> getAuditLogs(
             @RequestParam(required = false, defaultValue = "false") Boolean headView,
@@ -62,6 +63,7 @@ public class AdminController {
                 adminProductManagementService.listProducts(search, type, pageable));
     }
 
+
     @PostMapping("/products")
     @ResponseStatus(HttpStatus.CREATED)
     @AuditLogged(action = "CREATE_PRODUCT", category = "PRODUCT")
@@ -70,7 +72,7 @@ public class AdminController {
                 adminProductManagementService.createProduct(dto));
     }
 
-    @PutMapping("/products/{id}")
+
     @AuditLogged(action = "UPDATE_PRODUCT", category = "PRODUCT")
     public ApiResponse<Product> updateProduct(
             @PathVariable UUID id,

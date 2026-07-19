@@ -33,6 +33,7 @@ public class AssetController {
         this.pnLCalculationService = pnLCalculationService;
     }
 
+
     @PostMapping
     @AuditLogged(action = "CREATE_ASSET", category = "ASSET")
     public ApiResponse<Asset> createAsset(@Valid @RequestBody AssetRegistrationDTO dto) {
@@ -45,6 +46,7 @@ public class AssetController {
         return ApiResponse.success(ApiSuccess.ASSETS_FETCHED,
                 assetsManagementService.getAssetsForUser());
     }
+
 
     @GetMapping("/pnl")
     public ApiResponse<List<AssetsPnLResponseDTO>> getAssetsPnL() {
