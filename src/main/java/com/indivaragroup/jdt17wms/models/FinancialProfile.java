@@ -28,8 +28,11 @@ public class FinancialProfile {
     @Column(name = "monthly_income", precision = 18, scale = 4,  nullable = false)
     private BigDecimal monthlyIncome;
 
-    @Column(name = "default_return", precision = 18, scale = 4,  nullable = false)
-    private BigDecimal defaultReturn;
+    @Column(name = "auto_allocation_enabled")
+    private Boolean autoAllocationEnabled;
+
+    @Column(name = "priority_allocation_percentage")
+    private Integer priorityAllocationPercentage;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)

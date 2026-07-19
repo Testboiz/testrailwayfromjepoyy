@@ -128,7 +128,7 @@ class ActionRecommendationServiceTest {
         assertNotNull(health);
         assertEquals("Excellent", health.getStatus());
         assertTrue(health.getTotalScore() >= 80);
-        assertEquals(BigDecimal.valueOf(1000000), health.getPortofolioValue());
+        assertEquals(BigDecimal.valueOf(1000000), health.getPortfolioValue());
         assertEquals(BigDecimal.valueOf(10000), health.getAvailableSurplus());
 
         // Check components are calculated
@@ -1123,7 +1123,7 @@ class ActionRecommendationServiceTest {
 
         Expense exp = Expense.builder()
                 .id(UUID.randomUUID())
-                .financialProfileId(fp.getId())
+                .financialProfile(fp)
                 .totalExpenses(BigDecimal.valueOf(100000))
                 .build();
         when(expenseRepository.findByFinancialProfileId(fp.getId())).thenReturn(Optional.of(exp));
@@ -1231,7 +1231,7 @@ class ActionRecommendationServiceTest {
 
         Expense exp = Expense.builder()
                 .id(UUID.randomUUID())
-                .financialProfileId(fp.getId())
+                .financialProfile(fp)
                 .totalExpenses(BigDecimal.valueOf(50000))
                 .build();
         when(expenseRepository.findByFinancialProfileId(fp.getId())).thenReturn(Optional.of(exp));

@@ -9,6 +9,7 @@ import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.User;
+import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
@@ -66,7 +67,9 @@ public class DashboardService {
         return AdminDashboardDTO.builder()
                 .aum(assetRepository.sumTotalAmount())
                 .userCount(userRepository.count())
+                .activeUserCount(userRepository.countByStatusAndRole("active", UserRole.USER.name().toLowerCase()))
                 .productCount(productRepository.count())
+                .activeProductCount(productRepository.countByVisible(true))
                 .totalAuditEvents(auditLogRepository.count())
                 .riskProfiles(riskProfiles)
                 .aumTrend(createAumTrend())
@@ -140,11 +143,8 @@ public class DashboardService {
       Product product = productRepository.findById(asset.getProductId())
         .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
-      BigDecimal units = Optional.ofNullable(asset.getUnits())
-        .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST, "Asset " + asset.getId() + " has null units — data corrupt"));
-      BigDecimal currentPrice = Optional.ofNullable(product.getCurrentPrice())
-        .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST, "Product " + product.getId() + " has null currentPrice — data corrupt"));
-      BigDecimal assetValue = units.multiply(currentPrice);
+      BigDecimal assetValue = Optional.ofNullable(asset.getCurrentValue())
+        .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST, "Asset " + asset.getId() + " has null currentValue — data corrupt"));
       totalValue = totalValue.add(assetValue);
       totalInvested = totalInvested.add(asset.getAmount());
 

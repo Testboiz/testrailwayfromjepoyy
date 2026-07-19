@@ -6,7 +6,6 @@ import com.indivaragroup.jdt17wms.dto.request.AssetTransactionDTO;
 import com.indivaragroup.jdt17wms.dto.request.AssetValueUpdateDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.dto.response.AssetUpdateResponseDTO;
-import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
@@ -41,6 +40,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
     private final GoalRepository goalRepository;
     private final RecommendationRepository recommendationRepository;
     private final AssetTransactionService assetTransactionService;
+    private static final int BY_FOUR = 4;
 
     public AssetsManagementService(AssetRepository assetRepository,
                                    UserRepository userRepository,
@@ -68,6 +68,18 @@ public class AssetsManagementService implements VerifiedUserProvider {
         return transactionHistoryRepository.findAllByUserId(user.getId());
     }
 
+    public List<TransactionHistory> getTransactionHistoryForAsset(UUID assetId) {
+        User user = getVerifiedUser();
+        Asset asset = assetRepository.findById(assetId)
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+        if (!asset.getUserId().equals(user.getId())) {
+            throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+        }
+
+        return transactionHistoryRepository.findAllByAssetIdOrderByTransactionDateDesc(assetId);
+    }
+
     @Transactional
     public Asset createAssetForUser(AssetRegistrationDTO dto) {
         User user = getVerifiedUser();
@@ -85,12 +97,16 @@ public class AssetsManagementService implements VerifiedUserProvider {
 
         Instant purchaseInstant = dto.getPurchaseDate().atZone(ZoneId.systemDefault()).toInstant();
 
+        // Calculate current_value based on current product price
+        BigDecimal currentPrice = product.getCurrentPrice();
+        BigDecimal calculatedCurrentValue = dto.getUnits().multiply(currentPrice).setScale(4, RoundingMode.HALF_UP);
+
         Asset asset = Asset.builder()
                 .userId(user.getId())
                 .productId(product.getId())
                 .units(dto.getUnits())
                 .amount(dto.getAmount())
-                .currentValue(dto.getCurrentValue())
+                .currentValue(calculatedCurrentValue) // CALCULATED, not from DTO
                 .purchaseDate(purchaseInstant)
                 .platform(dto.getPlatform())
                 .notes(dto.getNotes())
@@ -99,7 +115,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
         Asset savedAsset = assetRepository.save(asset);
 
         // Record BUY transaction log
-        BigDecimal pricePerUnit = dto.getAmount().divide(dto.getUnits(), 4, RoundingMode.HALF_UP);
+        BigDecimal pricePerUnit = dto.getAmount().divide(dto.getUnits(), BY_FOUR, RoundingMode.HALF_UP);
 
         TransactionHistory buyHistory = TransactionHistory.builder()
                 .userId(user.getId())
@@ -154,7 +170,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
         // Record SELL transaction log
         BigDecimal pricePerUnit = BigDecimal.ZERO;
         if (Objects.requireNonNullElse(asset.getUnits(), BigDecimal.ZERO).compareTo(BigDecimal.ZERO) > 0) {
-            pricePerUnit = asset.getAmount().divide(asset.getUnits(), 4, RoundingMode.HALF_UP);
+            pricePerUnit = asset.getAmount().divide(asset.getUnits(), BY_FOUR, RoundingMode.HALF_UP);
         }
 
         TransactionHistory sellHistory = TransactionHistory.builder()
@@ -166,7 +182,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
                 .units(asset.getUnits())
                 .totalAmount(asset.getAmount())
                 .transactionDate(Instant.now())
-                .notes("Asset sold via deletion")
+                .notes(asset.getNotes())
                 .build();
 
         transactionHistoryRepository.save(sellHistory);

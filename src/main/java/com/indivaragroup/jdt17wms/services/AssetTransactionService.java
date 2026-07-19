@@ -87,8 +87,8 @@ public class AssetTransactionService {
         BigDecimal pricePerUnit = totalAmount.divide(unitsToBuy, 4, RoundingMode.HALF_UP);
 
         // Update asset
-        asset.setUnits(Objects.requireNonNullElse(asset.getUnits(), BigDecimal.ZERO).add(unitsToBuy));
-        asset.setAmount(Objects.requireNonNullElse(asset.getAmount(), BigDecimal.ZERO).add(totalAmount));
+        asset.setUnits(asset.getUnits().add(unitsToBuy));
+        asset.setAmount(asset.getAmount().add(totalAmount));
         asset.setCurrentValue(asset.getUnits().multiply(currentPrice).setScale(4, RoundingMode.HALF_UP));
         assetRepository.save(asset);
 
@@ -250,7 +250,7 @@ public class AssetTransactionService {
         }
 
         // Stock-specific: sell by units only
-        if ("stock".equals(type) && dto.getAction() == TransactionAction.SELL) {
+        if ("Stock".equals(type) && dto.getAction() == TransactionAction.SELL) {
             if (hasAmount && !hasUnits) {
                 throw new CoreThrowHandler(ApiError.BAD_REQUEST,
                         "Stocks can only be sold by units, not by amount");

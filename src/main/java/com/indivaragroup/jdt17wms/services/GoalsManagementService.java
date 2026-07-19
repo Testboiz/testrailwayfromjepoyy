@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.constants.GoalConstants;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
+import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.GoalDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
@@ -15,10 +16,13 @@ import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
+import com.indivaragroup.jdt17wms.repositories.ExpenseRepository;
 import com.indivaragroup.jdt17wms.dto.request.GoalEditingDTO;
+import com.indivaragroup.jdt17wms.models.Expense;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -36,16 +40,20 @@ public class GoalsManagementService implements VerifiedUserProvider {
     private final UserRepository userRepository;
     private final FinancialProfileRepository financialProfileRepository;
     private final AssetRepository assetRepository;
+    private final ExpenseRepository expenseRepository;
     private final Clock clock;
 
-    public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository, FinancialProfileRepository financialProfileRepository, AssetRepository assetRepository, Clock clock) {
+
+    public GoalsManagementService(GoalRepository goalRepository, UserRepository userRepository, FinancialProfileRepository financialProfileRepository, AssetRepository assetRepository, ExpenseRepository expenseRepository, Clock clock) {
         this.goalRepository = goalRepository;
         this.userRepository = userRepository;
         this.financialProfileRepository = financialProfileRepository;
         this.assetRepository = assetRepository;
+        this.expenseRepository = expenseRepository;
         this.clock = clock;
     }
 
+    @RiskProfileAssessmentRequired
     public List<GoalDTO> getGoalsForUser() {
         User user = getVerifiedUser();
 
@@ -58,6 +66,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
                         .name(goal.getName())
                         .type(goal.getType())
                         .targetAmount(goal.getTargetAmount())
+                        .currentAmount(goal.getCurrentAmount())
                         .monthlyContribution(goal.getMonthlyContribution())
                         .targetDate(goal.getTargetDate())
                         .isPriority(goal.getIsPriority())
@@ -69,6 +78,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
                 .toList();
     }
 
+  @RiskProfileAssessmentRequired
   public GoalDTO createGoalForUser(GoalRegistrationDTO dto) {
     User user = getVerifiedUser();
 
@@ -96,7 +106,6 @@ public class GoalsManagementService implements VerifiedUserProvider {
       throw new CoreThrowHandler(ApiError.VALIDATION,errors);
     }
 
-    // 3. Check duplicate priority (Enforced non-null by DTO @NotNull)
     if (Boolean.TRUE.equals(dto.getIsPriority())) {
       boolean hasPriorityGoal = goalRepository.findAllByUserId(user.getId()).stream()
         .anyMatch(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS);
@@ -105,23 +114,12 @@ public class GoalsManagementService implements VerifiedUserProvider {
       }
     }
 
-    // 4. Financial validation (same pattern as updateGoalForUser)
-    BigDecimal monthlyIncome = financialProfileRepository.findByUserId(user.getId())
-      .map(FinancialProfile::getMonthlyIncome)
-      .orElse(BigDecimal.ZERO);
-    BigDecimal totalContribution = goalRepository.findAllByUserId(user.getId()).stream()
-      .map(Goal::getMonthlyContribution)
-      .reduce(dto.getMonthlyContribution(), BigDecimal::add);
-    if (totalContribution.compareTo(monthlyIncome) > 0) {
-      throw new CoreThrowHandler(ApiError.INSUFFICIENT_INCOME);
-    }
-
     Goal goal = Goal.builder()
       .userId(user.getId())
       .name(dto.getName())
       .type(type)
       .targetAmount(dto.getTargetAmount())
-      .currentAmount(BigDecimal.ZERO)
+      .currentAmount(dto.getCurrentAmount() != null ? dto.getCurrentAmount() : BigDecimal.ZERO)
       .monthlyContribution(dto.getMonthlyContribution())
       .targetDate(targetDate)
       .isPriority(dto.getIsPriority())
@@ -131,12 +129,16 @@ public class GoalsManagementService implements VerifiedUserProvider {
 
     goal = goalRepository.save(goal);
 
+    // Auto-allocate if needed after creating new goal
+    autoAllocateIfNeeded(user.getId());
+
     return GoalDTO.builder()
       .id(goal.getId())
       .userId(goal.getUserId())
       .name(goal.getName())
       .type(goal.getType())
       .targetAmount(goal.getTargetAmount())
+      .currentAmount(goal.getCurrentAmount())
       .monthlyContribution(goal.getMonthlyContribution())
       .targetDate(goal.getTargetDate())
       .isPriority(goal.getIsPriority())
@@ -147,6 +149,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
       .build();
   }
 
+  @RiskProfileAssessmentRequired
   public GoalDTO updateGoalForUser(UUID goalId, GoalEditingDTO dto) {
     User user = getVerifiedUser();
 
@@ -166,9 +169,8 @@ public class GoalsManagementService implements VerifiedUserProvider {
     if (targetDate.isBefore(now)) {
       errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date must be in the future").build());
     } else {
-      // goal.getType() is already sanitized/normalized when the goal was created
-      String type = goal.getType() != null ? goal.getType() : "custom";
-      int maxMonths = GoalConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
+      String type = goal.getType();
+      int maxMonths = GoalConstants.GOAL_MAX_MONTHS.get(type.toLowerCase());
       long months = ChronoUnit.MONTHS.between(now, targetDate);
       if (months > maxMonths) {
         errors.add(ValidationErrorDetailDTO.builder().field(FIELD_TARGET_DATE).reason("Target date exceeds maximum limit of " + maxMonths + " months").build());
@@ -211,6 +213,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
     goal.setName(dto.getName());
     goal.setTargetAmount(dto.getTargetAmount());
     goal.setMonthlyContribution(dto.getMonthlyContribution());
+    if (dto.getCurrentAmount() != null) goal.setCurrentAmount(dto.getCurrentAmount());
     goal.setTargetDate(targetDate);
     goal.setIsPriority(isDtoPriority); // Reuses the boolean evaluated above
     goal.setNotes(dto.getNotes());
@@ -223,6 +226,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
       .name(goal.getName())
       .type(goal.getType())
       .targetAmount(goal.getTargetAmount())
+      .currentAmount(goal.getCurrentAmount())
       .monthlyContribution(goal.getMonthlyContribution())
       .targetDate(goal.getTargetDate())
       .isPriority(goal.getIsPriority())
@@ -233,6 +237,7 @@ public class GoalsManagementService implements VerifiedUserProvider {
       .build();
   }
     @Transactional
+    @RiskProfileAssessmentRequired
     public void deleteGoalForUser(UUID goalId) {
         User user = getVerifiedUser();
 
@@ -250,15 +255,106 @@ public class GoalsManagementService implements VerifiedUserProvider {
         }
 
         goalRepository.delete(goal);
+
+        // Auto-allocate if needed after deleting goal
+        autoAllocateIfNeeded(user.getId());
     }
 
-    @Override
-    public UserRepository userRepository() {
-        return this.userRepository;
+    @Transactional
+    @RiskProfileAssessmentRequired
+    public List<GoalDTO> autoAllocateGoalsForUser(int percentage) {
+        User user = getVerifiedUser();
+        UUID userId = user.getId();
+
+        List<Goal> goals = goalRepository.findAllByUserId(userId);
+        if (goals.isEmpty()) {
+            return List.of();
+        }
+
+        // Calculate investable surplus
+        BigDecimal monthlyIncome = financialProfileRepository.findByUserId(userId)
+                .map(FinancialProfile::getMonthlyIncome)
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal monthlyExpenses = financialProfileRepository.findByUserId(userId)
+                .flatMap(fp -> expenseRepository.findByFinancialProfileId(fp.getId()))
+                .map(Expense::getTotalExpenses)
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal surplus = monthlyIncome.subtract(monthlyExpenses).max(BigDecimal.ZERO);
+
+        // Find priority goal
+        Goal priorityGoal = goals.stream()
+                .filter(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS)
+                .findFirst()
+                .orElse(null);
+
+        long otherCount = goals.stream()
+                .filter(g -> !Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS)
+                .count();
+
+        BigDecimal primaryAmt = BigDecimal.ZERO;
+        BigDecimal eachOther = BigDecimal.ZERO;
+
+        if (surplus.compareTo(BigDecimal.ZERO) > 0) {
+            if (priorityGoal != null) {
+                // Priority goal gets percentage of surplus
+                primaryAmt = surplus.multiply(BigDecimal.valueOf(percentage))
+                        .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+
+                BigDecimal remaining = surplus.subtract(primaryAmt).max(BigDecimal.ZERO);
+                if (otherCount > 0) {
+                    eachOther = remaining.divide(BigDecimal.valueOf(otherCount), 4, RoundingMode.HALF_UP);
+                }
+            }
+        }
+
+        // Update all active goals
+        for (Goal g : goals) {
+            if (g.getStatus() == GoalStatus.IN_PROGRESS) {
+                if (Boolean.TRUE.equals(g.getIsPriority())) {
+                    g.setMonthlyContribution(primaryAmt);
+                } else {
+                    g.setMonthlyContribution(eachOther);
+                }
+                goalRepository.save(g);
+            }
+        }
+
+        return getGoalsForUser();
+    }
+
+    private void autoAllocateIfNeeded(UUID userId) {
+        // Check if auto-allocation is enabled
+        FinancialProfile profile = financialProfileRepository.findByUserId(userId).orElse(null);
+        if (profile == null || !Boolean.TRUE.equals(profile.getAutoAllocationEnabled())) {
+            return;
+        }
+
+        List<Goal> goals = goalRepository.findAllByUserId(userId);
+        long activeGoals = goals.stream()
+                .filter(g -> g.getStatus() == GoalStatus.IN_PROGRESS)
+                .count();
+
+        boolean hasPriorityGoal = goals.stream()
+                .anyMatch(g -> Boolean.TRUE.equals(g.getIsPriority()) && g.getStatus() == GoalStatus.IN_PROGRESS);
+
+        // Only auto-allocate if we have 2+ active goals and a priority goal
+        if (activeGoals >= 2 && hasPriorityGoal) {
+            Integer percentage = profile.getPriorityAllocationPercentage();
+            if (percentage == null) {
+                percentage = 50; // Default fallback
+            }
+            autoAllocateGoalsForUser(percentage);
+        }
     }
 
     @Override
     public User getVerifiedUser() {
         return VerifiedUserProvider.super.getVerifiedUser();
+    }
+    @Override
+    public UserRepository userRepository() {
+        return this.userRepository;
     }
 }
