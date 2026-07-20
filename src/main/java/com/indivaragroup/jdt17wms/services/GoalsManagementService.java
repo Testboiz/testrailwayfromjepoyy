@@ -213,7 +213,9 @@ public class GoalsManagementService implements VerifiedUserProvider {
     goal.setName(dto.getName());
     goal.setTargetAmount(dto.getTargetAmount());
     goal.setMonthlyContribution(dto.getMonthlyContribution());
-    if (dto.getCurrentAmount() != null) goal.setCurrentAmount(dto.getCurrentAmount());
+    if (dto.getCurrentAmount() != null)
+        goal.setCurrentAmount(dto.getCurrentAmount());
+    goal.setType(dto.getType());
     goal.setTargetDate(targetDate);
     goal.setIsPriority(isDtoPriority); // Reuses the boolean evaluated above
     goal.setNotes(dto.getNotes());
