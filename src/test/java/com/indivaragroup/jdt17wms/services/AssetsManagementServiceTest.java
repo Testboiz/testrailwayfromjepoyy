@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
+import com.indivaragroup.jdt17wms.dto.request.AssetValueUpdateDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
 import com.indivaragroup.jdt17wms.dto.response.AssetDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
@@ -27,6 +28,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,6 +74,9 @@ class AssetsManagementServiceTest {
 
     @Mock
     private RecommendationRepository recommendationRepository;
+
+    @Mock
+    private AssetTransactionService assetTransactionService;
 
     @InjectMocks
     private AssetsManagementService assetsManagementService;
@@ -559,5 +566,67 @@ class AssetsManagementServiceTest {
         assertThrows(CoreThrowHandler.class, () -> {
             assetsManagementService.deleteAssetForUser(assetId);
         });
+    }
+
+    @Test
+    void updateAssetValue_shouldReturnAssetDTOWithEnrichedProductFields() {
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        BigDecimal newValue = BigDecimal.valueOf(600000);
+
+        Asset savedAsset = Asset.builder()
+                .id(assetId)
+                .userId(user.getId())
+                .productId(UUID.randomUUID())
+                .currentValue(newValue)
+                .build();
+
+        Product product = Product.builder()
+                .id(savedAsset.getProductId())
+                .name("Test Stock")
+                .issuer("Test Corp")
+                .type("stock")
+                .build();
+
+        when(assetTransactionService.updateAssetCurrentValue(any(UUID.class), any(BigDecimal.class), nullable(String.class), any(User.class)))
+                .thenReturn(savedAsset);
+        when(productRepository.findById(savedAsset.getProductId())).thenReturn(Optional.of(product));
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+
+        AssetValueUpdateDTO dto = new AssetValueUpdateDTO();
+        dto.setCurrentValue(newValue);
+
+        AssetDTO result = assetsManagementService.updateAssetValue(assetId, dto);
+
+        assertNotNull(result);
+        assertEquals(assetId, result.getId());
+        assertEquals(newValue, result.getCurrentValue());
+        assertEquals("Test Stock", result.getAssetsName());
+        assertEquals("Test Corp", result.getAssetsIssuer());
+        assertEquals("stock", result.getAssetsType());
+    }
+
+    @Test
+    void updateAssetValue_shouldThrowNotFound_whenAssetNotFound() {
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID assetId = UUID.randomUUID();
+        mockAuthenticatedUser(SecurityUtils.STATIC_USER_ID);
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(assetTransactionService.updateAssetCurrentValue(any(UUID.class), any(BigDecimal.class), nullable(String.class), any(User.class)))
+                .thenThrow(new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+
+        AssetValueUpdateDTO dto = new AssetValueUpdateDTO();
+        dto.setCurrentValue(BigDecimal.valueOf(600000));
+
+        assertThrows(CoreThrowHandler.class, () -> assetsManagementService.updateAssetValue(assetId, dto));
     }
 }
