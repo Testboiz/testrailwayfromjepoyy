@@ -37,7 +37,7 @@ public class AssetController {
 
     @PostMapping
     @AuditLogged(action = "CREATE_ASSET", category = "ASSET")
-    public ApiResponse<Asset> createAsset(@Valid @RequestBody AssetRegistrationDTO dto) {
+    public ApiResponse<AssetDTO> createAsset(@Valid @RequestBody AssetRegistrationDTO dto) {
         return ApiResponse.created(ApiSuccess.ASSET_CREATED,
                 assetsManagementService.createAssetForUser(dto));
     }

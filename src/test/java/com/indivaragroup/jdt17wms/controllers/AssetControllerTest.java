@@ -2,6 +2,7 @@ package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.dto.request.AssetRegistrationDTO;
 import com.indivaragroup.jdt17wms.dto.request.GoalSettingDTO;
+import com.indivaragroup.jdt17wms.dto.response.AssetDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.models.Asset;
@@ -42,7 +43,7 @@ class AssetControllerTest extends BaseControllerTest {
     void createAsset_shouldReturnOk() throws Exception {
         UUID productId = UUID.randomUUID();
         when(assetsManagementService.createAssetForUser(any(AssetRegistrationDTO.class)))
-                .thenReturn(new Asset());
+                .thenReturn(new AssetDTO());
 
         mockMvc.perform(post("/api/v1/me/assets")
                         .contentType("application/json")

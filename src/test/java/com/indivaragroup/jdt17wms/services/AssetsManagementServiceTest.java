@@ -190,10 +190,10 @@ class AssetsManagementServiceTest {
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(assetRepository.save(any(Asset.class))).thenReturn(savedAsset);
 
-        Asset result = assetsManagementService.createAssetForUser(dto);
+        AssetDTO result = assetsManagementService.createAssetForUser(dto);
 
         assertNotNull(result);
-        assertEquals(savedAsset, result);
+        assertEquals(savedAsset.getId(), result.getId());
         verify(assetRepository).save(any(Asset.class));
         verify(transactionHistoryRepository).save(any(TransactionHistory.class));
     }
