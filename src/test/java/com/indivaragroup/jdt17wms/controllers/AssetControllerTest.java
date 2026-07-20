@@ -122,7 +122,7 @@ class AssetControllerTest extends BaseControllerTest {
         UUID id = UUID.randomUUID();
         UUID goalId = UUID.randomUUID();
         when(assetsManagementService.updateAssetForUser(any(UUID.class), any(GoalSettingDTO.class)))
-                .thenReturn(new Asset());
+                .thenReturn(new AssetDTO());
 
         mockMvc.perform(put("/api/v1/me/assets/" + id)
                         .contentType("application/json")

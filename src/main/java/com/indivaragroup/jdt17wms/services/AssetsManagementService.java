@@ -166,7 +166,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
     }
 
     @Transactional
-    public Asset updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
+    public AssetDTO updateAssetForUser(UUID assetId, GoalSettingDTO dto) {
         User user = getVerifiedUser();
 
         Asset asset = assetRepository.findById(assetId)
@@ -184,7 +184,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
             asset.setGoalId(null);
         }
 
-        return assetRepository.save(asset);
+        return toAssetDTO(assetRepository.save(asset));
     }
 
     @Transactional

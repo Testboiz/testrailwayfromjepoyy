@@ -288,7 +288,7 @@ class AssetsManagementServiceTest {
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
         when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Asset result = assetsManagementService.updateAssetForUser(assetId, dto);
+        AssetDTO result = assetsManagementService.updateAssetForUser(assetId, dto);
 
         assertNotNull(result);
         assertEquals(goalId, result.getGoalId());
@@ -318,7 +318,7 @@ class AssetsManagementServiceTest {
         when(assetRepository.findById(assetId)).thenReturn(Optional.of(asset));
         when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Asset result = assetsManagementService.updateAssetForUser(assetId, dto);
+        AssetDTO result = assetsManagementService.updateAssetForUser(assetId, dto);
 
         assertNotNull(result);
         assertNull(result.getGoalId());
