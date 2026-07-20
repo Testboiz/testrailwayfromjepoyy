@@ -86,7 +86,7 @@ public class AssetController {
     }
 
     @PatchMapping("/{assetId}/value")
-    public ApiResponse<Asset> updateAssetValue(
+    public ApiResponse<AssetDTO> updateAssetValue(
             @PathVariable UUID assetId,
             @Valid @RequestBody AssetValueUpdateDTO dto) {
         return ApiResponse.success(ApiSuccess.ASSET_UPDATED,

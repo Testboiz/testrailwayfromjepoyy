@@ -261,9 +261,9 @@ public class AssetsManagementService implements VerifiedUserProvider {
     }
 
     @Transactional
-    public Asset updateAssetValue(UUID assetId, AssetValueUpdateDTO dto) {
+    public AssetDTO updateAssetValue(UUID assetId, AssetValueUpdateDTO dto) {
         User user = getVerifiedUser();
-        return assetTransactionService.updateAssetCurrentValue(assetId, dto.getCurrentValue(), dto.getNotes(), user);
+        return toAssetDTO(assetTransactionService.updateAssetCurrentValue(assetId, dto.getCurrentValue(), dto.getNotes(), user));
     }
 
     public Asset findAssetByIdAndUser(UUID assetId) {
