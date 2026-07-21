@@ -48,7 +48,7 @@ public class AssetDTO {
     private BigDecimal currentValue;
 
     @JsonProperty("tenor")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate tenor;
 
     @JsonProperty("purchase_date")

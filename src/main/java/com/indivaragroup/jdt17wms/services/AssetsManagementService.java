@@ -168,9 +168,10 @@ public class AssetsManagementService implements VerifiedUserProvider {
         //cek ulang. nwgawur loh ya
         // Calculate maturity date if tenor is provided and product type supports it
         LocalDate maturityDate = null;
-        if (dto.getTenor() != null && TENOR_PRODUCT_TYPES.contains(product.getType())) {
+        if (dto.getTenor() != null) {
             maturityDate = LocalDate.now().plusMonths(dto.getTenor());
         }
+        System.out.println(maturityDate);
 
         Asset asset = Asset.builder()
                 .userId(user.getId())
