@@ -93,6 +93,8 @@ public class AssetController {
                 assetsManagementService.updateAssetValue(assetId, dto));
     }
 
+
+
     @PatchMapping("/{assetId}/goal")
     public ApiResponse<AssetDTO> updateAssetGoal(
             @PathVariable UUID assetId,
