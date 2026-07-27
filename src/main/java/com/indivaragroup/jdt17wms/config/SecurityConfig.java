@@ -8,6 +8,7 @@ import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -17,6 +18,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 import static com.indivaragroup.jdt17wms.dto.response.ApiPath.*;
 
@@ -26,6 +32,8 @@ public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final ObjectMapper objectMapper;
+
+  public static final String ANY_WILDCARD = "/**";
 
 
   public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
@@ -39,30 +47,42 @@ public class SecurityConfig {
   }
 
   @Bean
+  public CorsConfigurationSource corsConfigurationSource(){
+      CorsConfiguration corsConfig = new CorsConfiguration();
+      corsConfig.setAllowedOrigins(List.of("http://localhost:5174","http://domain.com"));
+      corsConfig.setAllowedMethods(List.of("GET","POST","PUT","DELETE"));
+      corsConfig.setAllowCredentials(true);
+
+      UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+      source.registerCorsConfiguration("/api/**", corsConfig);
+      return source;
+  }
+
+  @Bean
+  @SuppressWarnings("java:S4502")
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
       .csrf(AbstractHttpConfigurer::disable)
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
         .requestMatchers(
-                BASE_AUTH_PATH + LOGIN_PATH,
-                BASE_AUTH_PATH + REGISTER_PATH,
-                BASE_AUTH_PATH + REFRESH_TOKEN_PATH,
-                "/error"
+                BASE_AUTH_ROUTE + LOGIN_ROUTE,
+                BASE_AUTH_ROUTE + REGISTER_ROUTE,
+                BASE_AUTH_ROUTE + REFRESH_TOKEN_ROUTE,
+                SPRING_ERROR_URL
         ).permitAll()
-        .requestMatchers(HttpMethod.GET, BASE_PRODUCTS_PATH).hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
-        .requestMatchers(HttpMethod.PUT, BASE_PRODUCTS_PATH + "/**").hasRole(UserRole.ADMIN.name())
-        .requestMatchers("/api/v1/admin/dashboard").hasRole(UserRole.ADMIN.name())
-        .requestMatchers("/api/v1/admin/**").hasRole(UserRole.ADMIN.name())
-        .requestMatchers("/api/v1/audit", "/api/v1/audit/**").hasRole(UserRole.ADMIN.name())
-        .requestMatchers("/api/v1/users", "/api/v1/users/**").hasRole(UserRole.ADMIN.name())
-        .requestMatchers("/api/v1/me/**", "/me/**").hasRole(UserRole.USER.name())
+        .requestMatchers(HttpMethod.GET, BASE_PRODUCTS_ROUTE).hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
+        .requestMatchers(HttpMethod.PUT, BASE_PRODUCTS_ROUTE + ANY_WILDCARD).hasRole(UserRole.ADMIN.name())
+        .requestMatchers(BASE_ADMIN_ROUTE + ANY_WILDCARD).hasRole(UserRole.ADMIN.name())
+        .requestMatchers(BASE_AUDIT_ROUTE, BASE_AUDIT_ROUTE + ANY_WILDCARD).hasRole(UserRole.ADMIN.name())
+        .requestMatchers(BASE_USERS_ROUTE, BASE_USERS_ROUTE + ANY_WILDCARD).hasRole(UserRole.ADMIN.name())
+        .requestMatchers(BASE_USER_ROUTE + ANY_WILDCARD).hasRole(UserRole.USER.name())
         .anyRequest().authenticated()
       )
       .exceptionHandling(exceptions -> exceptions
         .authenticationEntryPoint((request, response, authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             ApiResponse<?> body = ApiResponse.builder()
                     .restApiResponseHttpCode(HttpServletResponse.SC_UNAUTHORIZED)
                     .restApiResponseResult(null)
@@ -73,7 +93,7 @@ public class SecurityConfig {
         })
         .accessDeniedHandler((request, response, accessDeniedException) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/json");
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             ApiResponse<?> body = ApiResponse.builder()
                     .restApiResponseHttpCode(HttpServletResponse.SC_FORBIDDEN)
                     .restApiResponseError(null)
