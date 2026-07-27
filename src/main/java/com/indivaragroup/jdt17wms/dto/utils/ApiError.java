@@ -17,7 +17,7 @@ public enum ApiError {
     NOT_FOUND(HttpStatus.NOT_FOUND.value(), "RESOURCE NOT FOUND"),
     VALIDATION(HttpStatus.BAD_REQUEST.value(), "INVALID FIELD VALUES"),
 //  Khusus Invalid
-    INVALID_TOKEN(HttpStatus.UNAUTHORIZED.value(), "Invalid or expired refresh token"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED.value(), "INVALID TOKEN"),
     INVALID_REQUEST_BODY(HttpStatus.BAD_REQUEST.value(),"Invalid Request Body"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "User Not Found"),
     DELISTED_PRODUCT(HttpStatus.CONFLICT.value(), "Can’t track delisted products"),
@@ -30,14 +30,26 @@ public enum ApiError {
     FINANCIAL_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "Financial profile not found"),
 
     // Transaction errors
-    INSUFFICIENT_UNITS(HttpStatus.BAD_REQUEST.value(), "Insufficient units available for sale"),
+    INVALID_CREDENTIALS(HttpStatus.BAD_REQUEST.value(), "Email Or Password Invalid"),
+    ACCOUNT_INACTIVE(HttpStatus.UNAUTHORIZED.value(), "Account is Not active. Please Contact Admin"),
+    INSUFFICIENT_UNITS(HttpStatus.BAD_REQUEST.value(), "Insufficient units available to sale"),
     STOCK_AMOUNT_SELL_NOT_ALLOWED(HttpStatus.BAD_REQUEST.value(), "Stocks can only be sold by units"),
     INVALID_LOT_SIZE(HttpStatus.BAD_REQUEST.value(), "Transaction must be in lot multiples"),
     FRACTIONAL_NOT_ALLOWED(HttpStatus.BAD_REQUEST.value(), "Fractional units not allowed for this product"),
     TRANSACTION_TYPE_REQUIRED(HttpStatus.BAD_REQUEST.value(), "Must specify either units or amount"),
     BOTH_UNITS_AND_AMOUNT(HttpStatus.BAD_REQUEST.value(), "Cannot specify both units and amount"),
-    ;
+    INVALID_ANSWER_COUNT(HttpStatus.BAD_REQUEST.value(), "Invalid answer count"),
+    INVALID_TRANSACTION(HttpStatus.BAD_REQUEST.value(), "Invalid transaction action"),
+    NULL_CURRENT_VALUE(HttpStatus.BAD_REQUEST.value(), "null currentValue"),
+    BELOW_MIN_INVESTMENT(HttpStatus.BAD_REQUEST.value(), "Amount must be at least minimum investment of %s"),
+    CORRUPT_DATA(HttpStatus.BAD_REQUEST.value(), "Asset has null units — data corrupt"),
+    CORRUPT_DATA_DETAIL(HttpStatus.BAD_REQUEST.value(), "Asset has negative remaining units (%s): sold units exceed owned units — data corrupt"),
+    EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED.value(), "Token Expired"),
+    NOT_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED.value(), "Token is not a refresh token");
     private final int code;
     private final String message;
 
+    public String format(Object... args) {
+        return String.format(this.message, args);
+    }
 }

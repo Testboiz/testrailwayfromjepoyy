@@ -1,4 +1,4 @@
-package com.indivaragroup.jdt17wms.dtos.input;
+package com.indivaragroup.jdt17wms.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

@@ -11,6 +11,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AdminUserAccessDTO {
-    private String status;
+public class BearerHeaderDTO {
+    private String authHeader;
+
+    public static BearerHeaderDTO valueOf(String authHeader) {
+        return new BearerHeaderDTO(authHeader);
+    }
 }
