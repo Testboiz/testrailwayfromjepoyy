@@ -1,7 +1,6 @@
 package com.indivaragroup.jdt17wms.repositories;
 
 import com.indivaragroup.jdt17wms.models.User;
-import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -24,7 +23,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   @Query("SELECT COUNT(u) FROM User u WHERE u.status = :status AND CAST(u.role AS string) = :role")
   long countByStatusAndRole(@Param("status") String status, @Param("role") String role);
-  List<User> findByRiskProfile(String riskProfile);
   boolean existsByEmail(String email);
   Optional<User> findByEmail(String email);
 

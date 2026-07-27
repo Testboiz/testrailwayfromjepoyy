@@ -29,11 +29,6 @@ public class JwtService {
     private static final String REFRESH_TOKEN_TYPE = "refresh";
 
     // Claim name constants
-    private static final String CLAIM_EMAIL = "email";
-    private static final String CLAIM_USER_ID = "userId";
-    private static final String CLAIM_ROLE = "role";
-    private static final String CLAIM_IAT = "iat";
-    private static final String CLAIM_EXP = "exp";
     private static final String USER_ID_CLAIM = "userId";
     private static final String USER_ROLE_CLAIM = "role";
     private static final String USER_NAME_CLAIM = "name";
@@ -56,7 +51,12 @@ public class JwtService {
         this.clock = clock;
     }
 
-    @PostConstruct
+    private static final Integer SECRET_KEY_LENGTH = 64;
+    private static final Integer MILLISECONDS_PER_MINUTE = 60000;
+    private static final Integer MILLISECONDS_PER_DAY = 8640000;
+
+
+  @PostConstruct
     public void validateConfiguration() {
         if (secretKey == null || secretKey.trim().isEmpty()) {
             throw new IllegalStateException(
@@ -64,7 +64,7 @@ public class JwtService {
             );
         }
 
-        if (secretKey.length() < 64) {
+        if (secretKey.length() < SECRET_KEY_LENGTH) {
             throw new IllegalStateException(
                 "JWT secret too short. Minimum 64 characters (256 bits) required. Current: "
                 + secretKey.length()
@@ -72,8 +72,8 @@ public class JwtService {
         }
 
         log.info("JWT Service initialized successfully. Secret length: {} characters", secretKey.length());
-        log.info("Access token expiration: {} ms ({} minutes)", accessTokenExpirationMs, accessTokenExpirationMs / 60000);
-        log.info("Refresh token expiration: {} ms ({} days)", refreshTokenExpirationMs, refreshTokenExpirationMs / 86400000);
+        log.info("Access token expiration: {} ms ({} minutes)", accessTokenExpirationMs, accessTokenExpirationMs / MILLISECONDS_PER_MINUTE);
+        log.info("Refresh token expiration: {} ms ({} days)", refreshTokenExpirationMs, refreshTokenExpirationMs / MILLISECONDS_PER_DAY);
     }
 
     private SecretKey getSigningKey() {

@@ -1,12 +1,13 @@
 package com.indivaragroup.jdt17wms.controllers;
 
+import com.indivaragroup.jdt17wms.aspects.AuditLogged;
+import com.indivaragroup.jdt17wms.constants.AuditConstants;
 import com.indivaragroup.jdt17wms.dto.request.AdminChangeVisibilityDTO;
 import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.dto.response.ApiPath;
 import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.ProductResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
-import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(ApiPath.BASE_PRODUCTS_PATH)
+@RequestMapping(ApiPath.BASE_PRODUCTS_ROUTE)
 public class ProductController {
 
     private final ProductManagementService productManagementService;
@@ -33,7 +34,8 @@ public class ProductController {
                 productManagementService.getProductsForUser(queryDTO, pageable));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(ApiPath.ID_SLUG)
+    @AuditLogged(action = AuditConstants.Action.UPDATE_PRODUCT, category = AuditConstants.PRODUCT_CATEGORY)
     public ApiResponse<ProductResponseDTO> updateProduct(
             @PathVariable UUID id,
             @Valid @RequestBody AdminChangeVisibilityDTO adminChangeVisibilityDTO) {
@@ -41,7 +43,7 @@ public class ProductController {
                 productManagementService.updateProductVisibility(id, adminChangeVisibilityDTO.getVisibility()));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(ApiPath.ID_SLUG)
     public ApiResponse<ProductResponseDTO> getProductById(
             @PathVariable UUID id
     ) {

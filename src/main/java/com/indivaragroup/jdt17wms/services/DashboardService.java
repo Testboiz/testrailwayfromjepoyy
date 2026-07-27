@@ -7,7 +7,7 @@ import com.indivaragroup.jdt17wms.aspects.RiskProfileAssessmentRequired;
 import com.indivaragroup.jdt17wms.dto.response.*;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
-import com.indivaragroup.jdt17wms.models.Product;
+import com.indivaragroup.jdt17wms.models.ProductPrice;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.enums.UserRole;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
@@ -15,11 +15,9 @@ import com.indivaragroup.jdt17wms.repositories.AssetRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.AuditLogRepository;
 import com.indivaragroup.jdt17wms.repositories.ProductPriceRepository;
-import com.indivaragroup.jdt17wms.services.PnLCalculationService;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import java.math.BigDecimal;
@@ -30,7 +28,6 @@ import java.time.Month;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class DashboardService {
@@ -41,6 +38,9 @@ public class DashboardService {
     private final AuditLogRepository auditLogRepository;
     private final ProductPriceRepository productPriceRepository;
     private final PnLCalculationService pnLCalculationService;
+
+    private static final Integer FIRST_DAY = 1;
+    private static final String ACTIVE_STATUS = "active";
 
     public DashboardService(UserRepository userRepository,
                             AssetRepository assetRepository,
@@ -71,7 +71,7 @@ public class DashboardService {
         return AdminDashboardDTO.builder()
                 .aum(assetRepository.sumTotalAmount())
                 .userCount(userRepository.count())
-                .activeUserCount(userRepository.countByStatusAndRole("active", UserRole.USER.name().toLowerCase()))
+                .activeUserCount(userRepository.countByStatusAndRole(ACTIVE_STATUS, UserRole.USER.name().toLowerCase()))
                 .productCount(productRepository.count())
                 .activeProductCount(productRepository.countByVisible(true))
                 .totalAuditEvents(auditLogRepository.count())
@@ -86,9 +86,9 @@ public class DashboardService {
     int currentYear = today.getYear();
 
     // Dynamically query assets purchased since Jan 1st of the current year
-    Instant startOfYear = LocalDate.of(currentYear, Month.JANUARY, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
+    Instant startOfYear = LocalDate.of(currentYear, Month.JANUARY, FIRST_DAY).atStartOfDay(ZoneOffset.UTC).toInstant();
     List<Asset> assets = assetRepository.findAllByPurchaseDateGreaterThanEqual(startOfYear);
-    LocalDate lastSnapshotDate = LocalDate.of(currentYear, maxMonth, 1)
+    LocalDate lastSnapshotDate = LocalDate.of(currentYear, maxMonth, FIRST_DAY)
       .with(TemporalAdjusters.lastDayOfMonth());
 
     Set<UUID> productIds = assets.stream()
@@ -97,8 +97,7 @@ public class DashboardService {
 
     Map<UUID, TreeMap<LocalDate, BigDecimal>> pricesByProduct = new HashMap<>();
     if (!productIds.isEmpty()) {
-      for (com.indivaragroup.jdt17wms.models.ProductPrice pp :
-        productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(productIds, lastSnapshotDate)) {
+      for (ProductPrice pp : productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(productIds, lastSnapshotDate)) {
         pricesByProduct
           .computeIfAbsent(pp.getProductId(), k -> new TreeMap<>())
           .put(pp.getRecordedDate(), pp.getPrice());
@@ -107,7 +106,7 @@ public class DashboardService {
     List<AumTrendDTO> trend = new ArrayList<>();
 
     for (int m = 1; m <= maxMonth; m++) {
-      LocalDate snapshotDate = LocalDate.of(currentYear, m, 1).with(TemporalAdjusters.lastDayOfMonth());
+      LocalDate snapshotDate = LocalDate.of(currentYear, m, FIRST_DAY).with(TemporalAdjusters.lastDayOfMonth());
       Instant snapshotInstant = snapshotDate.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
 
       BigDecimal monthlyAum = BigDecimal.ZERO;
@@ -146,7 +145,10 @@ public class DashboardService {
     for (Asset asset : assetList) {
       // Use PnLCalculationService for accurate remaining units calculation
       AssetsPnLResponseDTO pnl = pnLCalculationService.computePnLForAsset(asset);
-      
+      if (pnl == null || pnl.getCurrentValue() == null) {
+        throw new CoreThrowHandler(ApiError.NULL_CURRENT_VALUE);
+      }
+
       BigDecimal assetValue = pnl.getCurrentValue(); // remaining units × current price
       totalValue = totalValue.add(assetValue);
       totalInvested = totalInvested.add(asset.getAmount());
@@ -177,7 +179,7 @@ public class DashboardService {
     List<Asset> assets = assetRepository.findAllByUserId(userId);
 
     LocalDate today0 = LocalDate.now(ZoneOffset.UTC);
-    LocalDate lastSnapshotDate = LocalDate.of(today0.getYear(), today0.getMonthValue(), 1)
+    LocalDate lastSnapshotDate = LocalDate.of(today0.getYear(), today0.getMonthValue(), FIRST_DAY)
       .with(TemporalAdjusters.lastDayOfMonth());
 
     Set<UUID> productIds = assets.stream()
@@ -186,8 +188,7 @@ public class DashboardService {
 
     Map<UUID, TreeMap<LocalDate, BigDecimal>> pricesByProduct = new HashMap<>();
     if (!productIds.isEmpty()) {
-      for (com.indivaragroup.jdt17wms.models.ProductPrice pp :
-        productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(productIds, lastSnapshotDate)) {
+      for (ProductPrice pp : productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(productIds, lastSnapshotDate)) {
         pricesByProduct
           .computeIfAbsent(pp.getProductId(), k -> new TreeMap<>())
           .put(pp.getRecordedDate(), pp.getPrice());
@@ -200,7 +201,7 @@ public class DashboardService {
     int currentYear = today.getYear();
 
     for (int m = 1; m <= maxMonth; m++) {
-      LocalDate snapshotDate = LocalDate.of(currentYear, m, 1).with(TemporalAdjusters.lastDayOfMonth());
+      LocalDate snapshotDate = LocalDate.of(currentYear, m, FIRST_DAY).with(TemporalAdjusters.lastDayOfMonth());
       Instant snapshotInstant = snapshotDate.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
       BigDecimal monthlyValue = BigDecimal.ZERO;
 

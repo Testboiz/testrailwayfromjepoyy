@@ -10,6 +10,7 @@ import com.indivaragroup.jdt17wms.dto.response.AssetUpdateResponseDTO;
 import com.indivaragroup.jdt17wms.dto.response.TransactionHistoryDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.models.Asset;
+import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.models.Recommendation;
 import com.indivaragroup.jdt17wms.models.TransactionHistory;
@@ -21,21 +22,14 @@ import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import com.indivaragroup.jdt17wms.repositories.RecommendationRepository;
 import com.indivaragroup.jdt17wms.repositories.TransactionHistoryRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
-import org.hibernate.sql.results.graph.collection.internal.ListInitializerProducer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.indivaragroup.jdt17wms.constants.ProductConstants;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
+import java.time.*;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -48,11 +42,12 @@ public class AssetsManagementService implements VerifiedUserProvider {
     private final GoalRepository goalRepository;
     private final RecommendationRepository recommendationRepository;
     private final AssetTransactionService assetTransactionService;
+    private final Clock clock;
+
     private static final int BY_FOUR = 4;
-    private static final Set<String> TENOR_PRODUCT_TYPES = Set.of(
-            ProductConstants.SUKUK, ProductConstants.DEPOSIT, ProductConstants.BOND
-    );
-    private final ProductManagementService productManagementService;
+
+  @Override
+    public UserRepository userRepository() { return userRepository; }
 
     public AssetsManagementService(AssetRepository assetRepository,
                                    UserRepository userRepository,
@@ -60,7 +55,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
                                    ProductRepository productRepository,
                                    GoalRepository goalRepository,
                                    RecommendationRepository recommendationRepository,
-                                   AssetTransactionService assetTransactionService, ProductManagementService productManagementService) {
+                                   AssetTransactionService assetTransactionService, Clock clock) {
         this.assetRepository = assetRepository;
         this.userRepository = userRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
@@ -68,7 +63,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
         this.goalRepository = goalRepository;
         this.recommendationRepository = recommendationRepository;
         this.assetTransactionService = assetTransactionService;
-        this.productManagementService = productManagementService;
+        this.clock = clock;
     }
 
     public List<AssetDTO> getAssetsForUser() {
@@ -150,28 +145,27 @@ public class AssetsManagementService implements VerifiedUserProvider {
         User user = getVerifiedUser();
 
         Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.NOT_FOUND,"No valid item with the ID"));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.NOT_FOUND));
 
         if (!Boolean.TRUE.equals(product.getVisible())) {
             throw new CoreThrowHandler(ApiError.DELISTED_PRODUCT);
         }
 
         if (dto.getUnits() == null || dto.getUnits().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new CoreThrowHandler(ApiError.BAD_REQUEST, "Units must be greater than zero");
+            throw new CoreThrowHandler(ApiError.INSUFFICIENT_UNITS);
         }
 
         Instant purchaseInstant = dto.getPurchaseDate().atZone(ZoneId.systemDefault()).toInstant();
         // Calculate current_value based on current product price
         BigDecimal currentPrice = product.getCurrentPrice();
-        BigDecimal calculatedCurrentValue = dto.getUnits().multiply(currentPrice).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal calculatedCurrentValue = dto.getUnits().multiply(currentPrice).setScale(BY_FOUR, RoundingMode.HALF_UP);
 
         //cek ulang. nwgawur loh ya
         // Calculate maturity date if tenor is provided and product type supports it
         LocalDate maturityDate = null;
         if (dto.getTenor() != null) {
-            maturityDate = LocalDate.now().plusMonths(dto.getTenor());
+            maturityDate = LocalDate.now(clock).plusMonths(dto.getTenor());
         }
-        System.out.println(maturityDate);
 
         Asset asset = Asset.builder()
                 .userId(user.getId())
@@ -203,7 +197,6 @@ public class AssetsManagementService implements VerifiedUserProvider {
                 .build();
 
         transactionHistoryRepository.save(buyHistory);
-
         return toAssetDTO(savedAsset);
     }
 
@@ -219,8 +212,11 @@ public class AssetsManagementService implements VerifiedUserProvider {
         }
 
         if (dto.getGoalId() != null) {
-            goalRepository.findById(dto.getGoalId())
+            Goal goal = goalRepository.findById(dto.getGoalId())
                     .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+            if (!goal.getUserId().equals(user.getId())) {
+                throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+            }
             asset.setGoalId(dto.getGoalId());
         } else {
             asset.setGoalId(null);
@@ -280,7 +276,7 @@ public class AssetsManagementService implements VerifiedUserProvider {
             return assetTransactionService.executeSellTransaction(assetId, dto, user);
         }
 
-        throw new CoreThrowHandler(ApiError.BAD_REQUEST, "Invalid transaction action");
+        throw new CoreThrowHandler(ApiError.INVALID_TRANSACTION);
     }
 
     @Transactional
@@ -294,8 +290,11 @@ public class AssetsManagementService implements VerifiedUserProvider {
         }
 
         if (goalId != null) {
-            goalRepository.findById(goalId)
+            Goal goal = goalRepository.findById(goalId)
                     .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+            if (!goal.getUserId().equals(user.getId())) {
+                throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
+            }
         }
 
         asset.setGoalId(goalId);
@@ -316,11 +315,6 @@ public class AssetsManagementService implements VerifiedUserProvider {
             throw new CoreThrowHandler(ApiError.ITEM_NOT_FOUND);
         }
         return asset;
-    }
-
-    @Override
-    public UserRepository userRepository() {
-        return this.userRepository;
     }
 
     @Override

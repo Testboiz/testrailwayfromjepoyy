@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.aspects.AuditLogged;
+import com.indivaragroup.jdt17wms.constants.AuditConstants;
 import com.indivaragroup.jdt17wms.dto.request.AdminProductCreateDTO;
 
 import com.indivaragroup.jdt17wms.dto.response.ApiPath;
@@ -21,7 +22,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(ApiPath.BASE_ADMIN_PATH)
+@RequestMapping(ApiPath.BASE_ADMIN_ROUTE)
 public class AdminController {
 
     private final AuditTrailManagementService auditTrailManagementService;
@@ -35,7 +36,7 @@ public class AdminController {
     }
 
 
-    @GetMapping("/audit")
+    @GetMapping(ApiPath.AUDIT_ROUTE)
     public ApiResponse<Page<AuditLogDTO>> getAuditLogs(
             @RequestParam(required = false, defaultValue = "false") Boolean headView,
             Pageable pageable) {
@@ -43,7 +44,7 @@ public class AdminController {
                 auditTrailManagementService.getAuditLogs(headView, pageable));
     }
 
-    @GetMapping("/audit/search")
+    @GetMapping(ApiPath.AUDIT_SEARCH_ROUTE)
     public ApiResponse<Page<AuditLogDTO>> searchAuditLogs(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String search,
@@ -54,7 +55,7 @@ public class AdminController {
                 auditTrailManagementService.getFilteredAuditLogs(category, search, from, to, pageable));
     }
 
-    @GetMapping("/products")
+    @GetMapping(ApiPath.PRODUCTS_ROUTE)
     public ApiResponse<Page<ProductResponseDTO>> listAdminProducts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String type,
@@ -62,4 +63,5 @@ public class AdminController {
         return ApiResponse.success(ApiSuccess.ADMIN_PRODUCTS_FETCHED,
                 adminProductManagementService.listProducts(search, type, pageable));
     }
+
 }

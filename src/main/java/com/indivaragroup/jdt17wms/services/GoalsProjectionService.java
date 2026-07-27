@@ -11,7 +11,6 @@ import com.indivaragroup.jdt17wms.models.Goal;
 import com.indivaragroup.jdt17wms.models.User;
 import com.indivaragroup.jdt17wms.models.Asset;
 import com.indivaragroup.jdt17wms.models.Product;
-import com.indivaragroup.jdt17wms.repositories.FinancialProfileRepository;
 import com.indivaragroup.jdt17wms.repositories.GoalRepository;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.repositories.AssetRepository;
@@ -27,15 +26,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class
-
-
-
-GoalsProjectionService {
+public class GoalsProjectionService {
 
     private final GoalRepository goalRepository;
     private final UserRepository userRepository;
-    private final FinancialProfileRepository financialProfileRepository;
     private final AssetRepository assetRepository;
     private final ProductRepository productRepository;
     private final Clock clock;
@@ -49,13 +43,11 @@ GoalsProjectionService {
 
     public GoalsProjectionService(GoalRepository goalRepository,
                                   UserRepository userRepository,
-                                  FinancialProfileRepository financialProfileRepository,
                                   AssetRepository assetRepository,
                                   ProductRepository productRepository,
                                   Clock clock) {
         this.goalRepository = goalRepository;
         this.userRepository = userRepository;
-        this.financialProfileRepository = financialProfileRepository;
         this.assetRepository = assetRepository;
         this.productRepository = productRepository;
         this.clock = clock;
@@ -65,10 +57,6 @@ GoalsProjectionService {
   public List<GoalProjectionDTO> getProjectionsForUser() {
     User user = userRepository.findById(SecurityUtils.getCurrentUserId())
       .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
-
-    if (!Boolean.TRUE.equals(user.getQuestionnaireCompleted())) {
-      throw new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER);
-    }
 
     double defaultMonthlyRate = 0.0; // Savings do not grow like assets do, so rate is 0.0
 
@@ -117,9 +105,6 @@ GoalsProjectionService {
         Product product = productRepository.findById(asset.getProductId())
           .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
-        if (product.getAnnualReturn() == null) {
-          throw new CoreThrowHandler(ApiError.BAD_REQUEST,"Missing Annual Return");
-        }
         rates[j] = product.getAnnualReturn().doubleValue() / ONE_HUNDRED_PERCENT / MONTHS_COUNT;
       }
 
@@ -146,21 +131,12 @@ GoalsProjectionService {
       .build();
   }
 
-  /**
-   * Number of months to use as the contribution-planning horizon: capped by the
-   * goal type's default horizon, but shortened if the target date arrives sooner.
-   */
   private double calculateMonthsToUse(String type, LocalDate targetDate) {
-    double maxMonths = GoalConstants.GOAL_MAX_MONTHS.getOrDefault(type, 60);
+    double maxMonths = GoalConstants.GOAL_MAX_MONTHS.getOrDefault(type, GoalConstants.GOAL_MAX_MONTHS.get(GoalConstants.CUSTOM_GOAL));
     long actualMonths = ChronoUnit.MONTHS.between(LocalDate.now(clock), targetDate);
     return (actualMonths > 0 && actualMonths < maxMonths) ? actualMonths : maxMonths;
   }
 
-  /**
-   * Simulates monthly compounding across one or more balances/rates with an even
-   * per-bucket contribution, returning the month count at which the combined sum
-   * first reaches target (capped at MAX_SIMULATION_MONTHS).
-   */
   private int simulateMonthsToTarget(double[] balances, double[] rates, double contributionPerBucket, double target) {
     double sum = sumOf(balances);
     if (sum >= target) {
@@ -184,7 +160,6 @@ GoalsProjectionService {
     return months;
   }
 
-  /** Standard PMT-style recommended monthly contribution, averaged evenly across buckets. */
   private BigDecimal calculateRecommendedContribution(double[] balances, double[] rates, double target, double monthsToUse) {
     double num = target;
     double sumS = 0.0;
@@ -198,7 +173,6 @@ GoalsProjectionService {
     return toScaledBigDecimal(Math.max(0.0, recContributionVal));
   }
 
-  /** Projects the combined balance forward PROJECTION_WINDOW_MONTHS for the response chart. */
   private List<TimeSeriesPointDTO> buildTimeSeries(double[] balances, double[] rates, double contributionPerBucket) {
     List<TimeSeriesPointDTO> series = new ArrayList<>(PROJECTION_WINDOW_MONTHS);
     double[] runBalances = balances.clone();

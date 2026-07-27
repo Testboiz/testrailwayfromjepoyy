@@ -19,8 +19,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Service
-public class
-ExpensesService {
+public class ExpensesService {
 
     private final FinancialProfileRepository financialProfileRepository;
     private final ExpenseRepository expenseRepository;
