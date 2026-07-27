@@ -3,6 +3,7 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+/home/jepoy/APP-INDIVARA/WMS/Java/BE/jdt17wms/src/main/resources
 
 graphify-out/
 
@@ -46,3 +47,10 @@ postman_collection_assets_pnl.json
 .hermes/
 .claude/
 
+/docs/
+/docs/
+/.mvn/
+/.remember/
+/.agents/
+/.mvn/
+/docs/
