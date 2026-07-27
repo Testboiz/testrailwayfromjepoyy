@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.indivaragroup.jdt17wms.dto.request.BearerHeaderDTO;
 import com.indivaragroup.jdt17wms.dto.request.LoginDTO;
 import com.indivaragroup.jdt17wms.dto.request.RefreshTokenDTO;
 import com.indivaragroup.jdt17wms.dto.request.RegisterDTO;
@@ -20,8 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -113,7 +114,7 @@ class AuthControllerTest extends BaseControllerTest {
                 .message("Logout successful")
                 .build();
 
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
+        when(authService.logout(nullable(BearerHeaderDTO.class))).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.test"))
@@ -129,7 +130,7 @@ class AuthControllerTest extends BaseControllerTest {
                 .message("Logout successful")
                 .build();
 
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
+        when(authService.logout(nullable(BearerHeaderDTO.class))).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout"))
                 .andExpect(status().isOk())
@@ -143,70 +144,10 @@ class AuthControllerTest extends BaseControllerTest {
                 .message("Logout successful")
                 .build();
 
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
+        when(authService.logout(nullable(BearerHeaderDTO.class))).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Basic abcdef"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.success").value(true));
-    }
-
-    @Test
-    void logout_whenExtractionThrowsException_shouldReturnSuccess() throws Exception {
-        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
-                .success(true)
-                .message("Logout successful")
-                .build();
-
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
-
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.success").value(true));
-    }
-
-    @Test
-    void logout_whenEmailNull_shouldReturnSuccess() throws Exception {
-        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
-                .success(true)
-                .message("Logout successful")
-                .build();
-
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
-
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.success").value(true));
-    }
-
-    @Test
-    void logout_whenEmailEmpty_shouldReturnSuccess() throws Exception {
-        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
-                .success(true)
-                .message("Logout successful")
-                .build();
-
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
-
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.success").value(true));
-    }
-
-    @Test
-    void logout_whenUserIdNull_shouldReturnSuccess() throws Exception {
-        LogoutSuccessDTO mockResponse = LogoutSuccessDTO.builder()
-                .success(true)
-                .message("Logout successful")
-                .build();
-
-        when(authService.logout(any(), any())).thenReturn(mockResponse);
-
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .header("Authorization", "Bearer invalid-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.success").value(true));
     }

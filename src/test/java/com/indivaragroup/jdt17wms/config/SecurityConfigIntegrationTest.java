@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.when;
@@ -74,7 +73,7 @@ class SecurityConfigIntegrationTest {
     void whenUnauthenticated_accessingAdminDashboard_shouldReturn401Unauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/admin-dashboard"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Unauthorized User"))
                 .andExpect(jsonPath("$.code").value(401));
     }
 
@@ -82,7 +81,7 @@ class SecurityConfigIntegrationTest {
     void whenUnauthenticated_accessingUserDashboard_shouldReturn401Unauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/me/dashboard"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Unauthorized User"))
                 .andExpect(jsonPath("$.code").value(401));
     }
 
@@ -90,7 +89,7 @@ class SecurityConfigIntegrationTest {
     void whenUnauthenticated_accessingShorthandUserDashboard_shouldReturn401Unauthorized() throws Exception {
         mockMvc.perform(get("/me/dashboard"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Unauthorized User"))
                 .andExpect(jsonPath("$.code").value(401));
     }
 
@@ -109,7 +108,7 @@ class SecurityConfigIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("Forbidden"))
+                .andExpect(jsonPath("$.message").value("Access Denied"))
                 .andExpect(jsonPath("$.code").value(403));
     }
 
@@ -147,7 +146,7 @@ class SecurityConfigIntegrationTest {
     void whenUnauthenticated_loggingOut_shouldReturn401Unauthorized() throws Exception {
         mockMvc.perform(post("/api/v1/auth/logout"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Unauthorized User"))
                 .andExpect(jsonPath("$.code").value(401));
     }
 
@@ -167,7 +166,7 @@ class SecurityConfigIntegrationTest {
                         .success(true)
                         .message("Logout successful")
                         .build();
-        when(authService.logout(org.mockito.ArgumentMatchers.any(String.class), org.mockito.ArgumentMatchers.any(UUID.class))).thenReturn(mockResponse);
+        when(authService.logout(org.mockito.ArgumentMatchers.nullable(com.indivaragroup.jdt17wms.dto.request.BearerHeaderDTO.class))).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer " + token))

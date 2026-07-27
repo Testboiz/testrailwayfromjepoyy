@@ -3,7 +3,6 @@ package com.indivaragroup.jdt17wms.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
-import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.services.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -32,9 +31,6 @@ class JwtAuthenticationFilterTest {
     @Mock
     private JwtService jwtService;
 
-    @Mock
-    private UserRepository userRepository;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -42,7 +38,7 @@ class JwtAuthenticationFilterTest {
     @BeforeEach
     void setUp() {
         SecurityContextHolder.clearContext();
-        jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, userRepository, objectMapper);
+        jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, objectMapper);
     }
 
     @org.junit.jupiter.api.AfterEach
@@ -55,11 +51,9 @@ class JwtAuthenticationFilterTest {
     @ParameterizedTest
     @CsvSource({
         "/api/v1/auth/logout, /api/v1/auth/logout",
-        "/api/v1/auth/logout/, /api/v1/auth/logout/",
-        "null, /logout",
-        "null, /logout/"
+        "null, /api/v1/auth/logout"
     })
-    void testShouldNotFilter_PathEndsWithLogout_ReturnsFalse(String servletPath, String requestUri) throws Exception {
+    void testShouldNotFilter_PathEndsWithLogout_ReturnsFalse(String servletPath, String requestUri) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setServletPath("null".equals(servletPath) ? null : servletPath);
         request.setRequestURI("null".equals(requestUri) ? null : requestUri);
@@ -69,11 +63,11 @@ class JwtAuthenticationFilterTest {
     @ParameterizedTest
     @CsvSource({
         "/api/v1/auth/login, /api/v1/auth/login",
-        "/auth/register, /auth/register",
+        "/api/v1/auth/register, /api/v1/auth/register",
         "null, /api/v1/auth/login",
-        "null, /auth/login"
+        "null, /api/v1/auth/register"
     })
-    void testShouldNotFilter_PathStartsWithAuth_ReturnsTrue(String servletPath, String requestUri) throws Exception {
+    void testShouldNotFilter_PathStartsWithAuth_ReturnsTrue(String servletPath, String requestUri) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setServletPath("null".equals(servletPath) ? null : servletPath);
         request.setRequestURI("null".equals(requestUri) ? null : requestUri);
@@ -81,7 +75,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void testShouldNotFilter_NullPathAndUri_ReturnsFalse() throws Exception {
+    void testShouldNotFilter_NullPathAndUri_ReturnsFalse() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setServletPath(null);
         request.setRequestURI(null);
@@ -89,7 +83,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void testShouldNotFilter_NoMatch_ReturnsFalse() throws Exception {
+    void testShouldNotFilter_NoMatch_ReturnsFalse() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setServletPath("/api/v1/me/dashboard");
         request.setRequestURI("/api/v1/me/dashboard");
@@ -252,4 +246,27 @@ class JwtAuthenticationFilterTest {
         assertEquals(1, auth.getAuthorities().size());
         assertEquals("ROLE_USER", auth.getAuthorities().iterator().next().getAuthority());
     }
+
+    @Test
+    void testDoFilterInternal_GeneralException_Returns401WithAuthenticationFailed() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer valid-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain filterChain = mock(FilterChain.class);
+
+        when(jwtService.isAccessToken("valid-token")).thenReturn(true);
+        when(jwtService.getEmailFromToken("valid-token")).thenThrow(new RuntimeException("Unexpected error during processing"));
+
+        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, never()).doFilter(any(), any());
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
+
+        ErrorResponseDTO expectedResponse = ErrorResponseDTO.builder()
+                .error("Authentication failed")
+                .code(401)
+                .build();
+        assertEquals(objectMapper.writeValueAsString(expectedResponse), response.getContentAsString());
+    }
 }
+

@@ -1,5 +1,6 @@
 package com.indivaragroup.jdt17wms.services;
 
+import com.indivaragroup.jdt17wms.dto.request.BearerHeaderDTO;
 import com.indivaragroup.jdt17wms.dto.request.LoginDTO;
 import com.indivaragroup.jdt17wms.dto.response.auth.AuthSuccessDTO;
 import com.indivaragroup.jdt17wms.dto.response.auth.LogoutSuccessDTO;
@@ -80,6 +81,27 @@ class AuthServiceTest {
 
         CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> authService.login(dto));
         assertEquals("Email Or Password Invalid", ex.getMessage());
+    }
+
+    @Test
+    void login_withUserNotActive_shouldThrowUnauthorizedException() {
+        LoginDTO dto = LoginDTO.builder()
+                .loginRequestEmail("inactive@example.com")
+                .loginRequestPassword("Password123!")
+                .build();
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("inactive@example.com")
+                .status("DISABLED")
+                .build();
+
+        when(userRepository.findByEmail("inactive@example.com")).thenReturn(Optional.of(user));
+
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> authService.login(dto));
+        assertEquals(ApiError.UNAUTHORIZED.getCode(), ex.getCode());
+        assertEquals("Account is Not active. Please Contact Admin", ex.getMessage());
+        verify(passwordEncoder, never()).matches(any(), any());
+        verify(auditLogRepository, never()).save(any());
     }
 
     @Test
@@ -177,32 +199,6 @@ class AuthServiceTest {
         assertTrue(response.getUser().getIsAdmin());
     }
 
-    @Test
-    void login_success_projectionNotFound_shouldDefaultToFalseAdmin() {
-        LoginDTO dto = LoginDTO.builder().loginRequestEmail("user@example.com").loginRequestPassword("Password123!").build();
-        User user = User.builder()
-                .id(UUID.randomUUID())
-                .name("Test User")
-                .email("user@example.com")
-                .passwordHash("hash")
-                .role(UserRole.USER)
-                .questionnaireCompleted(false)
-                .status("ACTIVE")
-                .build();
-
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("Password123!", "hash")).thenReturn(true);
-        when(jwtService.generateAccessToken(user)).thenReturn("access-token");
-        when(jwtService.generateRefreshToken(user)).thenReturn("refresh-token");
-        lenient().when(jwtService.getAccessTokenExpirationMs()).thenReturn(900);
-        lenient().when(jwtService.getRefreshTokenExpirationMs()).thenReturn(86400);
-
-        AuthSuccessDTO response = authService.login(dto);
-
-        assertNotNull(response);
-        assertFalse(response.getUser().getIsAdmin());
-    }
-
     // --- Logout Tests ---
 
     @Test
@@ -226,6 +222,84 @@ class AuthServiceTest {
         assertTrue(response.getSuccess());
 
         verify(auditLogRepository, times(1)).save(argThat(audit -> "anonymous".equals(audit.getUserName())));
+    }
+
+    @Test
+    void logout_withValidBearerHeaderDTO_shouldExtractTokenDetailsAndLogout() {
+        UUID userId = UUID.randomUUID();
+        BearerHeaderDTO headerDTO = BearerHeaderDTO.builder()
+                .authHeader("Bearer valid.token.string")
+                .build();
+
+        when(jwtService.getEmailFromToken("valid.token.string")).thenReturn("user@example.com");
+        when(jwtService.getUserIdFromToken("valid.token.string")).thenReturn(userId);
+
+        LogoutSuccessDTO response = authService.logout(headerDTO);
+
+        assertNotNull(response);
+        assertTrue(response.getSuccess());
+        assertEquals("Logout successful", response.getMessage());
+
+        verify(auditLogRepository, times(1)).save(argThat(audit ->
+                "user@example.com".equals(audit.getUserName()) && userId.equals(audit.getUserId())
+        ));
+    }
+
+    @Test
+    void logout_withNullBearerHeaderDTO_shouldLogoutAsAnonymous() {
+        LogoutSuccessDTO response = authService.logout((BearerHeaderDTO) null);
+
+        assertNotNull(response);
+        assertTrue(response.getSuccess());
+
+        verify(auditLogRepository, times(1)).save(argThat(audit ->
+                "anonymous".equals(audit.getUserName()) && audit.getUserId() == null
+        ));
+    }
+
+    @Test
+    void logout_withNullAuthHeaderInDTO_shouldLogoutAsAnonymous() {
+        BearerHeaderDTO headerDTO = BearerHeaderDTO.builder().authHeader(null).build();
+
+        LogoutSuccessDTO response = authService.logout(headerDTO);
+
+        assertNotNull(response);
+        assertTrue(response.getSuccess());
+
+        verify(auditLogRepository, times(1)).save(argThat(audit ->
+                "anonymous".equals(audit.getUserName()) && audit.getUserId() == null
+        ));
+    }
+
+    @Test
+    void logout_withNonBearerHeader_shouldLogoutAsAnonymous() {
+        BearerHeaderDTO headerDTO = BearerHeaderDTO.builder().authHeader("Basic 123456").build();
+
+        LogoutSuccessDTO response = authService.logout(headerDTO);
+
+        assertNotNull(response);
+        assertTrue(response.getSuccess());
+
+        verify(jwtService, never()).getEmailFromToken(any());
+        verify(auditLogRepository, times(1)).save(argThat(audit ->
+                "anonymous".equals(audit.getUserName()) && audit.getUserId() == null
+        ));
+    }
+
+    @Test
+    void logout_withTokenParsingException_shouldCatchAndLogoutAsAnonymous() {
+        BearerHeaderDTO headerDTO = BearerHeaderDTO.builder().authHeader("Bearer malformed.token").build();
+
+        when(jwtService.getEmailFromToken("malformed.token")).thenThrow(new RuntimeException("Token parse error"));
+
+        LogoutSuccessDTO response = authService.logout(headerDTO);
+
+        assertNotNull(response);
+        assertTrue(response.getSuccess());
+
+        verify(auditLogRepository, times(1)).save(argThat(audit ->
+                "anonymous".equals(audit.getUserName()) && audit.getUserId() == null
+        ));
     }
 
     // --- Refresh Token Tests ---

@@ -1,5 +1,8 @@
 package com.indivaragroup.jdt17wms.exceptions;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.indivaragroup.jdt17wms.dto.request.ProductQueryDTO;
 import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.ValidationErrorDetailDTO;
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -47,6 +51,20 @@ class ExceptionHandlingAdviceTest {
     }
 
     @Test
+    void handleCoreThrowHandler_withNullErrorMap_shouldReturnNullErrorInResponse() {
+        CoreThrowHandler ex = new CoreThrowHandler(ApiError.NOT_FOUND, "Resource not found", null);
+
+        ResponseEntity<ApiResponse<?>> response = advice.handleCoreThrowHandler(ex);
+
+        assertEquals(404, response.getStatusCode().value());
+        ApiResponse<?> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(404, body.getRestApiResponseHttpCode());
+        assertEquals("Resource not found", body.getRestApiResponseMessage());
+        assertNull(body.getRestApiResponseError());
+    }
+
+    @Test
     void handleCoreThrowHandler_withErrorMap_shouldIncludeError() {
         Map<String, Serializable> errorMap = Map.of("detail", "something went wrong");
         CoreThrowHandler ex = new CoreThrowHandler(ApiError.BAD_REQUEST, "Bad request", errorMap);
@@ -62,28 +80,104 @@ class ExceptionHandlingAdviceTest {
         assertEquals("something went wrong", body.getRestApiResponseError().get("detail"));
     }
 
-    // --- HttpMessageNotReadableException ---
-
     @Test
-    void handleJsonParseError_withUnrecognizedField_shouldExtractFieldName() {
-        // Message must contain "UnrecognizedPropertyException" + field in ["<name>"] format for regex match
-        String message = "JSON parse error: UnrecognizedPropertyException: Unrecognized field [\"unknownField\"]";
-        HttpMessageNotReadableException ex = new HttpMessageNotReadableException(message);
+    void handleCoreThrowHandler_withValidationDetails_shouldIncludeFieldsInErrorResponse() {
+        List<ValidationErrorDetailDTO> details = List.of(
+                ValidationErrorDetailDTO.builder().field("target_date").reason("Target date must be in the future").type("ERR-001").build()
+        );
+        CoreThrowHandler ex = new CoreThrowHandler(ApiError.VALIDATION, details);
 
-        ResponseEntity<ApiResponse<?>> response = advice.handleJsonParseError(ex);
+        ResponseEntity<ApiResponse<?>> response = advice.handleCoreThrowHandler(ex);
 
         assertEquals(400, response.getStatusCode().value());
         ApiResponse<?> body = response.getBody();
         assertNotNull(body);
-        assertEquals(ApiError.INVALID_REQUEST_BODY.getCode(), body.getRestApiResponseHttpCode());
-        assertEquals("Invalid Request Body", body.getRestApiResponseMessage());
+        assertEquals(400, body.getRestApiResponseHttpCode());
+        assertEquals("INVALID FIELD VALUES", body.getRestApiResponseMessage());
         assertNotNull(body.getRestApiResponseError());
-        assertEquals("Unrecognized field: unknownField", body.getRestApiResponseError().get("detail"));
+        assertTrue(body.getRestApiResponseError().containsKey("fields"));
+        @SuppressWarnings("unchecked")
+        List<ValidationErrorDetailDTO> fieldErrors = (List<ValidationErrorDetailDTO>) body.getRestApiResponseError().get("fields");
+        assertEquals(1, fieldErrors.size());
+        assertEquals("target_date", fieldErrors.get(0).getField());
+        assertEquals("Target date must be in the future", fieldErrors.get(0).getReason());
     }
 
     @Test
+    void handleCoreThrowHandler_withEmptyValidationDetails_shouldReturnNullError() {
+        CoreThrowHandler ex = new CoreThrowHandler(ApiError.VALIDATION, java.util.Collections.emptyList());
+
+        ResponseEntity<ApiResponse<?>> response = advice.handleCoreThrowHandler(ex);
+
+        assertEquals(400, response.getStatusCode().value());
+        ApiResponse<?> body = response.getBody();
+        assertNotNull(body);
+        assertNull(body.getRestApiResponseError());
+    }
+
+    @Test
+    void handleCoreThrowHandler_withBothErrorMapAndValidationDetails_shouldMergeBothInErrorResponse() {
+        List<ValidationErrorDetailDTO> details = List.of(
+                ValidationErrorDetailDTO.builder().field("target_date").reason("Target date must be in the future").type("ERR-001").build()
+        );
+        Map<String, Serializable> initialError = Map.of("extra", "info");
+        CoreThrowHandler ex = new CoreThrowHandler(ApiError.VALIDATION, "Validation Error", initialError, details);
+
+        ResponseEntity<ApiResponse<?>> response = advice.handleCoreThrowHandler(ex);
+
+        assertEquals(400, response.getStatusCode().value());
+        ApiResponse<?> body = response.getBody();
+        assertNotNull(body);
+        assertNotNull(body.getRestApiResponseError());
+        assertEquals("info", body.getRestApiResponseError().get("extra"));
+        assertTrue(body.getRestApiResponseError().containsKey("fields"));
+    }
+
+    // --- HttpMessageNotReadableException ---
+
+  @Test
+  void handleJsonParseError_withUnrecognizedField_shouldExtractFieldName() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    UnrecognizedPropertyException cause;
+    try {
+      // the ProductQueryDTO solely exists just for making the exception
+      mapper.readValue("{\"unknownField\":123}", ProductQueryDTO.class);
+      throw new AssertionError("expected UnrecognizedPropertyException");
+    } catch (UnrecognizedPropertyException e) {
+      cause = e;
+    }
+
+    HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+      "JSON parse error", cause, new MockHttpInputMessage(new byte[0]));
+
+    ResponseEntity<ApiResponse<?>> response = advice.handleJsonParseError(ex);
+
+    assertEquals(400, response.getStatusCode().value());
+    ApiResponse<?> body = response.getBody();
+    assertNotNull(body);
+    assertEquals(ApiError.INVALID_REQUEST_BODY.getCode(), body.getRestApiResponseHttpCode());
+    assertEquals("Invalid Request Body", body.getRestApiResponseMessage());
+    assertNotNull(body.getRestApiResponseError());
+    assertEquals("Unrecognized field: unknownField", body.getRestApiResponseError().get("detail"));
+  }
+
+  @Test
+  void handleJsonParseError_withMalformedJson_shouldReturnGenericMessage() {
+    HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+      "JSON parse error: unexpected token",
+      new MockHttpInputMessage(new byte[0])); // no UnrecognizedPropertyException cause
+
+    ResponseEntity<ApiResponse<?>> response = advice.handleJsonParseError(ex);
+
+    assertNotNull(response.getBody());
+    assertEquals("Malformed JSON request body",
+      response.getBody().getRestApiResponseError().get("detail"));
+  }
+    @Test
     void handleJsonParseError_withMalformedJson_shouldReturnGenericError() {
-        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("JSON parse error: Cannot deserialize value of type");
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+          "JSON parse error: Cannot deserialize value of type",
+          new MockHttpInputMessage(new byte[0]));
 
         ResponseEntity<ApiResponse<?>> response = advice.handleJsonParseError(ex);
 
@@ -95,7 +189,7 @@ class ExceptionHandlingAdviceTest {
 
     @Test
     void handleJsonParseError_withNullMessage_shouldReturnGenericError() {
-        HttpMessageNotReadableException ex = new HttpMessageNotReadableException((String) null);
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("", new MockHttpInputMessage(new byte[0]));
 
         ResponseEntity<ApiResponse<?>> response = advice.handleJsonParseError(ex);
 
@@ -108,7 +202,7 @@ class ExceptionHandlingAdviceTest {
     // --- MethodArgumentNotValidException ---
 
     @Test
-    void handleValidationErrors_shouldExtractFieldErrors() throws Exception {
+    void handleValidationErrors_shouldExtractFieldErrors() {
         BindingResult bindingResult = mock(BindingResult.class);
         FieldError fieldError = new FieldError("testObject", "email", "must not be null");
         when(bindingResult.getAllErrors()).thenReturn(List.of(fieldError));
@@ -136,7 +230,7 @@ class ExceptionHandlingAdviceTest {
     }
 
     @Test
-    void handleValidationErrors_withNonFieldError_shouldUseObjectName() throws Exception {
+    void handleValidationErrors_withNonFieldError_shouldUseObjectName() {
         BindingResult bindingResult = mock(BindingResult.class);
         // Use ObjectError (not FieldError) to test the branch where error is not a FieldError instance
         org.springframework.validation.ObjectError objectError = new org.springframework.validation.ObjectError("testObject", "global error message");
@@ -286,7 +380,7 @@ class ExceptionHandlingAdviceTest {
         ApiResponse<?> body = response.getBody();
         assertNotNull(body);
         assertEquals(500, body.getRestApiResponseHttpCode());
-        assertEquals("Internal server error", body.getRestApiResponseMessage());
+        assertEquals("Internal Server Error", body.getRestApiResponseMessage());
         assertNotNull(body.getRestApiResponseError());
         assertNotNull(body.getRestApiResponseError().get("errorId"));
     }

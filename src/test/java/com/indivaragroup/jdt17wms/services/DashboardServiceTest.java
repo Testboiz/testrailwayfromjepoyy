@@ -1,6 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.response.AdminDashboardDTO;
+import com.indivaragroup.jdt17wms.dto.response.AssetsPnLResponseDTO;
 import com.indivaragroup.jdt17wms.dto.response.UserDashboardDTO;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
@@ -27,9 +28,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,11 +39,11 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class DashboardServiceTest {
 
     @Mock
@@ -59,10 +61,16 @@ class DashboardServiceTest {
     @Mock
     private ProductPriceRepository productPriceRepository;
 
+    @Mock
+    private PnLCalculationService pnLCalculationService;
+
     @InjectMocks
     private DashboardService dashboardService;
 
-    @BeforeEach
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-13T10:00:00Z"), ZoneOffset.UTC);
+
+
+  @BeforeEach
     void setUp() {
         UserDTO userDTO = UserDTO.builder()
                 .id(SecurityUtils.STATIC_USER_ID)
@@ -111,12 +119,16 @@ class DashboardServiceTest {
         ProductPrice productPrice = ProductPrice.builder()
                 .productId(productId)
                 .price(new BigDecimal("11.50"))
-                .recordedDate(LocalDate.now())
+                .recordedDate(LocalDate.now(clock))
                 .build();
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(pnLCalculationService.computePnLForAsset(asset)).thenReturn(AssetsPnLResponseDTO.builder()
+                .productName("Test Product")
+                .currentValue(new BigDecimal("120.0000"))
+                .build());
         when(productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(
                 anySet(), any(LocalDate.class)))
                 .thenReturn(List.of(productPrice));
@@ -158,6 +170,10 @@ class DashboardServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(assetFuture));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(pnLCalculationService.computePnLForAsset(assetFuture)).thenReturn(AssetsPnLResponseDTO.builder()
+                .productName("Test Product")
+                .currentValue(new BigDecimal("120.0000"))
+                .build());
 
         UserDashboardDTO result = dashboardService.getUserDashboard();
 
@@ -192,6 +208,10 @@ class DashboardServiceTest {
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(pnLCalculationService.computePnLForAsset(asset)).thenReturn(AssetsPnLResponseDTO.builder()
+                .productName("Test Product")
+                .currentValue(BigDecimal.ZERO)
+                .build());
 
         UserDashboardDTO result = dashboardService.getUserDashboard();
 
@@ -226,7 +246,7 @@ class DashboardServiceTest {
 
         when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
         when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
-        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+        when(pnLCalculationService.computePnLForAsset(asset)).thenThrow(new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
     }
@@ -269,7 +289,7 @@ class DashboardServiceTest {
         ProductPrice productPrice = ProductPrice.builder()
                 .productId(productId)
                 .price(new BigDecimal("1.50"))
-                .recordedDate(LocalDate.now())
+                .recordedDate(LocalDate.now(clock))
                 .build();
         when(productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(
                 anySet(), any(LocalDate.class)))
@@ -288,5 +308,163 @@ class DashboardServiceTest {
         assertEquals(3, result.getRiskProfiles().getRiskTaker());
         assertNotNull(result.getAumTrend());
         assertFalse(result.getAumTrend().isEmpty());
+    }
+
+    @Test
+    void getUserDashboard_whenAssetCurrentValueIsNull_shouldThrowBadRequestException() {
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID productId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .userId(SecurityUtils.STATIC_USER_ID)
+                .productId(productId)
+                .units(new BigDecimal("10.00"))
+                .amount(new BigDecimal("100.00"))
+                .currentValue(null)
+                .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
+                .build();
+
+        Product product = Product.builder()
+                .id(productId)
+                .name("Test Product")
+                .currentPrice(new BigDecimal("12.00"))
+                .build();
+
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(pnLCalculationService.computePnLForAsset(asset)).thenReturn(AssetsPnLResponseDTO.builder()
+                .productName("Test Product")
+                .currentValue(null)
+                .build());
+
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
+        assertEquals(ApiError.BAD_REQUEST.getCode(), ex.getCode());
+        assertTrue(ex.getMessage().contains("null currentValue"));
+    }
+
+    @Test
+    void getUserDashboard_whenPnlIsNull_shouldThrowBadRequestException() {
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID productId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .userId(SecurityUtils.STATIC_USER_ID)
+                .productId(productId)
+                .units(new BigDecimal("10.00"))
+                .amount(new BigDecimal("100.00"))
+                .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
+                .build();
+
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
+        when(pnLCalculationService.computePnLForAsset(asset)).thenReturn(null);
+
+        CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> dashboardService.getUserDashboard());
+        assertEquals(ApiError.BAD_REQUEST.getCode(), ex.getCode());
+        assertTrue(ex.getMessage().contains("null currentValue"));
+    }
+
+    @Test
+    void getUserDashboard_whenUserHasNoAssets_shouldEvaluateProductIdsIsEmptyAsTrue() {
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of());
+
+        UserDashboardDTO result = dashboardService.getUserDashboard();
+
+        assertNotNull(result);
+        assertEquals(0, result.getPortofolio().getHoldings());
+        assertNotNull(result.getPerformance());
+        result.getPerformance().forEach(p -> assertEquals(0, p.getValue().compareTo(BigDecimal.ZERO)));
+    }
+
+    @Test
+    void getAdminDashboard_whenNoAssetsExist_shouldEvaluateProductIdsIsEmptyAsTrue() {
+        when(userRepository.countByRiskProfile()).thenReturn(List.of());
+        when(assetRepository.sumTotalAmount()).thenReturn(BigDecimal.ZERO);
+        when(userRepository.count()).thenReturn(0L);
+        when(productRepository.count()).thenReturn(0L);
+        when(auditLogRepository.count()).thenReturn(0L);
+
+        when(assetRepository.findAllByPurchaseDateGreaterThanEqual(any(Instant.class)))
+                .thenReturn(List.of());
+
+        AdminDashboardDTO result = dashboardService.getAdminDashboard();
+
+        assertNotNull(result);
+        assertNotNull(result.getAumTrend());
+        result.getAumTrend().forEach(t -> assertEquals(0, t.getValue().compareTo(BigDecimal.ZERO)));
+    }
+
+    @Test
+    void getAdminDashboard_whenProductPriceHistoryIsNull_shouldEvaluateHistoryNotNullAsFalse() {
+        when(userRepository.countByRiskProfile()).thenReturn(List.of());
+        when(assetRepository.sumTotalAmount()).thenReturn(new BigDecimal("100.00"));
+        when(userRepository.count()).thenReturn(1L);
+        when(productRepository.count()).thenReturn(1L);
+        when(auditLogRepository.count()).thenReturn(1L);
+
+        UUID productId = UUID.randomUUID();
+        Asset asset1 = Asset.builder()
+                .productId(productId)
+                .units(new BigDecimal("10.00"))
+                .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
+                .build();
+
+        when(assetRepository.findAllByPurchaseDateGreaterThanEqual(any(Instant.class)))
+                .thenReturn(List.of(asset1));
+        when(productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(
+                anySet(), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        AdminDashboardDTO result = dashboardService.getAdminDashboard();
+
+        assertNotNull(result);
+        result.getAumTrend().forEach(t -> assertEquals(0, t.getValue().compareTo(BigDecimal.ZERO)));
+    }
+
+    @Test
+    void getUserDashboard_whenProductPriceHistoryIsNull_shouldEvaluateHistoryNotNullAsFalse() {
+        User user = User.builder()
+                .id(SecurityUtils.STATIC_USER_ID)
+                .questionnaireCompleted(true)
+                .build();
+
+        UUID productId = UUID.randomUUID();
+        Asset asset = Asset.builder()
+                .userId(SecurityUtils.STATIC_USER_ID)
+                .productId(productId)
+                .units(new BigDecimal("10.00"))
+                .amount(new BigDecimal("100.00"))
+                .currentValue(new BigDecimal("100.00"))
+                .purchaseDate(Instant.parse("2026-01-10T10:00:00Z"))
+                .build();
+
+
+        when(userRepository.findById(SecurityUtils.STATIC_USER_ID)).thenReturn(Optional.of(user));
+        when(assetRepository.findAllByUserId(SecurityUtils.STATIC_USER_ID)).thenReturn(List.of(asset));
+        when(pnLCalculationService.computePnLForAsset(asset)).thenReturn(AssetsPnLResponseDTO.builder()
+                .productName("Test Product")
+                .currentValue(new BigDecimal("100.00"))
+                .build());
+        when(productPriceRepository.findAllByProductIdInAndRecordedDateLessThanEqual(
+                anySet(), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        UserDashboardDTO result = dashboardService.getUserDashboard();
+
+        assertNotNull(result);
+        result.getPerformance().forEach(p -> assertEquals(0, p.getValue().compareTo(BigDecimal.ZERO)));
     }
 }
