@@ -66,7 +66,7 @@ public class AdminController {
                 adminProductManagementService.listProducts(search, type, pageable));
     }
 
-    @PutMapping(ApiPath.ID_SLUG)
+    @PutMapping(ApiPath.PRODUCTS_ROUTE+ApiPath.ID_SLUG )
     @AuditLogged(action = AuditConstants.Action.UPDATE_PRODUCT, category = AuditConstants.PRODUCT_CATEGORY)
     public ApiResponse<ProductResponseDTO> updateProduct(
             @PathVariable UUID id,
