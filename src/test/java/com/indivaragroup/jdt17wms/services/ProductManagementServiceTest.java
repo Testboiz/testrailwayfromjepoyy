@@ -80,32 +80,7 @@ class ProductManagementServiceTest {
         assertEquals(ProductResponseDTO.fromEntity(product), actualPage.getContent().getFirst());
     }
 
-    @Test
-    void updateProductVisibility_shouldUpdateAndReturnProduct_whenProductExists() {
-        UUID id = UUID.randomUUID();
-        Product product = new Product();
-        product.setId(id);
-        product.setVisible(false);
-
-        when(productRepository.findById(id)).thenReturn(Optional.of(product));
-        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        ProductResponseDTO updatedProduct = productManagementService.updateProductVisibility(id, true);
-
-        assertNotNull(updatedProduct);
-        assertTrue(updatedProduct.getVisible());
-    }
-
-    @Test
-    void updateProductVisibility_shouldThrowNotFoundException_whenProductDoesNotExist() {
-        UUID id = UUID.randomUUID();
-        when(productRepository.findById(id)).thenReturn(Optional.empty());
-
-        assertThrows(CoreThrowHandler.class, () -> {
-            productManagementService.updateProductVisibility(id, true);
-        });
-    }
-
+    
 
 
     @Test

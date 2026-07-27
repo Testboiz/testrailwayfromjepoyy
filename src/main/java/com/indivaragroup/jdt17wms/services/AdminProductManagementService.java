@@ -29,23 +29,11 @@ public class AdminProductManagementService {
         String t = (type != null && type.trim().isEmpty()) ? null : type;
         return productRepository.findAllAdmin(s, t, pageable).map(ProductResponseDTO::fromEntity);
     }
-
-    public ProductResponseDTO createProduct(AdminProductCreateDTO dto) {
-        Product p = Product.builder()
-                .code(dto.getCode())
-                .name(dto.getName())
-                .issuer(dto.getIssuer())
-                .type(dto.getType())
-                .riskLevel(dto.getRiskLevel())
-                .annualReturn(dto.getAnnualReturn())
-                .minInvestment(dto.getMinInvestment())
-                .currentPrice(dto.getCurrentPrice())
-                .description(dto.getDescription())
-                .tenor(dto.getTenor())
-                .lotSize(dto.getLotSize())
-                .isFractionalAllowed(dto.getIsFractionalAllowed())
-                .visible(dto.getVisible())
-                .build();
-        return ProductResponseDTO.fromEntity(productRepository.save(p));
+    @Transactional
+    public ProductResponseDTO updateProductVisibility(UUID id, Boolean visibility) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+        product.setVisible(visibility);
+        return ProductResponseDTO.fromEntity(productRepository.save(product));
     }
 }

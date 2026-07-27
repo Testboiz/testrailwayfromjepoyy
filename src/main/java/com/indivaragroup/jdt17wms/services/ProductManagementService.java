@@ -127,14 +127,6 @@ public class ProductManagementService {
         return source.toLowerCase().contains(query);
     }
 
-    @Transactional
-    public ProductResponseDTO updateProductVisibility(UUID id, Boolean visibility) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
-        product.setVisible(visibility);
-        return ProductResponseDTO.fromEntity(productRepository.save(product));
-    }
-
     public ProductResponseDTO getProductById(UUID id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));

@@ -34,14 +34,7 @@ public class ProductController {
                 productManagementService.getProductsForUser(queryDTO, pageable));
     }
 
-    @PutMapping(ApiPath.ID_SLUG)
-    @AuditLogged(action = AuditConstants.Action.UPDATE_PRODUCT, category = AuditConstants.PRODUCT_CATEGORY)
-    public ApiResponse<ProductResponseDTO> updateProduct(
-            @PathVariable UUID id,
-            @Valid @RequestBody AdminChangeVisibilityDTO adminChangeVisibilityDTO) {
-        return ApiResponse.success(ApiSuccess.PRODUCT_UPDATED,
-                productManagementService.updateProductVisibility(id, adminChangeVisibilityDTO.getVisibility()));
-    }
+
 
     @GetMapping(ApiPath.ID_SLUG)
     public ApiResponse<ProductResponseDTO> getProductById(

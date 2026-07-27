@@ -21,7 +21,6 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,47 +54,7 @@ class ProductControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.code").value(403));
     }
 
-    @Test
-    void updateProduct_shouldReturnOk() throws Exception {
-        UUID id = UUID.randomUUID();
-        ProductResponseDTO product = ProductResponseDTO.builder().id(id).visible(true).build();
-        when(productManagementService.updateProductVisibility(any(UUID.class), any(Boolean.class)))
-                .thenReturn(product);
-
-        mockMvc.perform(put("/api/v1/products/" + id)
-                        .contentType("application/json")
-                        .content("{\"visibility\":true}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.id").value(id.toString()));
-    }
-
-    @Test
-    void updateProduct_shouldReturnNotFound_whenProductDoesNotExist() throws Exception {
-        UUID id = UUID.randomUUID();
-        when(productManagementService.updateProductVisibility(any(UUID.class), any(Boolean.class)))
-                .thenThrow(new CoreThrowHandler(ApiError.NOT_FOUND, "No valid item with the ID"));
-
-        mockMvc.perform(put("/api/v1/products/" + id)
-                        .contentType("application/json")
-                        .content("{\"visibility\":true}"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("No valid item with the ID"))
-                .andExpect(jsonPath("$.code").value(404));
-    }
-
-    @Test
-    void updateProduct_shouldReturn403WhenQuestionnaireNotCompleted() throws Exception {
-        UUID id = UUID.randomUUID();
-        when(productManagementService.updateProductVisibility(any(UUID.class), any(Boolean.class)))
-                .thenThrow(new CoreThrowHandler(ApiError.REQUIRED_RISK_PROFILER, "Risk Profiler Assessment Required"));
-
-        mockMvc.perform(put("/api/v1/products/" + id)
-                        .contentType("application/json")
-                        .content("{\"visibility\":true}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(403));
-    }
-
+    
     @Test
     void getProductById_shouldReturnOk() throws Exception {
         UUID id = UUID.randomUUID();

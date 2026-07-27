@@ -165,7 +165,7 @@ class AssetControllerTest extends BaseControllerTest {
     void updateAsset_shouldReturn403WhenGoalBelongsToDifferentUser() throws Exception {
         UUID id = UUID.randomUUID();
         when(assetsManagementService.updateAssetForUser(any(UUID.class), any(GoalSettingDTO.class)))
-                .thenThrow(new CoreThrowHandler(ApiError.GOAL_BELONGS_TO_DIFFERENT_USER));
+                .thenThrow(new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
 
         mockMvc.perform(put("/api/v1/me/assets/" + id)
                         .contentType("application/json")

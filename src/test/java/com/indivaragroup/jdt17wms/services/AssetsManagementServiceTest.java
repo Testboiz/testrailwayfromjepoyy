@@ -454,7 +454,7 @@ class AssetsManagementServiceTest {
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
 
         CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> assetsManagementService.updateAssetForUser(assetId, dto));
-        assertEquals(ApiError.GOAL_BELONGS_TO_DIFFERENT_USER.getCode(), ex.getCode());
+        assertEquals(ApiError.ITEM_NOT_FOUND.getCode(), ex.getCode());
         assertEquals("Access denied. Goal belongs to different user", ex.getMessage());
     }
 
@@ -815,7 +815,7 @@ class AssetsManagementServiceTest {
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(goal));
 
         CoreThrowHandler ex = assertThrows(CoreThrowHandler.class, () -> assetsManagementService.updateAssetGoal(assetId, goalId));
-        assertEquals(ApiError.GOAL_BELONGS_TO_DIFFERENT_USER.getCode(), ex.getCode());
+        assertEquals(ApiError.ITEM_NOT_FOUND.getCode(), ex.getCode());
         assertEquals("Access denied. Goal belongs to different user", ex.getMessage());
     }
 

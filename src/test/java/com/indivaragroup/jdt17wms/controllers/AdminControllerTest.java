@@ -1,8 +1,6 @@
 package com.indivaragroup.jdt17wms.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.indivaragroup.jdt17wms.dto.request.AdminProductCreateDTO;
-import com.indivaragroup.jdt17wms.dto.request.AdminProductUpdateDTO;
 import com.indivaragroup.jdt17wms.dto.response.AuditLogDTO;
 import com.indivaragroup.jdt17wms.dto.response.ProductResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
@@ -22,7 +20,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -32,7 +29,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -150,91 +146,51 @@ class AdminControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("Admin products retrieved successfully"));
     }
 
-    // --- POST /api/v1/admin/products ---
+    // --- PUT /api/v1/admin/products/{id} (visibility) ---
 
     @Test
-    @DisplayName("createProduct - with valid request DTO, return 201 Created")
-    void createProduct_withValidRequest_shouldReturnCreated() throws Exception {
-        AdminProductCreateDTO dto = AdminProductCreateDTO.builder()
-                .code("PRD-001")
-                .name("Gold Product")
-                .issuer("Monarch")
-                .type("GOLD")
-                .riskLevel(2)
-                .annualReturn(new BigDecimal("0.0800"))
-                .minInvestment(new BigDecimal("100000.0000"))
-                .currentPrice(new BigDecimal("105000.0000"))
-                .description("Gold asset")
-                .lotSize(1)
-                .isFractionalAllowed(true)
+    @DisplayName("updateProductVisibility - with valid request, return 200 OK")
+    void updateProductVisibility_withValidRequest_shouldReturnOk() throws Exception {
+        UUID productId = UUID.randomUUID();
+        ProductResponseDTO updatedProduct = ProductResponseDTO.builder()
+                .id(productId)
                 .visible(true)
                 .build();
 
-        ProductResponseDTO createdProduct = ProductResponseDTO.builder()
-                .id(UUID.randomUUID())
-                .code("PRD-001")
-                .name("Gold Product")
-                .build();
-
-        when(adminProductManagementService.createProduct(any(AdminProductCreateDTO.class)))
-                .thenReturn(createdProduct);
-
-        mockMvc.perform(post("/api/v1/admin/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Admin product created successfully"));
-    }
-
-    @Test
-    @DisplayName("createProduct - with invalid/blank request body, return 400 Bad Request")
-    void createProduct_withInvalidRequest_shouldReturnBadRequest() throws Exception {
-        mockMvc.perform(post("/api/v1/admin/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    // --- PUT /api/v1/admin/products/{id} ---
-
-    @Test
-    @DisplayName("updateProduct - with valid request, return 200 OK")
-    void updateProduct_withValidRequest_shouldReturnOk() throws Exception {
-        UUID productId = UUID.randomUUID();
-        AdminProductUpdateDTO dto = AdminProductUpdateDTO.builder()
-                .name("Updated Product Name")
-                .build();
-
-        ProductResponseDTO updatedProduct = ProductResponseDTO.builder()
-                .id(productId)
-                .name("Updated Product Name")
-                .build();
-
-        when(adminProductManagementService.updateProduct(eq(productId), any(AdminProductUpdateDTO.class)))
+        when(adminProductManagementService.updateProductVisibility(eq(productId), eq(true)))
                 .thenReturn(updatedProduct);
 
         mockMvc.perform(put("/api/v1/admin/products/" + productId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content("{\"visibility\":true}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Admin product updated successfully"));
+                .andExpect(jsonPath("$.result.id").value(productId.toString()))
+                .andExpect(jsonPath("$.result.visible").value(true));
     }
 
     @Test
-    @DisplayName("updateProduct - when product not found, return 404 Not Found")
-    void updateProduct_whenNotFound_shouldReturnNotFound() throws Exception {
+    @DisplayName("updateProductVisibility - when product not found, return 404 Not Found")
+    void updateProductVisibility_whenNotFound_shouldReturnNotFound() throws Exception {
         UUID productId = UUID.randomUUID();
-        AdminProductUpdateDTO dto = AdminProductUpdateDTO.builder()
-                .name("Updated Product Name")
-                .build();
 
-        when(adminProductManagementService.updateProduct(eq(productId), any(AdminProductUpdateDTO.class)))
+        when(adminProductManagementService.updateProductVisibility(eq(productId), any(Boolean.class)))
                 .thenThrow(new CoreThrowHandler(ApiError.ITEM_NOT_FOUND, "Product not found"));
 
         mockMvc.perform(put("/api/v1/admin/products/" + productId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content("{\"visibility\":true}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("updateProductVisibility - when visibility is null, return 400 Bad Request")
+    void updateProductVisibility_whenVisibilityNull_shouldReturnBadRequest() throws Exception {
+        UUID productId = UUID.randomUUID();
+
+        mockMvc.perform(put("/api/v1/admin/products/" + productId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\":null}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
