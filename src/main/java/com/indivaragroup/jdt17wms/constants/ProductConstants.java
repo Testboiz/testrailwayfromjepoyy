@@ -2,15 +2,16 @@ package com.indivaragroup.jdt17wms.constants;
 
 import static com.indivaragroup.jdt17wms.constants.GoalConstants.CUSTOM_GOAL;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ProductConstants {
-    private ProductConstants() {
-      // Prevent Instantiation
-    }
 
     public static final int SUMMARY_COUNT = 5;
 
@@ -21,6 +22,11 @@ public final class ProductConstants {
     public static final String MUTUAL_FUND = "mutual_fund";
     public static final String BALANCED_FUND = "balanced_fund";
     public static final String STOCK = "stock";
+
+    public static final String BOND_NAME = "Bond";
+    public static final String SUKUK_NAME = "Sukuk";
+    public static final String DEPOSIT_NAME = "Deposit";
+
 
     public static final Set<String> LIQUID_PRODUCT_TYPES = Set.of(MONEY_MARKET, DEPOSIT);
     public static final List<String> ALL_PRODUCT_TYPES = List.of(
@@ -36,11 +42,11 @@ public final class ProductConstants {
     );
     public static final Map<String, String> TYPE_LABELS = Map.of(
             MONEY_MARKET, "Money Market",
-            DEPOSIT, "Deposit",
+            DEPOSIT, DEPOSIT_NAME,
             BALANCED_FUND, "Balanced Fund",
             MUTUAL_FUND, "Mutual Fund",
             BOND, "Bond",
-            SUKUK, "Sukuk",
+            SUKUK, SUKUK_NAME,
             STOCK, "Stock"
     );
     public static final BigDecimal SURPLUS_THRESHOLD = BigDecimal.valueOf(100000);
