@@ -214,9 +214,13 @@ public class AssetTransactionService {
 
         // Update asset.currentValue — amount and units stay (total cost basis)
         BigDecimal remainingUnits = availableUnits.subtract(unitsToSell);
-        asset.setCurrentValue(remainingUnits.multiply(currentPrice).setScale(BY_FOUR, RoundingMode.HALF_UP));
-        assetRepository.save(asset);
-
+        BigDecimal newValue = remainingUnits.multiply(currentPrice).setScale(BY_FOUR, RoundingMode.HALF_UP);
+        if (newValue.compareTo(BigDecimal.ZERO) == 0){
+            assetRepository.delete(asset);
+        }else {
+            asset.setCurrentValue(newValue);
+            assetRepository.save(asset);
+        }
         // Recalculate PnL
         AssetsPnLResponseDTO pnl = pnLCalculationService.computePnLForAsset(asset);
 

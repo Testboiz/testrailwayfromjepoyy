@@ -160,7 +160,6 @@ public class AssetsManagementService implements VerifiedUserProvider {
         BigDecimal currentPrice = product.getCurrentPrice();
         BigDecimal calculatedCurrentValue = dto.getUnits().multiply(currentPrice).setScale(BY_FOUR, RoundingMode.HALF_UP);
 
-        //cek ulang. nwgawur loh ya
         // Calculate maturity date if tenor is provided and product type supports it
         LocalDate maturityDate = null;
         if (dto.getTenor() != null) {

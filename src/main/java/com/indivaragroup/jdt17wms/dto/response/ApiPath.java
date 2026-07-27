@@ -35,8 +35,6 @@ public class ApiPath {
     public static final String PNL_ROUTE = "/pnl";
     public static final String TRANSACTION_LOGS_ROUTE = "/transaction-logs";
     public static final String ASSET_TRANSACTIONS_ROUTE = "/{assetId}/transactions";
-    public static final String ASSET_VALUE_ROUTE = "/{assetId}/value";
-    public static final String ASSET_GOAL_ROUTE = "/{assetId}/goal";
     public static final String ASSET_PNL_ROUTE = "/{assetId}/pnl";
 
     // Goals
@@ -55,5 +53,5 @@ public class ApiPath {
     public static final String BASE_FINANCES_ROUTE = ROOT_ROUTE + "/me/finances";
 
     // Users
-    public static final String BASE_USERS_ROUTE = ROOT_ROUTE + "/users";
+    public static final String BASE_USERS_ROUTE = BASE_ADMIN_ROUTE + "/users";
 }

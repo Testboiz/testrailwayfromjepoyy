@@ -73,19 +73,11 @@ public class AuthService {
         this.auditLogRepository = auditLogRepository;
     }
 
-    public String extractEmailFromToken(String token) {
-        return jwtService.getEmailFromToken(token);
-    }
-
-    public UUID extractUserIdFromToken(String token) {
-        return jwtService.getUserIdFromToken(token);
-    }
-
     // Login
     public AuthSuccessDTO login(LoginDTO dto) {
 
-        if (!Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matcher(dto.getLoginRequestEmail()).matches()) {
-           throw new CoreThrowHandler(ApiError.VALIDATION, "Invalid email format");
+        if (!Pattern.compile(String.valueOf(EMAIL_PATTERN)).matcher(dto.getLoginRequestEmail()).matches()) {
+           throw new CoreThrowHandler(ApiError.VALIDATION, MSG_INVALID_EMAIL_FORMAT);
         };
 
         User user = userRepository.findByEmail(dto.getLoginRequestEmail())
@@ -206,7 +198,6 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Audit Log
         AuditLog auditLog = AuditLog.builder()
                 .userId(savedUser.getId())
                 .userName(savedUser.getName())
