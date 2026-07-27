@@ -1,7 +1,7 @@
 package com.indivaragroup.jdt17wms.services;
 
 import com.indivaragroup.jdt17wms.dto.request.AdminProductCreateDTO;
-import com.indivaragroup.jdt17wms.dto.request.AdminProductUpdateDTO;
+
 import com.indivaragroup.jdt17wms.dto.response.ProductResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.exceptions.CoreThrowHandler;
@@ -10,10 +10,12 @@ import com.indivaragroup.jdt17wms.repositories.ProductRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
+@Transactional
 public class AdminProductManagementService {
 
     private final ProductRepository productRepository;
@@ -44,24 +46,6 @@ public class AdminProductManagementService {
                 .isFractionalAllowed(dto.getIsFractionalAllowed())
                 .visible(dto.getVisible())
                 .build();
-        return ProductResponseDTO.fromEntity(productRepository.save(p));
-    }
-
-    public ProductResponseDTO updateProduct(UUID id, AdminProductUpdateDTO dto) {
-        Product p = productRepository.findById(id)
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND, "Product not found"));
-        if (dto.getName() != null) p.setName(dto.getName());
-        if (dto.getIssuer() != null) p.setIssuer(dto.getIssuer());
-        if (dto.getType() != null) p.setType(dto.getType());
-        if (dto.getRiskLevel() != null) p.setRiskLevel(dto.getRiskLevel());
-        if (dto.getAnnualReturn() != null) p.setAnnualReturn(dto.getAnnualReturn());
-        if (dto.getMinInvestment() != null) p.setMinInvestment(dto.getMinInvestment());
-        if (dto.getCurrentPrice() != null) p.setCurrentPrice(dto.getCurrentPrice());
-        if (dto.getDescription() != null) p.setDescription(dto.getDescription());
-        if (dto.getTenor() != null) p.setTenor(dto.getTenor());
-        if (dto.getLotSize() != null) p.setLotSize(dto.getLotSize());
-        if (dto.getIsFractionalAllowed() != null) p.setIsFractionalAllowed(dto.getIsFractionalAllowed());
-        if (dto.getVisible() != null) p.setVisible(dto.getVisible());
         return ProductResponseDTO.fromEntity(productRepository.save(p));
     }
 }

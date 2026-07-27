@@ -66,7 +66,7 @@ public enum ApiSuccess {
     FINANCES_UPDATED(HttpStatus.OK.value(), "Financial profile updated successfully"),
 
     // Health
-    HEALTH_OK(HttpStatus.OK.value(), "Service is healthy"),
+    HEALTH_OK(HttpStatus.OK.value(), "Health score calculated successfully"),
 
     // Transactions
     EXECUTED(HttpStatus.OK.value(), "Transaction executed successfully");

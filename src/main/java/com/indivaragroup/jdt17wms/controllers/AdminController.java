@@ -2,7 +2,7 @@ package com.indivaragroup.jdt17wms.controllers;
 
 import com.indivaragroup.jdt17wms.aspects.AuditLogged;
 import com.indivaragroup.jdt17wms.dto.request.AdminProductCreateDTO;
-import com.indivaragroup.jdt17wms.dto.request.AdminProductUpdateDTO;
+
 import com.indivaragroup.jdt17wms.dto.response.ApiPath;
 import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.AuditLogDTO;
@@ -61,23 +61,5 @@ public class AdminController {
             Pageable pageable) {
         return ApiResponse.success(ApiSuccess.ADMIN_PRODUCTS_FETCHED,
                 adminProductManagementService.listProducts(search, type, pageable));
-    }
-
-
-    @PostMapping("/products")
-    @ResponseStatus(HttpStatus.CREATED)
-    @AuditLogged(action = "CREATE_PRODUCT", category = "PRODUCT")
-    public ApiResponse<ProductResponseDTO> createProduct(@Valid @RequestBody AdminProductCreateDTO dto) {
-        return ApiResponse.success(ApiSuccess.ADMIN_PRODUCT_CREATED,
-                adminProductManagementService.createProduct(dto));
-    }
-
-
-    @AuditLogged(action = "UPDATE_PRODUCT", category = "PRODUCT")
-    public ApiResponse<ProductResponseDTO> updateProduct(
-            @PathVariable UUID id,
-            @RequestBody AdminProductUpdateDTO dto) {
-        return ApiResponse.success(ApiSuccess.ADMIN_PRODUCT_UPDATED,
-                adminProductManagementService.updateProduct(id, dto));
     }
 }

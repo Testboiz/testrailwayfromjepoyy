@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import jakarta.validation.ConstraintViolationException;
@@ -29,9 +30,16 @@ public class ExceptionHandlingAdvice {
 
     @ExceptionHandler(CoreThrowHandler.class)
     public ResponseEntity<ApiResponse<?>> handleCoreThrowHandler(CoreThrowHandler ex) {
-        Map<String, Serializable> errorMap = (ex.getError() != null && !ex.getError().isEmpty())
-                ? ex.getError()
-                : null;
+        Map<String, Serializable> errorMap;
+
+        if (ex.getDetails() != null && !ex.getDetails().isEmpty()) {
+            errorMap = new HashMap<>();
+            errorMap.put("fields", (Serializable) ex.getDetails());
+        } else if (ex.getError() != null && !ex.getError().isEmpty()) {
+            errorMap = ex.getError();
+        } else {
+            errorMap = null;
+        }
 
         ApiResponse<?> body = ApiResponse.builder()
                 .restApiResponseHttpCode(ex.getCode())
@@ -159,5 +167,24 @@ public class ExceptionHandlingAdvice {
 
         return ResponseEntity.status(500).body(body);
     }
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String paramName = ex.getName();
+        String value = ex.getValue() != null ? ex.getValue().toString() : null;
+        String errorMsg = "Invalid value '" + value + "' for parameter '" + paramName + "'";
+
+
+        Map<String, Serializable> errorMap = new HashMap<>();
+                errorMap.put("detail", errorMsg);
+                errorMap.put("parameter", paramName);errorMap.put("value", value);
+
+                ApiResponse<?> body = ApiResponse.builder()
+                        .restApiResponseHttpCode(ApiError.INVALID_REQUEST_PARAMETER.getCode())
+                        .restApiResponseMessage(ApiError.INVALID_REQUEST_PARAMETER.getMessage())
+                        .restApiResponseResult(null)
+                       .restApiResponseError(errorMap)
+                        .build();
+        return ResponseEntity.badRequest().body(body);
+  }
 }
 

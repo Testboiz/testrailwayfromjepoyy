@@ -10,13 +10,14 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum ApiError {
     //Global Errornya ini
+    INVALID_REQUEST_PARAMETER(HttpStatus.BAD_REQUEST.value(), "Invalid Request Parameters"),
     BAD_REQUEST(HttpStatus.BAD_REQUEST.value(),"BAD REQUEST"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED.value(),"UNAUTHORIZED"),
     CONFLICT(HttpStatus.CONFLICT.value(),"RESOURCE ALREADY EXISTS"),
     NOT_FOUND(HttpStatus.NOT_FOUND.value(), "RESOURCE NOT FOUND"),
     VALIDATION(HttpStatus.BAD_REQUEST.value(), "INVALID FIELD VALUES"),
 //  Khusus Invalid
-    INVALID_TOKEN(HttpStatus.UNAUTHORIZED.value(), "INVALID TOKEN"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED.value(), "Invalid or expired refresh token"),
     INVALID_REQUEST_BODY(HttpStatus.BAD_REQUEST.value(),"Invalid Request Body"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "User Not Found"),
     DELISTED_PRODUCT(HttpStatus.CONFLICT.value(), "Can’t track delisted products"),

@@ -2,7 +2,9 @@ package com.indivaragroup.jdt17wms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.indivaragroup.jdt17wms.dto.response.ApiPath;
+import com.indivaragroup.jdt17wms.dto.response.ApiResponse;
 import com.indivaragroup.jdt17wms.dto.response.UserDTO;
+import com.indivaragroup.jdt17wms.dto.utils.ApiError;
 import com.indivaragroup.jdt17wms.dto.utils.ErrorResponseDTO;
 import com.indivaragroup.jdt17wms.repositories.UserRepository;
 import com.indivaragroup.jdt17wms.services.JwtService;
@@ -106,9 +108,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void sendUnauthorizedError(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
-                .error(message)
-                .code(HttpServletResponse.SC_UNAUTHORIZED)
+        ApiResponse<?> errorResponse = ApiResponse.builder()
+                .restApiResponseHttpCode(HttpServletResponse.SC_UNAUTHORIZED)
+                .restApiResponseResult(null)
+                .restApiResponseMessage(message)
+                .restApiResponseError(null)
                 .build();
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }

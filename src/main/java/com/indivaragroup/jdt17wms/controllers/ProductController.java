@@ -8,6 +8,7 @@ import com.indivaragroup.jdt17wms.dto.response.ProductResponseDTO;
 import com.indivaragroup.jdt17wms.dto.utils.ApiSuccess;
 import com.indivaragroup.jdt17wms.models.Product;
 import com.indivaragroup.jdt17wms.services.ProductManagementService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +36,7 @@ public class ProductController {
     @PutMapping("/{id}")
     public ApiResponse<ProductResponseDTO> updateProduct(
             @PathVariable UUID id,
-            @RequestBody AdminChangeVisibilityDTO adminChangeVisibilityDTO) {
+            @Valid @RequestBody AdminChangeVisibilityDTO adminChangeVisibilityDTO) {
         return ApiResponse.success(ApiSuccess.PRODUCT_UPDATED,
                 productManagementService.updateProductVisibility(id, adminChangeVisibilityDTO.getVisibility()));
     }

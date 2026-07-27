@@ -57,6 +57,10 @@ public class AuthService {
     // Login
     public AuthSuccessDTO login( LoginDTO dto) {
 
+        if (!Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matcher(dto.getLoginRequestEmail()).matches()) {
+           throw new CoreThrowHandler(ApiError.VALIDATION, "Invalid email format");
+        };
+
         User user = userRepository.findByEmail(dto.getLoginRequestEmail())
                 .orElseThrow(() -> new CoreThrowHandler(ApiError.BAD_REQUEST,"Email Or Password Invalid"));
 

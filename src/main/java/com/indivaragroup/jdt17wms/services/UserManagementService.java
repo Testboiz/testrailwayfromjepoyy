@@ -45,12 +45,12 @@ public class UserManagementService {
 
     public AdminUserDTO getUserById(UUID id) {
         return toDTO(userRepository.findById(id)
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND)));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND)));
     }
 
     public AdminUserDTO updateUserStatus(UUID id, UserStatusUpdateDTO userStatusUpdateDTO) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new CoreThrowHandler(ApiError.ITEM_NOT_FOUND));
+                .orElseThrow(() -> new CoreThrowHandler(ApiError.USER_NOT_FOUND));
         user.setStatus(userStatusUpdateDTO.getStatus());
         return toDTO(userRepository.save(user));
     }
